@@ -1,0 +1,24 @@
+# Caminho relativo: src-tauri/Cargo.toml
+
+[package]
+name = "neocad"
+version = "0.1.0"
+description = "Desktop shell do NeoCAD construído com Tauri 2 e SvelteKit"
+authors = ["Iago Leal"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "neocad_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.1", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.1", features = [] }
+tauri-plugin-log = "2"

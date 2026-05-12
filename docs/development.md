@@ -4,15 +4,21 @@
 
 ## Objetivo deste documento
 
-Este guia descreve como preparar o ambiente e como executar a próxima etapa do projeto após a Fase 0 de planejamento.
+Este guia descreve como preparar o ambiente, validar o scaffold atual e continuar a evolução do NeoCAD após a conclusão da Fase 1.
 
 ## Fase atual
 
-A Fase 0 registra decisões de produto, arquitetura e governança. O scaffold do aplicativo será iniciado na Fase 1.
+A Fase 1 do projeto está concluída. O repositório agora contém:
+
+- frontend SvelteKit funcional com TypeScript;
+- modo SPA configurado com `@sveltejs/adapter-static` e fallback `index.html`;
+- shell desktop Tauri 2 inicializado em `src-tauri/`;
+- lint, formatação e testes básicos configurados.
 
 ## Stack validada
 
 - **SvelteKit** como frontend principal
+- **Svelte 5** para UI
 - **Tauri 2** como shell desktop
 - **TypeScript** para a aplicação web
 - **Rust** para integração nativa
@@ -22,23 +28,25 @@ A Fase 0 registra decisões de produto, arquitetura e governança. O scaffold do
 
 ### SvelteKit
 
-A documentação oficial do SvelteKit indica o uso do CLI `sv` para criação de novos projetos:
+A documentação oficial do SvelteKit indica o uso do CLI `sv` para criação de novos projetos.
 
-- `npx sv create my-app`
+Comando utilizado como referência de scaffold:
+
+- `npx sv create`
 
 ### Tauri 2
 
-A documentação oficial do Tauri 2 apresenta dois caminhos relevantes para NeoCAD:
+A documentação oficial do Tauri 2 recomenda, para SvelteKit:
 
-1. criar um projeto novo com `create-tauri-app`;
-2. adicionar Tauri manualmente a um frontend já existente.
+- uso de `adapter-static`;
+- configuração de `frontendDist` para `build/`;
+- preferência por modo SPA quando a aplicação depende de APIs disponíveis apenas no ambiente WebView.
 
-Para NeoCAD, a abordagem preferida é:
+NeoCAD segue essa orientação com:
 
-- criar primeiro a base SvelteKit pelo CLI oficial;
-- depois inicializar o Tauri manualmente no mesmo repositório.
-
-Isso preserva maior controle sobre a estrutura do app e facilita a integração com `cad-viewer`.
+- `@sveltejs/adapter-static` configurado com `fallback: 'index.html'`;
+- `src/routes/+layout.ts` com `export const ssr = false;`;
+- `src-tauri/tauri.conf.json` apontando para `../build`.
 
 ## Pré-requisitos
 
@@ -78,42 +86,52 @@ Para Ubuntu/Debian, a documentação oficial do Tauri 2 recomenda dependências 
 - `libayatana-appindicator3-dev`
 - `librsvg2-dev`
 
-## Estratégia de bootstrap da Fase 1
+## Fluxo atual de desenvolvimento
 
-### Etapa 1 — criar o frontend com SvelteKit
+### Instalar dependências
 
-Usar o CLI oficial do SvelteKit para gerar a base inicial do projeto.
+```bash
+pnpm install
+```
 
-Decisões esperadas no bootstrap:
+### Validar o frontend
 
-- TypeScript habilitado;
-- configuração alinhada com SvelteKit atual;
-- estrutura preparada para uso com Tauri e build estático.
+```bash
+pnpm check
+pnpm test
+pnpm build
+```
 
-### Etapa 2 — configurar saída compatível com Tauri
+### Executar o shell desktop
 
-Após o scaffold inicial, o projeto deverá:
+```bash
+pnpm tauri dev
+```
 
-- adotar `adapter-static` quando necessário para o fluxo de build desktop;
-- manter URL de desenvolvimento local para integração com `tauri dev`;
-- revisar estratégia de assets estáticos e roteamento para ambiente desktop.
+### Gerar build desktop
 
-### Etapa 3 — inicializar o Tauri 2 manualmente
+```bash
+pnpm tauri build
+```
 
-Usar a CLI oficial do Tauri para adicionar o backend nativo ao projeto SvelteKit existente.
+## Testes
 
-Parâmetros esperados no `tauri init`:
+### Testes unitários
 
-- diretório dos assets web compatível com o build do SvelteKit;
-- URL do servidor de desenvolvimento local;
-- comando de desenvolvimento do frontend;
-- comando de build do frontend.
+Os testes unitários usam `Vitest`.
 
-### Etapa 4 — validar execução local
+```bash
+pnpm test
+```
 
-Objetivo mínimo:
+### Testes E2E
 
-- `pnpm tauri dev` abrindo uma janela desktop funcional.
+Os testes E2E usam `Playwright`. Antes da primeira execução, instale os browsers:
+
+```bash
+pnpm exec playwright install
+pnpm test:e2e
+```
 
 ## Convenções iniciais
 
@@ -127,7 +145,7 @@ Objetivo mínimo:
 
 ### Formatação e qualidade
 
-Ferramentas previstas:
+Ferramentas configuradas ou previstas:
 
 - `prettier` para frontend;
 - `eslint` para TypeScript/Svelte;
@@ -136,26 +154,17 @@ Ferramentas previstas:
 
 ### Testes
 
-Estratégia inicial prevista:
+Estratégia atual:
 
-- testes unitários para serviços e stores;
-- testes de componentes críticos;
-- validação futura de fluxos desktop com E2E.
+- testes unitários para contratos básicos do frontend;
+- base E2E pronta para cobrir telas principais;
+- expansão futura para fluxos desktop integrados e abertura de arquivos.
 
-## Fluxo de contribuição sugerido
+## Próxima meta técnica
 
-1. abrir issue ou discussão para mudanças significativas;
-2. documentar decisões de arquitetura quando houver impacto estrutural;
-3. manter `README.md` e `CHANGELOG.md` atualizados;
-4. incluir testes quando novas funcionalidades forem introduzidas.
+A próxima etapa prática do projeto é a **Fase 2**, com foco em:
 
-## Riscos técnicos acompanhados
-
-- integração entre roteamento do SvelteKit e empacotamento desktop;
-- compatibilidade do `cad-viewer` com o ciclo de vida da aplicação Tauri;
-- diferenças de dependências entre Windows e Linux;
-- possível necessidade de patches ou contribuições upstream.
-
-## Próxima entrega esperada
-
-A próxima etapa prática do projeto é criar o scaffold oficial e validar a abertura da janela desktop com SvelteKit + Tauri 2.
+1. integrar o `cad-viewer` via uma camada adaptadora própria;
+2. abrir arquivos locais `DWG` e `DXF` pelo shell desktop;
+3. validar renderização inicial dentro da janela Tauri;
+4. preparar o terreno para edição básica.

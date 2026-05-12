@@ -2,10 +2,10 @@
 
 # NeoCAD
 
-![Status](https://img.shields.io/badge/status-planning-blue)
-![Build](https://img.shields.io/badge/build-not_configured-lightgrey)
+![Status](https://img.shields.io/badge/status-phase%201-blue)
+![Build](https://img.shields.io/badge/build-scaffold_ready-success)
 ![Coverage](https://img.shields.io/badge/coverage-not_configured-lightgrey)
-![Version](https://img.shields.io/badge/version-0.1.0--planning-informational)
+![Version](https://img.shields.io/badge/version-0.1.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Targets](https://img.shields.io/badge/targets-Windows%20%7C%20Linux-6f42c1)
 
@@ -13,17 +13,20 @@ NeoCAD é um wrapper desktop open-source para o [`cad-viewer`](https://github.co
 
 ## Estado atual
 
-O repositório está na **Fase 0 — Planejamento e arquitetura**.
+O repositório está na **Fase 1 — scaffold base concluído**.
 
-Nesta fase, o foco é:
+Nesta fase, o projeto já possui:
 
-- definir a visão de produto;
-- registrar decisões arquiteturais iniciais;
-- preparar documentação e governança básica do projeto;
-- alinhar a estratégia de integração com o `cad-viewer`;
-- planejar o bootstrap oficial com `SvelteKit` e `Tauri 2`.
+- frontend em **SvelteKit + Svelte 5 + TypeScript**;
+- configuração de **SPA mode** com `@sveltejs/adapter-static`, compatível com Tauri;
+- shell desktop inicial em **Tauri 2 + Rust**;
+- lint com **ESLint**;
+- formatação com **Prettier**;
+- testes unitários com **Vitest**;
+- base de testes E2E com **Playwright**;
+- documentação de arquitetura, desenvolvimento e roadmap.
 
-> **Importante:** neste momento ainda não existe um binário distribuível nem um scaffold funcional commitado. As instruções de ambiente abaixo servem para preparar a próxima fase de implementação.
+> **Importante:** a integração com o `cad-viewer` ainda será implementada na próxima fase. Neste momento, a aplicação entrega o esqueleto técnico validado para evoluir o desktop wrapper.
 
 ## Objetivos do MVP
 
@@ -44,11 +47,12 @@ Nesta fase, o foco é:
 ## Stack escolhida
 
 - **Frontend:** SvelteKit
+- **UI:** Svelte 5
 - **Desktop shell:** Tauri 2
 - **Linguagem da interface:** TypeScript
 - **Backend nativo:** Rust
 - **Gerenciador de pacotes JavaScript:** pnpm
-- **Renderização CAD:** `cad-viewer`
+- **Renderização CAD planejada:** `cad-viewer`
 
 ## Pré-requisitos de desenvolvimento
 
@@ -69,31 +73,27 @@ Nesta fase, o foco é:
 
 As dependências exatas variam conforme a distribuição. Para Ubuntu/Debian, a documentação oficial do Tauri 2 recomenda bibliotecas como `libwebkit2gtk-4.1-dev`, `build-essential`, `libssl-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` e `libxdo-dev`.
 
-Consulte também:
-
-- `docs/development.md`
-- documentação oficial do Tauri 2 para pré-requisitos por sistema operacional
-
 ## Instalação
 
-### Para acompanhar o projeto agora
-
 1. Clone este repositório.
-2. Leia `docs/architecture.md` e `docs/development.md`.
-3. Prepare o ambiente de desenvolvimento conforme sua plataforma.
-4. Aguarde ou contribua com a Fase 1, em que o scaffold oficial será adicionado.
-
-### Fluxo planejado para a Fase 1
+2. Instale as dependências JavaScript.
+3. Garanta que os pré-requisitos do Tauri 2 estejam instalados no seu sistema.
 
 ```bash
-# Exemplo planejado após o bootstrap oficial
 pnpm install
-pnpm tauri dev
 ```
 
-## Exemplos de uso planejados
+## Execução em desenvolvimento
 
-### Executar em modo de desenvolvimento
+### Validar frontend
+
+```bash
+pnpm check
+pnpm test
+pnpm build
+```
+
+### Executar o app desktop
 
 ```bash
 pnpm tauri dev
@@ -105,7 +105,24 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-## Estrutura de diretórios planejada
+## Testes
+
+### Testes unitários
+
+```bash
+pnpm test
+```
+
+### Testes E2E
+
+Antes da primeira execução dos testes E2E, instale os browsers do Playwright:
+
+```bash
+pnpm exec playwright install
+pnpm test:e2e
+```
+
+## Estrutura de diretórios
 
 ```text
 .
@@ -117,18 +134,21 @@ pnpm tauri build
 │   ├── api.md
 │   ├── development.md
 │   └── changelog.md
-├── src/                 # UI SvelteKit
-├── static/              # Assets estáticos
-└── src-tauri/           # Backend Rust e empacotamento Tauri
+├── e2e/                # Testes end-to-end do frontend
+├── src/                # UI SvelteKit
+├── static/             # Assets estáticos
+├── src-tauri/          # Backend Rust e empacotamento Tauri
+├── package.json
+└── svelte.config.js
 ```
 
 ## Roadmap resumido
 
-- **Fase 0:** planejamento, arquitetura, licença e documentação
-- **Fase 1:** scaffold oficial com SvelteKit + Tauri 2
-- **Fase 2:** integração do `cad-viewer` e abertura de arquivos locais
-- **Fase 3:** edição básica, recentes, drag-and-drop e melhorias desktop
-- **Fase 4:** extensibilidade, plugins e investigação de módulo BIM separado
+- [x] **Fase 0:** planejamento, arquitetura, licença e documentação
+- [x] **Fase 1:** scaffold oficial com SvelteKit + Tauri 2
+- [ ] **Fase 2:** integração do `cad-viewer` e abertura de arquivos locais
+- [ ] **Fase 3:** edição básica, recentes, drag-and-drop e melhorias desktop
+- [ ] **Fase 4:** extensibilidade, plugins e investigação de módulo BIM separado
 
 ## Como contribuir
 
@@ -159,6 +179,7 @@ Antes de abrir uma contribuição grande, prefira registrar uma discussão ou is
 Este projeto está licenciado sob a **MIT License**. Consulte o arquivo `LICENSE` para detalhes.
 
 ---
+
 ## Apoie
 
 **Feito com ❤️ por Iago Leal** | [☕ Apoie o criador]
