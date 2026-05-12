@@ -2,7 +2,7 @@
 
 /**
  * \file src/lib/services/cad-file.ts
- * \brief Serviços para seleção e leitura de arquivos CAD em ambiente Tauri ou navegador.
+ * \brief Serviços para seleção, leitura e normalização de arquivos CAD em ambiente Tauri ou navegador.
  * \author Iago Leal
  * \date 2026-05-12
  */
@@ -27,6 +27,21 @@ export function isSupportedCadFile(fileName: string): boolean {
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 	return bytes.slice().buffer;
+}
+
+export async function createCadDocumentPayloadFromFile(
+	file: File,
+	source: CadDocumentPayload['source'] = 'browser'
+): Promise<CadDocumentPayload> {
+	if (!isSupportedCadFile(file.name)) {
+		throw new Error(`Formato de arquivo não suportado: ${file.name}`);
+	}
+
+	return {
+		fileName: file.name,
+		content: await file.arrayBuffer(),
+		source
+	};
 }
 
 async function openCadFileFromTauri(): Promise<CadDocumentPayload | null> {
@@ -85,11 +100,7 @@ function openCadFileFromBrowser(): Promise<CadDocumentPayload | null> {
 				}
 
 				try {
-					resolve({
-						fileName: file.name,
-						content: await file.arrayBuffer(),
-						source: 'browser'
-					});
+					resolve(await createCadDocumentPayloadFromFile(file));
 				} catch (error) {
 					reject(error);
 				}
@@ -104,6 +115,28 @@ function openCadFileFromBrowser(): Promise<CadDocumentPayload | null> {
 
 export function getCadRuntimeLabel(): 'Tauri' | 'Browser' {
 	return isTauri() ? 'Tauri' : 'Browser';
+}
+
+export async function readCadDocumentFromPath(path: string): Promise<CadDocumentPayload> {
+	if (!isTauri()) {
+		throw new Error('Leitura direta por caminho só está disponível no runtime Tauri.');
+	}
+
+	const fileName = extractCadFileName(path);
+
+	if (!isSupportedCadFile(fileName)) {
+		throw new Error(`Formato de arquivo não suportado: ${fileName}`);
+	}
+
+	const { readFile } = await import('@tauri-apps/plugin-fs');
+	const bytes = await readFile(path);
+
+	return {
+		fileName,
+		content: toArrayBuffer(bytes),
+		source: 'tauri',
+		path
+	};
 }
 
 export async function selectCadDocument(): Promise<CadDocumentPayload | null> {

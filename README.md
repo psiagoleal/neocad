@@ -24,6 +24,9 @@ Nesta etapa, o projeto já possui:
 - abertura local de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
 - fallback de abertura local no navegador para desenvolvimento web;
 - ações iniciais de viewport e envio de comandos CAD;
+- lista de recentes e suporte inicial a arrastar-e-soltar;
+- workers estáticos para DXF, DWG e MTEXT em `static/workers`;
+- `Makefile`, `CMakeLists.txt` e `CMakePresets.json` para fluxos frequentes e build cross-platform inicial;
 - lint com **ESLint**;
 - formatação com **Prettier**;
 - testes unitários com **Vitest**;
@@ -117,11 +120,22 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
+### Atalhos com Makefile
+
+```bash
+make help
+make tauri-dev
+make tauri-debug-nobundle
+make cmake-smoke
+```
+
 ## Fluxo atual do app
 
 A interface atual já permite:
 
 - abrir um desenho CAD local;
+- reabrir itens recentes no runtime Tauri quando o caminho estiver disponível;
+- arrastar e soltar arquivos CAD na área do viewer;
 - ajustar a vista ao desenho carregado;
 - alternar o fundo do canvas;
 - enviar comandos CAD básicos ao viewer;
@@ -155,6 +169,7 @@ pnpm test:e2e
 │   ├── architecture.md
 │   ├── api.md
 │   ├── development.md
+│   ├── windows-cross-build.md
 │   └── changelog.md
 ├── e2e/                # Testes end-to-end do frontend
 ├── src/                # UI SvelteKit
@@ -164,6 +179,7 @@ pnpm test:e2e
 │       ├── types/      # Tipos compartilhados
 │       └── viewer/     # Adaptador do viewer integrado
 ├── static/             # Assets estáticos
+│   └── workers/        # Workers do viewer para DXF, DWG e MTEXT
 ├── src-tauri/          # Backend Rust, plugins e empacotamento Tauri
 ├── package.json
 └── svelte.config.js
@@ -194,6 +210,17 @@ Antes de abrir uma contribuição grande, prefira registrar uma discussão ou is
 - proposta de abordagem;
 - impacto esperado no MVP;
 - possíveis riscos para manutenção.
+
+## Build Windows via CMake
+
+O repositório agora inclui um fluxo inicial de cross-build Windows x64 com NSIS usando **CMake** como orquestrador.
+
+> Importante: esse fluxo é útil para validação e builds iniciais a partir de Linux/WSL, mas o release oficial de Windows continua mais seguro em runner Windows nativo.
+
+Consulte:
+
+- `docs/windows-cross-build.md`
+- `src-tauri/tauri.windows.conf.json`
 
 ## Referências externas
 

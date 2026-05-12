@@ -16,6 +16,9 @@ O projeto está em **Fase 2 — integração inicial do viewer**. O repositório
 - integração inicial com o ecossistema MLightCAD usando `@mlightcad/cad-simple-viewer`;
 - abertura de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
 - fallback de abertura por input local quando a aplicação roda em navegador;
+- workers estáticos vendorizados em `static/workers/` para DXF, DWG e MTEXT;
+- lista de recentes e arrastar-e-soltar na interface da Fase 2;
+- `Makefile` e fluxo CMake para tarefas frequentes e cross-build Windows inicial;
 - lint, formatação e testes básicos configurados.
 
 ## Stack validada
@@ -60,6 +63,16 @@ Para a abertura local de desenhos, a implementação atual usa:
 - `@tauri-apps/plugin-fs`
 - `tauri-plugin-dialog`
 - `tauri-plugin-fs`
+
+### Workers do viewer
+
+O runtime do viewer depende de workers separados para:
+
+- parser DXF;
+- parser DWG;
+- renderização de MTEXT.
+
+Para evitar falhas de abertura em builds desktop, esses workers foram copiados para `static/workers/` e o adaptador do NeoCAD aponta explicitamente para eles.
 
 ## Decisão de integração com o upstream
 
@@ -134,6 +147,25 @@ pnpm build
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
+### Atalhos com Makefile
+
+```bash
+make help
+make check
+make lint
+make test
+make tauri-dev
+```
+
+### Fluxo CMake
+
+```bash
+cmake --preset linux-default
+cmake --build --preset smoke
+```
+
+Para detalhes do build Windows x64 via NSIS, consulte `docs/windows-cross-build.md`.
+
 ### Executar o shell desktop
 
 ```bash
@@ -196,7 +228,7 @@ Estratégia atual:
 
 A próxima etapa prática é **aprofundar a Fase 2**, com foco em:
 
-1. adicionar arquivos recentes e arrastar-e-soltar;
-2. estruturar painéis de propriedades e camadas;
-3. expor melhor os comandos de edição básica na UI;
-4. estudar persistência local e exportação para etapas seguintes do MVP.
+1. estruturar painéis de propriedades e camadas;
+2. expor melhor os comandos de edição básica na UI;
+3. evoluir a persistência de recentes para além do `localStorage` e tratar reabertura entre sessões com mais robustez;
+4. estudar exportação e persistência local para etapas seguintes do MVP.

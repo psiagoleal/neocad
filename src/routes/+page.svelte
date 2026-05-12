@@ -2,8 +2,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { appMetadata, nextMilestones, primaryStack, supportedTargets } from '$lib/config/app';
-	import { getCadRuntimeLabel, selectCadDocument } from '$lib/services/cad-file';
+	import {
+		createCadDocumentPayloadFromFile,
+		getCadRuntimeLabel,
+		readCadDocumentFromPath,
+		selectCadDocument
+	} from '$lib/services/cad-file';
+	import {
+		clearRecentDocuments,
+		listRecentDocuments,
+		registerRecentDocument
+	} from '$lib/services/recent-documents';
 	import type {
+		CadDocumentPayload,
+		CadRecentDocument,
 		CadViewerDocumentState,
 		CadViewerMessage,
 		CadViewerProgressState
@@ -11,6 +23,7 @@
 	import { NeoCadViewer } from '$lib/viewer/neocad-viewer';
 
 	const runtimeLabel = getCadRuntimeLabel();
+	const isTauriRuntime = runtimeLabel === 'Tauri';
 	const commandSuggestions = [
 		'open',
 		'zoom',
@@ -25,12 +38,14 @@
 	let viewerHost: HTMLDivElement | null = $state(null);
 	let viewerController: NeoCadViewer | null = $state(null);
 	let currentDocument: CadViewerDocumentState | null = $state(null);
+	let recentDocuments: CadRecentDocument[] = $state([]);
 	let progress: CadViewerProgressState | null = $state(null);
 	let notifications: CadViewerMessage[] = $state([]);
 	let backgroundTheme: 'light' | 'dark' = $state('dark');
 	let commandInput = $state('zoom');
 	let isOpening = $state(false);
 	let isViewerReady = $state(false);
+	let isDragActive = $state(false);
 	let notificationSequence = 0;
 
 	function pushNotification(kind: CadViewerMessage['kind'], text: string): void {
@@ -44,8 +59,38 @@
 		].slice(0, 5);
 	}
 
+	function refreshRecentDocuments(): void {
+		recentDocuments = listRecentDocuments();
+	}
+
+	function rememberDocument(state: CadViewerDocumentState): void {
+		recentDocuments = registerRecentDocument({
+			fileName: state.fileName,
+			path: state.path,
+			source: state.source ?? 'browser',
+			openedAt: new Date().toISOString()
+		});
+	}
+
 	function clearProgress(): void {
 		progress = null;
+	}
+
+	function preventFileDropDefaults(event: DragEvent): void {
+		event.preventDefault();
+		event.stopPropagation();
+	}
+
+	async function openCadPayload(payload: CadDocumentPayload): Promise<void> {
+		if (viewerController == null) {
+			throw new Error('Viewer CAD ainda não foi inicializado.');
+		}
+
+		const isSuccess = await viewerController.openDocument(payload, 'write');
+
+		if (!isSuccess) {
+			pushNotification('error', `Falha ao carregar ${payload.fileName}.`);
+		}
 	}
 
 	async function openCadDrawing(): Promise<void> {
@@ -68,15 +113,85 @@
 				return;
 			}
 
-			const isSuccess = await viewerController.openDocument(payload, 'write');
-
-			if (!isSuccess) {
-				pushNotification('error', `Falha ao carregar ${payload.fileName}.`);
-			}
+			await openCadPayload(payload);
 		} catch (error) {
 			pushNotification(
 				'error',
 				error instanceof Error ? error.message : 'Falha inesperada ao abrir o desenho CAD.'
+			);
+		} finally {
+			isOpening = false;
+		}
+	}
+
+	async function openRecentDrawing(recentDocument: CadRecentDocument): Promise<void> {
+		if (!isTauriRuntime) {
+			pushNotification(
+				'info',
+				'Reabertura de recentes por caminho completo está disponível apenas no runtime Tauri.'
+			);
+			return;
+		}
+
+		if (recentDocument.path == null) {
+			pushNotification(
+				'warning',
+				'Este item recente não possui caminho persistido para reabertura.'
+			);
+			return;
+		}
+
+		try {
+			isOpening = true;
+			progress = {
+				percentage: 0,
+				stage: 'OPENING_RECENT'
+			};
+
+			const payload = await readCadDocumentFromPath(recentDocument.path);
+			await openCadPayload(payload);
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error ? error.message : 'Falha ao reabrir o documento recente selecionado.'
+			);
+		} finally {
+			isOpening = false;
+		}
+	}
+
+	async function handleFileDrop(event: DragEvent): Promise<void> {
+		preventFileDropDefaults(event);
+		isDragActive = false;
+
+		if (viewerController == null || isOpening) {
+			return;
+		}
+
+		const file = event.dataTransfer?.files?.[0];
+
+		if (file == null) {
+			pushNotification('warning', 'Nenhum arquivo foi detectado no drop.');
+			return;
+		}
+
+		try {
+			isOpening = true;
+			progress = {
+				percentage: 0,
+				stage: 'READING_DROPPED_FILE'
+			};
+
+			const source = isTauriRuntime ? 'tauri' : 'browser';
+			const payload = await createCadDocumentPayloadFromFile(file, source);
+			await openCadPayload(payload);
+			pushNotification('info', `Arquivo recebido por arrastar e soltar: ${payload.fileName}`);
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error
+					? error.message
+					: 'Falha inesperada ao processar o arquivo arrastado.'
 			);
 		} finally {
 			isOpening = false;
@@ -115,6 +230,8 @@
 	}
 
 	onMount(() => {
+		refreshRecentDocuments();
+
 		if (viewerHost == null) {
 			pushNotification('error', 'O container principal do viewer não foi inicializado.');
 			return;
@@ -131,6 +248,7 @@
 			onDocumentActivated: (state) => {
 				currentDocument = state;
 				clearProgress();
+				rememberDocument(state);
 				pushNotification('success', `Desenho carregado com sucesso: ${state.docTitle}`);
 			}
 		});
@@ -271,6 +389,44 @@
 		</div>
 
 		<div class="sidebar-block">
+			<div class="section-header">
+				<h2>Recentes</h2>
+				<button
+					class="inline-action"
+					type="button"
+					onclick={() => {
+						clearRecentDocuments();
+						recentDocuments = [];
+					}}
+				>
+					Limpar
+				</button>
+			</div>
+
+			{#if recentDocuments.length > 0}
+				<ul class="recent-list">
+					{#each recentDocuments as recentDocument (recentDocument.openedAt + recentDocument.fileName)}
+						<li>
+							<div>
+								<strong>{recentDocument.fileName}</strong>
+								<span>{recentDocument.path ?? 'origem local sem caminho persistido'}</span>
+							</div>
+							<button
+								type="button"
+								onclick={() => openRecentDrawing(recentDocument)}
+								disabled={!isTauriRuntime || recentDocument.path == null || isOpening}
+							>
+								Abrir
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="empty-copy">Os desenhos abertos recentemente aparecerão aqui.</p>
+			{/if}
+		</div>
+
+		<div class="sidebar-block">
 			<h2>Stack e próximos passos</h2>
 			<ul class="details-list compact-list">
 				{#each primaryStack as item (item)}
@@ -309,7 +465,26 @@
 				{/if}
 			</header>
 
-			<div class="viewer-container" bind:this={viewerHost}>
+			<div
+				class:drag-active={isDragActive}
+				class="viewer-surface"
+				role="region"
+				aria-label="Área de visualização CAD com suporte a arrastar e soltar"
+				ondragenter={(event) => {
+					preventFileDropDefaults(event);
+					isDragActive = true;
+				}}
+				ondragover={preventFileDropDefaults}
+				ondragleave={(event) => {
+					preventFileDropDefaults(event);
+					if (event.currentTarget === event.target) {
+						isDragActive = false;
+					}
+				}}
+				ondrop={handleFileDrop}
+			>
+				<div class="viewer-container" bind:this={viewerHost}></div>
+
 				{#if !currentDocument}
 					<div class="viewer-overlay">
 						<h3>NeoCAD Viewer</h3>
@@ -317,6 +492,16 @@
 							Abra um arquivo local para iniciar a visualização. Em runtime Tauri, o fluxo usa
 							diálogo nativo e leitura segura do sistema de arquivos.
 						</p>
+						<p class="drop-hint">Você também pode arrastar um arquivo DWG ou DXF para esta área.</p>
+					</div>
+				{/if}
+
+				{#if isDragActive}
+					<div class="drop-overlay">
+						<div>
+							<strong>Solte o arquivo CAD aqui</strong>
+							<span>Compatível com DWG e DXF</span>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -443,7 +628,8 @@
 
 	.tagline,
 	.support-copy,
-	.empty-copy {
+	.empty-copy,
+	.drop-hint {
 		line-height: 1.7;
 		color: #c8daf8;
 	}
@@ -480,10 +666,16 @@
 	}
 
 	.secondary-button,
-	.chip {
+	.chip,
+	.inline-action,
+	.recent-list button {
 		background: rgba(127, 179, 255, 0.1);
 		color: #e8f1ff;
 		border: 1px solid rgba(127, 179, 255, 0.16);
+	}
+
+	.inline-action {
+		padding: 0.5rem 0.8rem;
 	}
 
 	.status-chip {
@@ -512,9 +704,17 @@
 		color: #f2f7ff;
 	}
 
+	.section-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+	}
+
 	.details-list,
 	.plain-list,
-	.notifications-list {
+	.notifications-list,
+	.recent-list {
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -525,7 +725,8 @@
 		gap: 0.7rem;
 	}
 
-	.details-list li {
+	.details-list li,
+	.recent-list li {
 		display: flex;
 		justify-content: space-between;
 		gap: 1rem;
@@ -540,6 +741,23 @@
 
 	.compact-list li {
 		align-items: center;
+	}
+
+	.recent-list {
+		display: grid;
+		gap: 0.7rem;
+	}
+
+	.recent-list div {
+		display: grid;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.recent-list span {
+		font-size: 0.84rem;
+		color: #9ab8e8;
+		word-break: break-word;
 	}
 
 	.plain-list {
@@ -577,7 +795,7 @@
 		color: #bdd2f8;
 	}
 
-	.viewer-container {
+	.viewer-surface {
 		position: relative;
 		min-height: 72vh;
 		border-radius: 0.95rem;
@@ -586,7 +804,18 @@
 		border: 1px solid rgba(127, 179, 255, 0.12);
 	}
 
-	.viewer-overlay {
+	.viewer-surface.drag-active {
+		outline: 2px dashed rgba(135, 184, 255, 0.8);
+		outline-offset: -0.35rem;
+	}
+
+	.viewer-container {
+		position: absolute;
+		inset: 0;
+	}
+
+	.viewer-overlay,
+	.drop-overlay {
 		position: absolute;
 		inset: 0;
 		display: grid;
@@ -594,10 +823,13 @@
 		gap: 0.75rem;
 		padding: 2rem;
 		text-align: center;
+		color: #edf4ff;
+	}
+
+	.viewer-overlay {
 		background:
 			radial-gradient(circle at center, rgba(127, 179, 255, 0.16), transparent 34%),
 			rgba(8, 17, 33, 0.78);
-		color: #edf4ff;
 		pointer-events: none;
 	}
 
@@ -605,6 +837,20 @@
 		max-width: 34rem;
 		line-height: 1.7;
 		color: #cfddf8;
+	}
+
+	.drop-overlay {
+		background: rgba(7, 17, 31, 0.76);
+		backdrop-filter: blur(8px);
+	}
+
+	.drop-overlay div {
+		display: grid;
+		gap: 0.35rem;
+		padding: 1.3rem 1.5rem;
+		border-radius: 1rem;
+		background: rgba(127, 179, 255, 0.14);
+		border: 1px solid rgba(127, 179, 255, 0.22);
 	}
 
 	.notifications-list {
@@ -658,7 +904,7 @@
 			grid-template-columns: 1fr;
 		}
 
-		.viewer-container {
+		.viewer-surface {
 			min-height: 56vh;
 		}
 	}

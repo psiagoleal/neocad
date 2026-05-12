@@ -34,9 +34,29 @@ Responsabilidades atuais:
 Funções atuais:
 
 - `selectCadDocument()`
+- `readCadDocumentFromPath(path)`
+- `createCadDocumentPayloadFromFile(file)`
 - `extractCadFileName(path)`
 - `isSupportedCadFile(fileName)`
 - `getCadRuntimeLabel()`
+
+### Serviço de recentes
+
+Arquivo principal:
+
+- `src/lib/services/recent-documents.ts`
+
+Responsabilidades atuais:
+
+- registrar documentos recentes no frontend;
+- listar recentes persistidos em `localStorage`;
+- limpar a lista atual de recentes.
+
+Funções atuais:
+
+- `listRecentDocuments()`
+- `registerRecentDocument(document)`
+- `clearRecentDocuments()`
 
 ### Adaptador do viewer
 
@@ -60,6 +80,10 @@ Métodos atuais:
 - `toggleBackground()`
 - `executeCommand(command)`
 - `destroy()`
+
+Observação importante:
+
+- o adaptador agora aponta explicitamente para workers estáticos em `static/workers/` para DXF, DWG e MTEXT.
 
 ### Estado do documento no frontend
 

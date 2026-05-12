@@ -1,0 +1,33 @@
+{
+	"version": 6,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 24,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "linux-default",
+			"displayName": "NeoCAD Linux Default",
+			"generator": "Unix Makefiles",
+			"binaryDir": "${sourceDir}/build/cmake/linux-default"
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "smoke",
+			"configurePreset": "linux-default",
+			"targets": ["neocad_smoke"]
+		},
+		{
+			"name": "linux-bundle",
+			"configurePreset": "linux-default",
+			"targets": ["neocad_tauri_linux_bundle"]
+		},
+		{
+			"name": "windows-x64-nsis",
+			"configurePreset": "linux-default",
+			"targets": ["neocad_windows_x64_nsis"]
+		}
+	]
+}

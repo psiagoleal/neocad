@@ -19,6 +19,9 @@ import type {
 } from '$lib/types/cad';
 
 const DEFAULT_CAD_DATA_BASE_URL = 'https://mlightcad.gitlab.io/cad-data/';
+const DXF_PARSER_WORKER_URL = '/workers/dxf-parser-worker.js';
+const LIBREDWG_PARSER_WORKER_URL = '/workers/libredwg-parser-worker.js';
+const MTEXT_RENDERER_WORKER_URL = '/workers/mtext-renderer-worker.js';
 const LIGHT_BACKGROUND = 0xf6f8fb;
 const DARK_BACKGROUND = 0x081121;
 
@@ -116,7 +119,12 @@ export class NeoCadViewer {
 				container,
 				autoResize: true,
 				baseUrl: DEFAULT_CAD_DATA_BASE_URL,
-				useMainThreadDraw: false
+				useMainThreadDraw: false,
+				webworkerFileUrls: {
+					dxfParser: DXF_PARSER_WORKER_URL,
+					dwgParser: LIBREDWG_PARSER_WORKER_URL,
+					mtextRender: MTEXT_RENDERER_WORKER_URL
+				}
 			}) ?? null;
 
 		if (this.docManager == null) {

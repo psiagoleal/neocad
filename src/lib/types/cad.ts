@@ -38,3 +38,10 @@ export interface CadViewerMessage {
 	kind: ViewerMessageKind;
 	text: string;
 }
+
+export interface CadRecentDocument {
+	fileName: string;
+	path?: string;
+	source: CadDocumentSource;
+	openedAt: string;
+}

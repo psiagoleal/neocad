@@ -8,7 +8,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { extractCadFileName, isSupportedCadFile } from './cad-file';
+import {
+	createCadDocumentPayloadFromFile,
+	extractCadFileName,
+	isSupportedCadFile
+} from './cad-file';
 
 describe('cad file helpers', () => {
 	it('extrai o nome do arquivo a partir de caminhos windows e unix', () => {
@@ -20,5 +24,14 @@ describe('cad file helpers', () => {
 		expect(isSupportedCadFile('plant.dwg')).toBe(true);
 		expect(isSupportedCadFile('layout.dxf')).toBe(true);
 		expect(isSupportedCadFile('notes.txt')).toBe(false);
+	});
+
+	it('normaliza um File em payload compatível com o viewer', async () => {
+		const file = new File([new Uint8Array([1, 2, 3])], 'drag-drop-sample.dwg');
+		const payload = await createCadDocumentPayloadFromFile(file);
+
+		expect(payload.fileName).toBe('drag-drop-sample.dwg');
+		expect(payload.source).toBe('browser');
+		expect(payload.content.byteLength).toBe(3);
 	});
 });

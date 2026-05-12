@@ -9,5 +9,6 @@
 
 export * from './config/app';
 export * from './services/cad-file';
+export * from './services/recent-documents';
 export * from './types/cad';
 export * from './viewer/neocad-viewer';

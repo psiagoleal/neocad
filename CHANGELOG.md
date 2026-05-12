@@ -20,7 +20,10 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Viewer adapter with document activation, progress, message, and command forwarding hooks.
 - Desktop UI for opening local `DWG`/`DXF` files, fitting view, toggling background, and sending CAD commands.
 - Tauri dialog and filesystem plugins enabled for secure local file opening.
-- Unit tests for CAD file helper services and updated E2E coverage for the Phase 2 interface.
+- Vendored worker assets under `static/workers/` to stabilize DXF/DWG and MTEXT parsing in desktop builds.
+- Recent documents list and drag-and-drop support in the Phase 2 workspace.
+- `Makefile`, `CMakeLists.txt`, `CMakePresets.json` and Windows cross-build documentation.
+- Unit tests for CAD file helper services and updated E2E coverage for the Phase 2 interface, including the reference DWG file.
 
 ### Changed
 
