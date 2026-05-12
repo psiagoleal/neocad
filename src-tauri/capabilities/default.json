@@ -1,7 +1,7 @@
 {
 	"$schema": "../gen/schemas/desktop-schema.json",
 	"identifier": "default",
-	"description": "enables the default permissions",
+	"description": "Permissões padrão do NeoCAD para integração inicial do viewer e abertura local de desenhos.",
 	"windows": ["main"],
-	"permissions": ["core:default"]
+	"permissions": ["core:default", "dialog:allow-open", "fs:read-files"]
 }

@@ -25,6 +25,18 @@ Em vez disso, NeoCAD deverá:
 - manter customizações da UI e fluxo desktop do lado do NeoCAD;
 - considerar fork apenas se surgirem bloqueios concretos de API, build ou manutenção.
 
+### 1.1 Decisão prática da Fase 2
+
+Na implementação inicial da Fase 2, a integração Svelte foi feita por meio de **`@mlightcad/cad-simple-viewer`**.
+
+Essa decisão foi adotada porque:
+
+- `@mlightcad/cad-viewer` é um componente Vue 3 pronto, com UI própria;
+- NeoCAD precisa controlar sua interface em Svelte;
+- `@mlightcad/cad-simple-viewer` oferece o núcleo framework-agnostic do ecossistema MLightCAD.
+
+Assim, o wrapper continua alinhado ao upstream, mas usando a camada mais adequada para uma UI própria em SvelteKit.
+
 ### 2. Desktop first
 
 O foco inicial é empacotar a aplicação para:
@@ -96,6 +108,11 @@ Responsáveis por:
 - persistência local de configurações;
 - integração com recursos nativos da plataforma;
 - empacotamento e distribuição.
+
+Na Fase 2 inicial, essa camada já utiliza plugins do Tauri para:
+
+- abrir arquivos com `dialog`;
+- ler bytes do arquivo selecionado com `fs`.
 
 ## Fluxo de abertura de arquivo
 
@@ -171,7 +188,7 @@ Adicionar BIM cedo demais pode aumentar radicalmente o escopo técnico e de prod
 
 ### Fase 2
 
-- `cad-viewer` incorporado ao wrapper;
+- núcleo do ecossistema `cad-viewer` incorporado ao wrapper via `@mlightcad/cad-simple-viewer`;
 - abertura de arquivo local funcionando;
 - renderização básica validada;
 - base pronta para comandos iniciais de edição.

@@ -4,15 +4,18 @@
 
 ## Objetivo deste documento
 
-Este guia descreve como preparar o ambiente, validar o scaffold atual e continuar a evolução do NeoCAD após a conclusão da Fase 1.
+Este guia descreve como preparar o ambiente, validar a integração atual do viewer e continuar a evolução do NeoCAD após o início da Fase 2.
 
 ## Fase atual
 
-A Fase 1 do projeto está concluída. O repositório agora contém:
+O projeto está em **Fase 2 — integração inicial do viewer**. O repositório agora contém:
 
 - frontend SvelteKit funcional com TypeScript;
 - modo SPA configurado com `@sveltejs/adapter-static` e fallback `index.html`;
 - shell desktop Tauri 2 inicializado em `src-tauri/`;
+- integração inicial com o ecossistema MLightCAD usando `@mlightcad/cad-simple-viewer`;
+- abertura de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
+- fallback de abertura por input local quando a aplicação roda em navegador;
 - lint, formatação e testes básicos configurados.
 
 ## Stack validada
@@ -23,6 +26,7 @@ A Fase 1 do projeto está concluída. O repositório agora contém:
 - **TypeScript** para a aplicação web
 - **Rust** para integração nativa
 - **pnpm** como gerenciador de pacotes JavaScript
+- **`@mlightcad/cad-simple-viewer`** como núcleo framework-agnostic do viewer CAD
 
 ## Referências oficiais consideradas
 
@@ -47,6 +51,27 @@ NeoCAD segue essa orientação com:
 - `@sveltejs/adapter-static` configurado com `fallback: 'index.html'`;
 - `src/routes/+layout.ts` com `export const ssr = false;`;
 - `src-tauri/tauri.conf.json` apontando para `../build`.
+
+### Tauri plugins
+
+Para a abertura local de desenhos, a implementação atual usa:
+
+- `@tauri-apps/plugin-dialog`
+- `@tauri-apps/plugin-fs`
+- `tauri-plugin-dialog`
+- `tauri-plugin-fs`
+
+## Decisão de integração com o upstream
+
+Embora o projeto continue sendo um wrapper para o ecossistema `cad-viewer`, a integração Svelte foi iniciada por meio de **`@mlightcad/cad-simple-viewer`**.
+
+Essa escolha foi feita porque:
+
+- `@mlightcad/cad-viewer` é um componente Vue 3 pronto, com UI própria;
+- NeoCAD usa Svelte/SvelteKit e precisa controlar sua própria interface;
+- `@mlightcad/cad-simple-viewer` fornece o núcleo de documentos, comandos, renderização e eventos sem acoplamento a Vue.
+
+Em outras palavras: no NeoCAD, o pacote `cad-simple-viewer` funciona como a camada de núcleo do upstream, enquanto a interface fica sob responsabilidade do app Svelte.
 
 ## Pré-requisitos
 
@@ -98,8 +123,15 @@ pnpm install
 
 ```bash
 pnpm check
+pnpm lint
 pnpm test
 pnpm build
+```
+
+### Validar o backend desktop
+
+```bash
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
 ### Executar o shell desktop
@@ -133,15 +165,15 @@ pnpm exec playwright install
 pnpm test:e2e
 ```
 
-## Convenções iniciais
+## Convenções atuais
 
 ### Organização de código
 
 - componentes reutilizáveis em `src/lib/components`;
 - serviços em `src/lib/services`;
-- adaptador do `cad-viewer` em `src/lib/viewer`;
-- stores em `src/lib/stores`;
-- comandos nativos organizados por domínio em `src-tauri/src/commands`.
+- adaptador do viewer em `src/lib/viewer`;
+- tipos compartilhados em `src/lib/types`;
+- comandos nativos e plugins Tauri em `src-tauri/src`.
 
 ### Formatação e qualidade
 
@@ -156,15 +188,15 @@ Ferramentas configuradas ou previstas:
 
 Estratégia atual:
 
-- testes unitários para contratos básicos do frontend;
-- base E2E pronta para cobrir telas principais;
-- expansão futura para fluxos desktop integrados e abertura de arquivos.
+- testes unitários para contratos básicos do frontend e helpers de arquivos CAD;
+- base E2E pronta para cobrir a tela principal e ações iniciais;
+- expansão futura para fluxos desktop integrados, drag-and-drop e recentes.
 
 ## Próxima meta técnica
 
-A próxima etapa prática do projeto é a **Fase 2**, com foco em:
+A próxima etapa prática é **aprofundar a Fase 2**, com foco em:
 
-1. integrar o `cad-viewer` via uma camada adaptadora própria;
-2. abrir arquivos locais `DWG` e `DXF` pelo shell desktop;
-3. validar renderização inicial dentro da janela Tauri;
-4. preparar o terreno para edição básica.
+1. adicionar arquivos recentes e arrastar-e-soltar;
+2. estruturar painéis de propriedades e camadas;
+3. expor melhor os comandos de edição básica na UI;
+4. estudar persistência local e exportação para etapas seguintes do MVP.

@@ -1,114 +1,122 @@
 <!-- Caminho relativo: docs/api.md -->
 
-# API e contratos iniciais
+# API e contratos internos
 
 ## Objetivo
 
-Este documento registra os contratos internos planejados para NeoCAD. Nesta fase, eles são **propostos**, não estáveis.
+Este documento registra os contratos internos atuais do NeoCAD na Fase 2. Eles continuam sendo **internos** e sujeitos a evolução.
 
 ## Escopo
 
-NeoCAD, no MVP, não terá uma API pública remota. O foco é definir contratos internos entre:
+NeoCAD, no MVP, não terá uma API pública remota. O foco atual é definir contratos internos entre:
 
 - UI SvelteKit;
 - serviços de aplicação;
-- adaptador do `cad-viewer`;
-- comandos Tauri.
+- adaptador do viewer;
+- plugins Tauri;
+- núcleo CAD fornecido por `@mlightcad/cad-simple-viewer`.
 
-## Contratos internos propostos
+## Contratos implementados ou iniciados
 
-### Serviço de documentos
+### Serviço de arquivos CAD
 
-Responsabilidades planejadas:
+Arquivo principal:
 
-- abrir arquivo local;
-- manter documento atual;
-- controlar lista de recentes;
-- sinalizar estado de carregamento e falha.
+- `src/lib/services/cad-file.ts`
 
-Interface conceitual:
+Responsabilidades atuais:
 
-- `openFromDialog()`
-- `openFromPath(path)`
-- `reloadCurrent()`
-- `closeCurrent()`
-- `listRecentFiles()`
+- abrir seletor de arquivo no Tauri com diálogo nativo;
+- ler bytes do desenho via plugin de filesystem do Tauri;
+- oferecer fallback por `input[type=file]` no navegador;
+- validar extensões suportadas no MVP (`.dwg` e `.dxf`).
 
-### Serviço de viewer
+Funções atuais:
 
-Responsabilidades planejadas:
+- `selectCadDocument()`
+- `extractCadFileName(path)`
+- `isSupportedCadFile(fileName)`
+- `getCadRuntimeLabel()`
 
-- inicializar o `cad-viewer` em um container controlado;
-- carregar documento no viewer;
-- expor operações de visualização;
-- conectar comandos básicos de edição quando disponíveis.
+### Adaptador do viewer
 
-Interface conceitual:
+Arquivo principal:
+
+- `src/lib/viewer/neocad-viewer.ts`
+
+Responsabilidades atuais:
+
+- carregar dinamicamente `@mlightcad/cad-simple-viewer`;
+- criar e destruir a instância do `AcApDocManager`;
+- conectar eventos do upstream à UI Svelte;
+- abrir documentos a partir de `ArrayBuffer`;
+- expor operações básicas de viewport e comandos.
+
+Métodos atuais:
 
 - `mount(container)`
-- `loadDocument(source)`
-- `fitToView()`
-- `zoomIn()`
-- `zoomOut()`
-- `selectAll()`
-- `deleteSelection()`
+- `openDocument(payload, mode)`
+- `zoomToFit()`
+- `toggleBackground()`
+- `executeCommand(command)`
+- `destroy()`
 
-### Serviço de preferências
+### Estado do documento no frontend
 
-Responsabilidades planejadas:
+Tipos principais em:
 
-- tema;
-- idioma;
-- comportamento da janela;
-- opções de visualização e painel.
+- `src/lib/types/cad.ts`
 
-Interface conceitual:
+Contratos atuais:
 
-- `getPreferences()`
-- `savePreferences(partial)`
-- `resetPreferences()`
+- `CadDocumentPayload`
+- `CadViewerDocumentState`
+- `CadViewerProgressState`
+- `CadViewerMessage`
+- `CadOpenMode`
 
-## Comandos Tauri planejados
+## Eventos atualmente consumidos do upstream
 
-Os nomes finais poderão mudar, mas a separação por responsabilidade deve permanecer.
+A integração atual usa o `eventBus` do `cad-simple-viewer` para reagir a:
 
-### Arquivos
+- `open-file`
+- `open-file-progress`
+- `message`
+- `failed-to-open-file`
+- `font-not-found`
 
-- `open_file_dialog`
-- `read_file_bytes`
-- `save_file_dialog`
-- `list_recent_files`
-- `register_recent_file`
+## Plugins Tauri atualmente usados
 
-### Aplicação
+### Dialog
 
-- `get_app_info`
-- `get_platform_info`
-- `open_external_url`
+Uso atual:
 
-### Configurações
+- seletor nativo para arquivos CAD.
 
-- `load_preferences`
-- `save_preferences`
+Permissão relevante:
 
-## Eventos planejados
+- `dialog:allow-open`
 
-Eventos internos ou bridges entre camadas:
+### File system
 
-- `document:opened`
-- `document:failed`
-- `document:closed`
-- `viewer:ready`
-- `viewer:selection-changed`
-- `preferences:updated`
+Uso atual:
 
-## Compatibilidade com o upstream
+- leitura do arquivo selecionado no fluxo desktop.
 
-O adaptador do NeoCAD deverá:
+Permissão relevante:
 
-- esconder detalhes internos do `cad-viewer` da maior parte da aplicação;
-- concentrar eventuais quebras de API quando o upstream mudar;
-- facilitar testes por mocking.
+- `fs:read-files`
+
+## Comandos futuros ainda previstos
+
+Ainda faz sentido manter no radar:
+
+- persistência de recentes;
+- preferências do usuário;
+- exportações;
+- integração de salvamento.
+
+Mas esses contratos ainda não foram implementados como API estável do app.
 
 ## Estabilidade
 

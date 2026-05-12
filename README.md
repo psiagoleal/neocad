@@ -2,8 +2,8 @@
 
 # NeoCAD
 
-![Status](https://img.shields.io/badge/status-phase%201-blue)
-![Build](https://img.shields.io/badge/build-scaffold_ready-success)
+![Status](https://img.shields.io/badge/status-phase%202-blue)
+![Build](https://img.shields.io/badge/build-viewer_integration_in_progress-success)
 ![Coverage](https://img.shields.io/badge/coverage-not_configured-lightgrey)
 ![Version](https://img.shields.io/badge/version-0.1.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -13,24 +13,28 @@ NeoCAD é um wrapper desktop open-source para o [`cad-viewer`](https://github.co
 
 ## Estado atual
 
-O repositório está na **Fase 1 — scaffold base concluído**.
+O repositório está na **Fase 2 — integração inicial do viewer**.
 
-Nesta fase, o projeto já possui:
+Nesta etapa, o projeto já possui:
 
 - frontend em **SvelteKit + Svelte 5 + TypeScript**;
 - configuração de **SPA mode** com `@sveltejs/adapter-static`, compatível com Tauri;
 - shell desktop inicial em **Tauri 2 + Rust**;
+- integração inicial com o ecossistema MLightCAD via **`@mlightcad/cad-simple-viewer`**;
+- abertura local de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
+- fallback de abertura local no navegador para desenvolvimento web;
+- ações iniciais de viewport e envio de comandos CAD;
 - lint com **ESLint**;
 - formatação com **Prettier**;
 - testes unitários com **Vitest**;
 - base de testes E2E com **Playwright**;
 - documentação de arquitetura, desenvolvimento e roadmap.
 
-> **Importante:** a integração com o `cad-viewer` ainda será implementada na próxima fase. Neste momento, a aplicação entrega o esqueleto técnico validado para evoluir o desktop wrapper.
+> **Importante:** a integração atual usa o pacote framework-agnostic `@mlightcad/cad-simple-viewer`, que é o núcleo mais adequado do upstream para uma interface Svelte. O pacote `@mlightcad/cad-viewer` continua sendo a referência principal do ecossistema e da evolução funcional.
 
 ## Objetivos do MVP
 
-- empacotar o `cad-viewer` em uma aplicação desktop amigável;
+- empacotar o ecossistema `cad-viewer` em uma aplicação desktop amigável;
 - suportar abertura de arquivos locais `DWG` e `DXF`;
 - oferecer visualização com navegação fluida;
 - iniciar o suporte a **edição básica** aproveitando as capacidades já existentes no upstream;
@@ -41,7 +45,7 @@ Nesta fase, o projeto já possui:
 - **MIT real open-source** para maximizar adoção e colaboração;
 - **wrapper separado do upstream** para reduzir custo de manutenção;
 - **desktop first**, sem perder a possibilidade de reaproveitamento web;
-- **arquitetura modular**, com uma camada de adaptação entre NeoCAD e `cad-viewer`;
+- **arquitetura modular**, com uma camada de adaptação entre NeoCAD e o núcleo do viewer;
 - **documentação desde o início**, para facilitar contribuição futura.
 
 ## Stack escolhida
@@ -52,7 +56,8 @@ Nesta fase, o projeto já possui:
 - **Linguagem da interface:** TypeScript
 - **Backend nativo:** Rust
 - **Gerenciador de pacotes JavaScript:** pnpm
-- **Renderização CAD planejada:** `cad-viewer`
+- **Núcleo CAD integrado na Fase 2:** `@mlightcad/cad-simple-viewer`
+- **Ecossistema upstream de referência:** `cad-viewer`
 
 ## Pré-requisitos de desenvolvimento
 
@@ -89,8 +94,15 @@ pnpm install
 
 ```bash
 pnpm check
+pnpm lint
 pnpm test
 pnpm build
+```
+
+### Validar backend desktop
+
+```bash
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
 ### Executar o app desktop
@@ -104,6 +116,16 @@ pnpm tauri dev
 ```bash
 pnpm tauri build
 ```
+
+## Fluxo atual do app
+
+A interface atual já permite:
+
+- abrir um desenho CAD local;
+- ajustar a vista ao desenho carregado;
+- alternar o fundo do canvas;
+- enviar comandos CAD básicos ao viewer;
+- acompanhar mensagens e progresso de abertura.
 
 ## Testes
 
@@ -136,8 +158,13 @@ pnpm test:e2e
 │   └── changelog.md
 ├── e2e/                # Testes end-to-end do frontend
 ├── src/                # UI SvelteKit
+│   └── lib/
+│       ├── config/     # Metadados e configuração do app
+│       ├── services/   # Serviços como seleção de arquivos CAD
+│       ├── types/      # Tipos compartilhados
+│       └── viewer/     # Adaptador do viewer integrado
 ├── static/             # Assets estáticos
-├── src-tauri/          # Backend Rust e empacotamento Tauri
+├── src-tauri/          # Backend Rust, plugins e empacotamento Tauri
 ├── package.json
 └── svelte.config.js
 ```
@@ -146,7 +173,7 @@ pnpm test:e2e
 
 - [x] **Fase 0:** planejamento, arquitetura, licença e documentação
 - [x] **Fase 1:** scaffold oficial com SvelteKit + Tauri 2
-- [ ] **Fase 2:** integração do `cad-viewer` e abertura de arquivos locais
+- [ ] **Fase 2:** integração do viewer e abertura de arquivos locais _(em andamento)_
 - [ ] **Fase 3:** edição básica, recentes, drag-and-drop e melhorias desktop
 - [ ] **Fase 4:** extensibilidade, plugins e investigação de módulo BIM separado
 
@@ -154,7 +181,7 @@ pnpm test:e2e
 
 Contribuições são bem-vindas, especialmente em:
 
-- integração com `cad-viewer`;
+- integração com o ecossistema `cad-viewer`;
 - UX desktop com Tauri 2;
 - testes automatizados;
 - empacotamento para Windows e Linux;
@@ -171,6 +198,8 @@ Antes de abrir uma contribuição grande, prefira registrar uma discussão ou is
 ## Referências externas
 
 - [`cad-viewer` no GitHub](https://github.com/mlightcad/cad-viewer)
+- [`@mlightcad/cad-viewer` no npm](https://www.npmjs.com/package/@mlightcad/cad-viewer)
+- [`@mlightcad/cad-simple-viewer` no npm](https://www.npmjs.com/package/@mlightcad/cad-simple-viewer)
 - [Documentação do SvelteKit](https://kit.svelte.dev/docs)
 - [Documentação do Tauri 2](https://v2.tauri.app/)
 

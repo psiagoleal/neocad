@@ -15,6 +15,8 @@ describe('app config', () => {
 		expect(appMetadata.name).toBe('NeoCAD');
 		expect(appMetadata.license).toBe('MIT');
 		expect(primaryStack).toContain('Tauri 2');
+		expect(primaryStack).toContain('@mlightcad/cad-simple-viewer');
+		expect(appMetadata.status).toContain('Fase 2');
 	});
 
 	it('reconhece apenas plataformas desktop suportadas no MVP', () => {
