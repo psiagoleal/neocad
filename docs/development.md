@@ -17,7 +17,7 @@ O projeto está em **Fase 2 — integração inicial do viewer**. O repositório
 - abertura de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
 - fallback de abertura por input local quando a aplicação roda em navegador;
 - workers estáticos vendorizados em `static/workers/` para DXF, DWG e MTEXT;
-- lista de recentes e arrastar-e-soltar na interface da Fase 2;
+- lista de recentes com persistência em `AppConfig` no runtime Tauri e arrastar-e-soltar na interface da Fase 2;
 - `Makefile` e fluxo CMake para tarefas frequentes e cross-build Windows inicial;
 - lint, formatação e testes básicos configurados.
 
@@ -230,5 +230,5 @@ A próxima etapa prática é **aprofundar a Fase 2**, com foco em:
 
 1. estruturar painéis de propriedades e camadas;
 2. expor melhor os comandos de edição básica na UI;
-3. evoluir a persistência de recentes para além do `localStorage` e tratar reabertura entre sessões com mais robustez;
-4. estudar exportação e persistência local para etapas seguintes do MVP.
+3. persistir preferências do usuário e ampliar a reabertura entre sessões com mais robustez;
+4. estudar exportação e persistência local complementar para etapas seguintes do MVP.

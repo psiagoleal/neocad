@@ -49,7 +49,8 @@ Arquivo principal:
 Responsabilidades atuais:
 
 - registrar documentos recentes no frontend;
-- listar recentes persistidos em `localStorage`;
+- persistir recentes em `AppConfig/state/recent-documents.json` no runtime Tauri;
+- manter fallback em `localStorage` no navegador e para migração leve do estado web;
 - limpar a lista atual de recentes.
 
 Funções atuais:

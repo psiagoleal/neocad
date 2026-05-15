@@ -3,5 +3,11 @@
 	"identifier": "default",
 	"description": "Permissões padrão do NeoCAD para integração inicial do viewer e abertura local de desenhos.",
 	"windows": ["main"],
-	"permissions": ["core:default", "dialog:allow-open", "fs:read-files"]
+	"permissions": [
+		"core:default",
+		"dialog:allow-open",
+		"fs:default",
+		"fs:read-files",
+		"fs:allow-appconfig-write-recursive"
+	]
 }

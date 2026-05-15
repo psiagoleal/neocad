@@ -27,9 +27,9 @@ export const primaryStack = [
 ] as const;
 
 export const nextMilestones = [
-	'Adicionar arquivos recentes e drag-and-drop para abertura de desenhos.',
-	'Expandir a UI para camadas, propriedades e fluxo de edição básica assistida.',
-	'Planejar exportação e persistência local para próximos incrementos do MVP.'
+	'Estruturar painéis de camadas e propriedades com dados do documento ativo.',
+	'Expandir a UI para comandos de edição básica e fluxos desktop assistidos.',
+	'Planejar exportação, preferências do usuário e persistência local para próximos incrementos do MVP.'
 ] as const;
 
 export function isSupportedDesktopTarget(target: string): boolean {
