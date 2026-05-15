@@ -35,3 +35,6 @@ src-tauri/gen
 
 # Local CAD fixtures
 ANT.DS.L2.01.0001.01.02 - Básico.dwg
+
+# Diretório de threads
+threads/
