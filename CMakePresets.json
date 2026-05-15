@@ -10,7 +10,7 @@
 			"name": "linux-default",
 			"displayName": "NeoCAD Linux Default",
 			"generator": "Unix Makefiles",
-			"binaryDir": "${sourceDir}/build/cmake/linux-default"
+			"binaryDir": "${sourceDir}/.cmake/linux-default"
 		}
 	],
 	"buildPresets": [
@@ -25,9 +25,24 @@
 			"targets": ["neocad_tauri_linux_bundle"]
 		},
 		{
+			"name": "windows-x64-portable",
+			"configurePreset": "linux-default",
+			"targets": ["neocad_windows_x64_portable"]
+		},
+		{
+			"name": "windows-x64-portable-fixed-runtime",
+			"configurePreset": "linux-default",
+			"targets": ["neocad_windows_x64_portable_fixed_runtime"]
+		},
+		{
 			"name": "windows-x64-nsis",
 			"configurePreset": "linux-default",
 			"targets": ["neocad_windows_x64_nsis"]
+		},
+		{
+			"name": "windows-x64-nsis-fixed-runtime",
+			"configurePreset": "linux-default",
+			"targets": ["neocad_windows_x64_nsis_fixed_runtime"]
 		}
 	]
 }

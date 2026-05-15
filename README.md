@@ -23,10 +23,11 @@ Nesta etapa, o projeto já possui:
 - integração inicial com o ecossistema MLightCAD via **`@mlightcad/cad-simple-viewer`**;
 - abertura local de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
 - fallback de abertura local no navegador para desenvolvimento web;
+- fluxo desktop com tela inicial de integração, canvas principal e dock recolhível de mensagens;
 - ações iniciais de viewport e envio de comandos CAD;
-- lista de recentes e suporte inicial a arrastar-e-soltar;
+- lista de recentes persistida entre sessões no runtime Tauri, com fallback no navegador, e suporte inicial a arrastar-e-soltar;
 - workers estáticos para DXF, DWG e MTEXT em `static/workers`;
-- `Makefile`, `CMakeLists.txt` e `CMakePresets.json` para fluxos frequentes e build cross-platform inicial;
+- `Makefile`, `CMakeLists.txt` e `CMakePresets.json` para smoke checks e geração inicial de entregas Windows x64 (portable `.zip` e instalador NSIS current-user);
 - lint com **ESLint**;
 - formatação com **Prettier**;
 - testes unitários com **Vitest**;
@@ -127,14 +128,20 @@ make help
 make tauri-dev
 make tauri-debug-nobundle
 make cmake-smoke
+make cmake-windows-x64-portable
+make cmake-windows-x64-nsis
 ```
 
 ## Fluxo atual do app
 
 A interface atual já permite:
 
+- começar pelo fluxo de integração inicial e navegar para o canvas principal quando um desenho é aberto;
+- voltar para a tela inicial ou reabrir o canvas por um menu fixo no topo;
+- mostrar, ocultar e acompanhar o dock de mensagens da integração;
 - abrir um desenho CAD local;
 - reabrir itens recentes no runtime Tauri quando o caminho estiver disponível;
+- persistir a lista de desenhos recentes entre sessões do app desktop;
 - arrastar e soltar arquivos CAD na área do viewer;
 - ajustar a vista ao desenho carregado;
 - alternar o fundo do canvas;
@@ -213,14 +220,23 @@ Antes de abrir uma contribuição grande, prefira registrar uma discussão ou is
 
 ## Build Windows via CMake
 
-O repositório agora inclui um fluxo inicial de cross-build Windows x64 com NSIS usando **CMake** como orquestrador.
+O repositório agora inclui um fluxo inicial de entregas Windows x64 com **CMake** como orquestrador.
 
-> Importante: esse fluxo é útil para validação e builds iniciais a partir de Linux/WSL, mas o release oficial de Windows continua mais seguro em runner Windows nativo.
+Saídas previstas:
+
+- `windows-x64-portable`: gera um `.zip` extraível a partir de `tauri build --no-bundle`; se existir um Fixed WebView2 Runtime extraído em `.webview2/fixed-runtime-x64`, o pacote inclui esse runtime e um launcher `NeoCAD-portable.cmd`.
+- o cross-build Windows a partir de Linux/WSL requer `cargo-xwin` e também o binário host `llvm-rc` disponível para o Tauri compilar recursos Windows.
+- `windows-x64-nsis`: gera um instalador **NSIS** simples em modo `currentUser`, evitando admin por padrão e usando `embedBootstrapper` para instalar o WebView2 Runtime quando necessário.
+- `windows-x64-nsis-fixed-runtime`: variação opcional para ambientes offline ou controlados, embutindo um Fixed WebView2 Runtime já extraído localmente.
+- o runtime fixo foi movido para `.webview2/fixed-runtime-x64`, fora de `build/`, porque o `pnpm build` limpa a pasta de saída do frontend durante o processo do Tauri.
+
+> Importante: esse fluxo é útil para validação e builds iniciais a partir de Linux/WSL, mas o release oficial de Windows continua mais seguro em runner Windows nativo, especialmente para assinatura.
 
 Consulte:
 
 - `docs/windows-cross-build.md`
 - `src-tauri/tauri.windows.conf.json`
+- `src-tauri/tauri.windows.fixed-runtime.conf.json`
 
 ## Referências externas
 

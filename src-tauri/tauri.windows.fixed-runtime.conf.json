@@ -1,0 +1,29 @@
+{
+	"bundle": {
+		"targets": ["nsis"],
+		"fileAssociations": [
+			{
+				"ext": ["dwg"],
+				"name": "NeoCAD DWG Drawing",
+				"description": "Abrir desenhos DWG com NeoCAD",
+				"role": "Editor"
+			},
+			{
+				"ext": ["dxf"],
+				"name": "NeoCAD DXF Drawing",
+				"description": "Abrir desenhos DXF com NeoCAD",
+				"role": "Editor"
+			}
+		],
+		"windows": {
+			"webviewInstallMode": {
+				"type": "fixedRuntime",
+				"path": "../.webview2/fixed-runtime-x64"
+			},
+			"nsis": {
+				"installMode": "currentUser",
+				"displayLanguageSelector": true
+			}
+		}
+	}
+}

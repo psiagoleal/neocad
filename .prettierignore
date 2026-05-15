@@ -9,3 +9,4 @@ bun.lockb
 /static/
 /src-tauri/target/
 /src-tauri/gen/
+thread_implementation.md
