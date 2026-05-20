@@ -203,9 +203,12 @@ pnpm test:e2e
 
 - componentes reutilizáveis em `src/lib/components`;
 - serviços em `src/lib/services`;
+- estilos globais e compartilhados em `src/lib/styles`;
 - adaptador do viewer em `src/lib/viewer`;
 - tipos compartilhados em `src/lib/types`;
 - comandos nativos e plugins Tauri em `src-tauri/src`.
+
+Para a próxima etapa de modularização do frontend, consulte também `docs/frontend-workspace-refactor.md`.
 
 ### Formatação e qualidade
 
@@ -228,7 +231,10 @@ Estratégia atual:
 
 A próxima etapa prática é **aprofundar a Fase 2**, com foco em:
 
-1. estruturar painéis de propriedades e camadas;
-2. expor melhor os comandos de edição básica na UI;
-3. persistir preferências do usuário e ampliar a reabertura entre sessões com mais robustez;
-4. estudar exportação e persistência local complementar para etapas seguintes do MVP.
+1. refatorar o workspace frontend para retirar a concentração atual de UI em `src/routes/+page.svelte`;
+2. centralizar estilos compartilhados em `src/lib/styles` e reduzir duplicação visual;
+3. introduzir um menu superior mais próximo do padrão desktop, liberando área útil para o viewer;
+4. estruturar melhor painéis de propriedades, camadas e próximos comandos de edição básica;
+5. persistir preferências do usuário e ampliar a reabertura entre sessões com mais robustez.
+
+O plano detalhado por arquivo para essa refatoração está documentado em `docs/frontend-workspace-refactor.md`.

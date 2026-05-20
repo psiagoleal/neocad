@@ -77,6 +77,8 @@ Responsável por:
 - navegação e preferências;
 - fluxos de abertura de arquivos e recentes.
 
+Na continuidade da Fase 2, a UI deve evoluir para uma composição mais modular, com `src/routes/+page.svelte` atuando como controlador do workspace e componentes específicos em `src/lib/components/workspace/`. O plano detalhado dessa refatoração está em `docs/frontend-workspace-refactor.md`.
+
 ### Application Services
 
 Camada de orquestração da aplicação, responsável por:
@@ -141,12 +143,17 @@ sequenceDiagram
 src/
 ├── lib/
 │   ├── components/      # Componentes reutilizáveis de UI
+│   │   └── workspace/   # Telas e painéis do workspace desktop
 │   ├── features/        # Funcionalidades por domínio (viewer, files, settings)
 │   ├── services/        # Orquestração de aplicação
 │   ├── stores/          # Estado reativo
+│   ├── styles/          # CSS global, tokens e estilos compartilhados
 │   ├── viewer/          # Adaptador para cad-viewer
 │   └── types/           # Tipos compartilhados
 ├── routes/              # Rotas SvelteKit
+│   ├── +layout.svelte   # Layout global e carga de estilos centralizados
+│   ├── +layout.ts
+│   └── +page.svelte     # Controlador do workspace desktop
 └── app.html
 
 src-tauri/
@@ -162,6 +169,8 @@ src-tauri/
 - a UI não deve depender diretamente de detalhes internos do `cad-viewer`;
 - integrações nativas devem passar por comandos Tauri bem definidos;
 - lógica de produto deve ficar em serviços reutilizáveis, não espalhada em componentes;
+- `src/routes/+page.svelte` deve concentrar orquestração e ciclo de vida, não markup excessivo nem CSS compartilhado;
+- estilos visuais repetidos devem ser centralizados em `src/lib/styles`;
 - suporte BIM futuro deve entrar como módulo separado, e não contaminar o núcleo do viewer DXF/DWG.
 
 ## Riscos identificados
