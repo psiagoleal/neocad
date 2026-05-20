@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test';
 test('exibe a interface principal do NeoCAD no fluxo inicial', async ({ page }) => {
 	await page.goto('/');
 
-	await expect(page.getByRole('heading', { name: 'NeoCAD' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'NeoCAD', exact: true })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Abrir desenho CAD' }).first()).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Integração do viewer' })).toBeVisible();
 	await expect(

@@ -1,0 +1,52 @@
+html,
+body {
+	height: 100%;
+	overflow: hidden;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	font-family: var(--font-family-base);
+	background:
+		radial-gradient(circle at top, rgba(77, 134, 255, 0.12), transparent 24%),
+		linear-gradient(
+			180deg,
+			var(--color-bg-top) 0%,
+			var(--color-bg-mid) 52%,
+			var(--color-bg-bottom) 100%
+		);
+	color: var(--color-text);
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+button,
+input {
+	font: inherit;
+}
+
+h1,
+h2,
+h3,
+p,
+strong,
+span {
+	margin: 0;
+}
+
+h1 {
+	font-size: 1.3rem;
+}
+
+h2 {
+	font-size: 1rem;
+}
+
+h3 {
+	font-size: 0.96rem;
+}

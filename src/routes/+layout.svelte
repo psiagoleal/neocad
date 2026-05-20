@@ -2,6 +2,7 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
 	import { appMetadata } from '$lib/config/app';
+	import '$lib/styles/index.css';
 
 	let { children } = $props();
 </script>

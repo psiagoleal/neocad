@@ -34,7 +34,9 @@ test('abre o arquivo DWG de referência do NeoCAD', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Canvas CAD' })).toBeVisible({
 		timeout: 120_000
 	});
-	await expect(page.getByText('ANT.DS.L2.01.0001.01.02 - Básico.dwg')).toBeVisible({
+	await expect(
+		page.getByRole('heading', { name: 'ANT.DS.L2.01.0001.01.02 - Básico.dwg', exact: true })
+	).toBeVisible({
 		timeout: 120_000
 	});
 	await expect(page.getByText('Falha ao carregar', { exact: false })).toHaveCount(0);
