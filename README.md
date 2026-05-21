@@ -201,9 +201,10 @@ pnpm test:e2e
 
 - [x] **Fase 0:** planejamento, arquitetura, licença e documentação
 - [x] **Fase 1:** scaffold oficial com SvelteKit + Tauri 2
-- [ ] **Fase 2:** integração do viewer e abertura de arquivos locais _(em andamento)_
-- [ ] **Fase 3:** edição básica, recentes, drag-and-drop e melhorias desktop
-- [ ] **Fase 4:** extensibilidade, plugins e investigação de módulo BIM separado
+- [ ] **Fase 2:** integração do viewer, modularização do workspace e abertura de arquivos locais _(em andamento)_
+- [ ] **Fase 3:** painéis de propriedades/camadas, catálogo de comandos em `Ajuda` e comandos CAD básicos
+- [ ] **Fase 4:** persistência de preferências, atalhos e evolução da shell desktop
+- [ ] **Fase 5:** investigação de módulo opcional de simulação FEM/CFD e extensibilidade avançada
 
 ## Como contribuir
 
@@ -222,6 +223,8 @@ Antes de abrir uma contribuição grande, prefira registrar uma discussão ou is
 - proposta de abordagem;
 - impacto esperado no MVP;
 - possíveis riscos para manutenção.
+
+Para o planejamento atual de painéis, comandos CAD e trilha macro de simulação numérica, consulte `docs/cad-panels-commands-simulation-roadmap.md`.
 
 ## Build Windows via CMake
 

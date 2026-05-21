@@ -48,3 +48,4 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Initial product scope: Windows and Linux desktop targets with SvelteKit + Tauri 2.
 - MVP direction: visualization plus basic editing from the beginning.
 - Frontend workspace refactor plan and its resulting architecture for modular Svelte components and centralized CSS.
+- Roadmap for layers/properties panels, CAD command catalog in `Ajuda`, basic CAD commands, and optional FEM/CFD investigation.

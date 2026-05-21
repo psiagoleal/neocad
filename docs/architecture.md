@@ -88,7 +88,8 @@ Camada de orquestração da aplicação, responsável por:
 - preferências de usuário;
 - gestão de arquivos recentes;
 - eventos de teclado, mouse e comandos;
-- futura extensão por plugins.
+- futura extensão por plugins;
+- futura orquestração de painéis, catálogo de comandos e integrações opcionais de simulação.
 
 ### Viewer Adapter
 
@@ -100,6 +101,12 @@ Responsabilidades:
 - traduzir eventos e comandos do NeoCAD para a API do upstream;
 - concentrar ajustes de integração;
 - facilitar testes e troca de versão do upstream.
+
+Na próxima etapa, essa camada também tende a servir como ponto de investigação para:
+
+- inventário real dos comandos CAD aceitos pelo upstream;
+- obtenção de dados de camadas;
+- obtenção de propriedades de documento e seleção.
 
 ### Tauri Commands / Rust Backend
 
@@ -175,6 +182,20 @@ src-tauri/
 - menus suspensos e overlays da shell devem permanecer visualmente acima do workspace e do canvas quando estiverem ativos;
 - suporte BIM futuro deve entrar como módulo separado, e não contaminar o núcleo do viewer DXF/DWG.
 
+## Trilha futura de simulação numérica
+
+A evolução para FEM/CFD deve ser tratada como módulo opcional, separado do núcleo CAD.
+
+Diretriz arquitetural recomendada:
+
+- UI continua no NeoCAD;
+- execução de solver deve passar por serviços e comandos Tauri/Rust;
+- engines externas devem ser tratadas como backends desacoplados;
+- o fluxo deve ser incremental: pré-processamento, execução e pós-processamento;
+- OpenFOAM e FreeFEM++ fazem sentido como alvos de pesquisa, mas não devem contaminar a arquitetura central do viewer.
+
+O planejamento macro dessa trilha está em `docs/cad-panels-commands-simulation-roadmap.md`.
+
 ## Riscos identificados
 
 ### Dependência funcional do upstream
@@ -188,6 +209,10 @@ Windows e Linux exigem dependências e pipelines diferentes. Isso impacta CI, in
 ### Escopo BIM
 
 Adicionar BIM cedo demais pode aumentar radicalmente o escopo técnico e de produto. A mitigação é manter BIM explicitamente fora do núcleo do MVP.
+
+### Escopo de simulação numérica
+
+Adicionar FEM/CFD cedo demais pode multiplicar o custo de UX, integração nativa, empacotamento e suporte multiplataforma. A mitigação é manter a trilha de simulação como módulo opcional, começando por pesquisa técnica e um piloto com engine única.
 
 ## Critérios de sucesso da Fase 1 e Fase 2
 

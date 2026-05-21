@@ -132,14 +132,57 @@ Permissão relevante:
 
 - `fs:read-files`
 
+## Contratos planejados para a próxima etapa
+
+### Catálogo de comandos CAD
+
+Planeja-se introduzir um catálogo interno de comandos para alimentar:
+
+- menu `Ajuda` com lista dos comandos implementados;
+- futura toolbar de desenho/edição;
+- possíveis atalhos de teclado.
+
+Contrato sugerido:
+
+- `CadCommandCatalogItem`
+- `listImplementedCadCommands()`
+- `listPlannedCadCommands()`
+- `executeCadCommand(commandId)`
+
+### Painéis de camadas e propriedades
+
+Planeja-se investigar contratos internos para:
+
+- leitura da tabela de camadas do documento ativo;
+- estado de seleção de entidades;
+- propriedades de documento e entidades.
+
+Prováveis áreas de implementação:
+
+- `src/lib/services/cad-layers.ts`
+- `src/lib/services/cad-selection.ts`
+- componentes em `src/lib/components/workspace/`
+
+### Trilha de simulação numérica
+
+Para FEM/CFD, a recomendação atual é planejar contratos internos separados do núcleo CAD, envolvendo:
+
+- preparação de casos;
+- execução externa de engine por Tauri/Rust;
+- leitura de resultados e pós-processamento.
+
+Essa trilha ainda deve ser tratada como pesquisa arquitetural e não como API estável.
+
 ## Comandos futuros ainda previstos
 
 Ainda faz sentido manter no radar:
 
-- persistência de recentes;
 - preferências do usuário;
 - exportações;
-- integração de salvamento.
+- integração de salvamento;
+- catálogo de comandos CAD;
+- painéis de propriedades e camadas;
+- integração opcional de simulação numérica.
 
 Mas esses contratos ainda não foram implementados como API estável do app.
 

@@ -236,9 +236,13 @@ Estratégia atual:
 A próxima etapa prática é **aprofundar a Fase 2**, com foco em:
 
 1. estruturar painéis de propriedades e camadas sobre a base modular atual do workspace;
-2. evoluir comandos CAD e atalhos do shell desktop sem perder área útil do canvas;
-3. persistir preferências de interface, como dock de mensagens, tema e ajustes do workspace;
-4. ampliar a reabertura entre sessões e fluxos de documentos recentes com mais robustez;
-5. estudar exportação e persistência local complementar para etapas seguintes do MVP.
+2. evoluir o menu `Ajuda` para exibir um catálogo dos comandos CAD realmente implementados;
+3. validar e expor comandos CAD básicos de desenho e edição, como linha, círculo, retângulo e operações de modificação que o upstream suportar de forma estável;
+4. persistir preferências de interface, como dock de mensagens, tema e ajustes do workspace;
+5. ampliar a reabertura entre sessões e fluxos de documentos recentes com mais robustez;
+6. abrir uma trilha de pesquisa e planejamento para funcionalidades FEM/CFD como módulo opcional do desktop shell.
 
-O plano detalhado por arquivo que guiou a refatoração do frontend está documentado em `docs/frontend-workspace-refactor.md`.
+Documentos de referência:
+
+- `docs/frontend-workspace-refactor.md`
+- `docs/cad-panels-commands-simulation-roadmap.md`
