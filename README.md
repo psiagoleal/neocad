@@ -23,8 +23,11 @@ Nesta etapa, o projeto já possui:
 - integração inicial com o ecossistema MLightCAD via **`@mlightcad/cad-simple-viewer`**;
 - abertura local de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
 - fallback de abertura local no navegador para desenvolvimento web;
-- fluxo desktop com tela inicial de integração, canvas principal e dock recolhível de mensagens;
+- workspace frontend modularizado em componentes Svelte dedicados sob `src/lib/components/workspace`;
+- estilos compartilhados centralizados em `src/lib/styles`, carregados globalmente pelo layout da aplicação;
+- fluxo desktop com menu superior no estilo desktop, tela inicial compacta, canvas principal e dock recolhível de mensagens;
 - ações iniciais de viewport e envio de comandos CAD;
+- barra de comandos do viewer upstream preservada dentro do canvas como mecanismo principal de comandos;
 - lista de recentes persistida entre sessões no runtime Tauri, com fallback no navegador, e suporte inicial a arrastar-e-soltar;
 - workers estáticos para DXF, DWG e MTEXT em `static/workers`;
 - `Makefile`, `CMakeLists.txt` e `CMakePresets.json` para smoke checks e geração inicial de entregas Windows x64 (portable `.zip` e instalador NSIS current-user);
@@ -137,7 +140,7 @@ make cmake-windows-x64-nsis
 A interface atual já permite:
 
 - começar pelo fluxo de integração inicial e navegar para o canvas principal quando um desenho é aberto;
-- voltar para a tela inicial ou reabrir o canvas por um menu fixo no topo;
+- usar um menu superior no estilo desktop com `Arquivo`, `Exibir`, `Janela` e `Ajuda`;
 - mostrar, ocultar e acompanhar o dock de mensagens da integração;
 - abrir um desenho CAD local;
 - reabrir itens recentes no runtime Tauri quando o caminho estiver disponível;
@@ -145,7 +148,7 @@ A interface atual já permite:
 - arrastar e soltar arquivos CAD na área do viewer;
 - ajustar a vista ao desenho carregado;
 - alternar o fundo do canvas;
-- enviar comandos CAD básicos ao viewer;
+- usar a barra de comandos disponibilizada pelo viewer dentro do canvas;
 - acompanhar mensagens e progresso de abertura.
 
 ## Testes
@@ -181,8 +184,10 @@ pnpm test:e2e
 ├── e2e/                # Testes end-to-end do frontend
 ├── src/                # UI SvelteKit
 │   └── lib/
+│       ├── components/ # Componentes Svelte do workspace desktop
 │       ├── config/     # Metadados e configuração do app
 │       ├── services/   # Serviços como seleção de arquivos CAD
+│       ├── styles/     # Tokens, layout e estilos compartilhados
 │       ├── types/      # Tipos compartilhados
 │       └── viewer/     # Adaptador do viewer integrado
 ├── static/             # Assets estáticos

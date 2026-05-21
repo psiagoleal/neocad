@@ -4,9 +4,21 @@
 
 ## Objetivo
 
-Este documento descreve o plano de implementação para refatorar o frontend atual do NeoCAD, reduzindo a concentração de responsabilidades em `src/routes/+page.svelte` e centralizando os estilos CSS em uma estrutura mais previsível.
+Este documento descreve o plano de implementação que guiou a refatoração do frontend do NeoCAD, reduzindo a concentração de responsabilidades em `src/routes/+page.svelte` e centralizando os estilos CSS em uma estrutura mais previsível.
 
 A proposta mantém `+page.svelte` como **orquestrador da tela principal**, enquanto extrai telas, painéis e blocos de UI para componentes Svelte dedicados.
+
+## Status atual
+
+A refatoração descrita aqui foi **implementada na Fase 2** e este documento passa a servir como referência da estrutura adotada.
+
+Resultado atual resumido:
+
+- `src/routes/+page.svelte` atua como controlador do workspace desktop;
+- o frontend usa componentes específicos em `src/lib/components/workspace/`;
+- os estilos compartilhados foram centralizados em `src/lib/styles/`;
+- o topo evoluiu para um menu superior mais próximo de aplicações desktop;
+- o canvas passou a ter maior prioridade visual, mantendo a barra de comandos do viewer upstream.
 
 ## Problema atual
 
@@ -441,6 +453,8 @@ export type WorkspaceView = 'home' | 'viewer' | 'about';
 - estados de drag-and-drop.
 
 ## Estratégia de migração
+
+As etapas abaixo registram a sequência adotada durante a implementação. Elas continuam úteis como referência para futuras evoluções do workspace.
 
 ### Etapa 1 — preparar a base de estilos
 

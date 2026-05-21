@@ -23,6 +23,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Vendored worker assets under `static/workers/` to stabilize DXF/DWG and MTEXT parsing in desktop builds.
 - Recent documents list with persistent desktop storage in `AppConfig/state/recent-documents.json` and drag-and-drop support in the Phase 2 workspace.
 - Desktop workspace flow with initial integration screen, dedicated CAD canvas screen, top navigation, and minimizable messages dock.
+- Modular workspace components under `src/lib/components/workspace/` for home, viewer, about, menu, recent documents, and messages.
+- Centralized frontend styling under `src/lib/styles/`, loaded globally from `src/routes/+layout.svelte`.
+- Desktop-like top menu with `Arquivo`, `Exibir`, `Janela` and `Ajuda`, including dropdown actions over the viewer workspace.
 - Windows x64 packaging flow for portable `.zip`, NSIS current-user installer, and optional Fixed WebView2 Runtime variants via CMake.
 - `Makefile`, `CMakeLists.txt`, `CMakePresets.json` and Windows cross-build documentation.
 - Unit tests for CAD file helper services and updated E2E coverage for the Phase 2 interface, including the reference DWG file.
@@ -34,6 +37,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Phase 2 docs updated to describe persistent recent-document storage in Tauri with browser fallback.
 - App metadata and landing page replaced by an initial working viewer workspace.
 - Main UI reorganized from a simultaneous multi-panel integration layout into a screen-based desktop workflow closer to CAD usage.
+- Top-level workspace hierarchy refined toward a more desktop-like shell, with a more compact header and reduced redundant viewer metadata.
+- Home screen simplified to prioritize file opening and recent documents, with less institutional noise in the initial view.
+- Viewer command bar from the upstream core remains available inside the canvas as the primary command entry mechanism.
 
 ### Documented
 
@@ -41,3 +47,4 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Decision to keep NeoCAD under MIT with voluntary donations.
 - Initial product scope: Windows and Linux desktop targets with SvelteKit + Tauri 2.
 - MVP direction: visualization plus basic editing from the beginning.
+- Frontend workspace refactor plan and its resulting architecture for modular Svelte components and centralized CSS.

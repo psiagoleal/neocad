@@ -77,7 +77,7 @@ Responsável por:
 - navegação e preferências;
 - fluxos de abertura de arquivos e recentes.
 
-Na continuidade da Fase 2, a UI deve evoluir para uma composição mais modular, com `src/routes/+page.svelte` atuando como controlador do workspace e componentes específicos em `src/lib/components/workspace/`. O plano detalhado dessa refatoração está em `docs/frontend-workspace-refactor.md`.
+Na continuidade da Fase 2, a UI evoluiu para uma composição mais modular, com `src/routes/+page.svelte` atuando como controlador do workspace e componentes específicos em `src/lib/components/workspace/`. O plano e a referência dessa refatoração estão em `docs/frontend-workspace-refactor.md`.
 
 ### Application Services
 
@@ -171,6 +171,8 @@ src-tauri/
 - lógica de produto deve ficar em serviços reutilizáveis, não espalhada em componentes;
 - `src/routes/+page.svelte` deve concentrar orquestração e ciclo de vida, não markup excessivo nem CSS compartilhado;
 - estilos visuais repetidos devem ser centralizados em `src/lib/styles`;
+- a shell desktop deve priorizar menu superior, canvas e comandos, reduzindo redundâncias informativas no topo da interface;
+- menus suspensos e overlays da shell devem permanecer visualmente acima do workspace e do canvas quando estiverem ativos;
 - suporte BIM futuro deve entrar como módulo separado, e não contaminar o núcleo do viewer DXF/DWG.
 
 ## Riscos identificados
@@ -200,6 +202,7 @@ Adicionar BIM cedo demais pode aumentar radicalmente o escopo técnico e de prod
 - núcleo do ecossistema `cad-viewer` incorporado ao wrapper via `@mlightcad/cad-simple-viewer`;
 - abertura de arquivo local funcionando;
 - renderização básica validada;
+- workspace frontend modularizado e estilos centralizados;
 - base pronta para comandos iniciais de edição.
 
 ## Referências

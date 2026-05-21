@@ -18,6 +18,9 @@ O projeto está em **Fase 2 — integração inicial do viewer**. O repositório
 - fallback de abertura por input local quando a aplicação roda em navegador;
 - workers estáticos vendorizados em `static/workers/` para DXF, DWG e MTEXT;
 - lista de recentes com persistência em `AppConfig` no runtime Tauri e arrastar-e-soltar na interface da Fase 2;
+- workspace frontend modularizado em componentes Svelte sob `src/lib/components/workspace`;
+- estilos compartilhados centralizados em `src/lib/styles`;
+- menu superior no estilo desktop, home compacta e canvas priorizado no fluxo principal;
 - `Makefile` e fluxo CMake para tarefas frequentes e cross-build Windows inicial;
 - lint, formatação e testes básicos configurados.
 
@@ -201,14 +204,15 @@ pnpm test:e2e
 
 ### Organização de código
 
-- componentes reutilizáveis em `src/lib/components`;
+- componentes reutilizáveis em `src/lib/components`, com foco atual em `src/lib/components/workspace`;
+- `src/routes/+page.svelte` como orquestrador do workspace desktop;
 - serviços em `src/lib/services`;
 - estilos globais e compartilhados em `src/lib/styles`;
 - adaptador do viewer em `src/lib/viewer`;
 - tipos compartilhados em `src/lib/types`;
 - comandos nativos e plugins Tauri em `src-tauri/src`.
 
-Para a próxima etapa de modularização do frontend, consulte também `docs/frontend-workspace-refactor.md`.
+Para detalhes da refatoração já implementada, consulte `docs/frontend-workspace-refactor.md`.
 
 ### Formatação e qualidade
 
@@ -231,10 +235,10 @@ Estratégia atual:
 
 A próxima etapa prática é **aprofundar a Fase 2**, com foco em:
 
-1. refatorar o workspace frontend para retirar a concentração atual de UI em `src/routes/+page.svelte`;
-2. centralizar estilos compartilhados em `src/lib/styles` e reduzir duplicação visual;
-3. introduzir um menu superior mais próximo do padrão desktop, liberando área útil para o viewer;
-4. estruturar melhor painéis de propriedades, camadas e próximos comandos de edição básica;
-5. persistir preferências do usuário e ampliar a reabertura entre sessões com mais robustez.
+1. estruturar painéis de propriedades e camadas sobre a base modular atual do workspace;
+2. evoluir comandos CAD e atalhos do shell desktop sem perder área útil do canvas;
+3. persistir preferências de interface, como dock de mensagens, tema e ajustes do workspace;
+4. ampliar a reabertura entre sessões e fluxos de documentos recentes com mais robustez;
+5. estudar exportação e persistência local complementar para etapas seguintes do MVP.
 
-O plano detalhado por arquivo para essa refatoração está documentado em `docs/frontend-workspace-refactor.md`.
+O plano detalhado por arquivo que guiou a refatoração do frontend está documentado em `docs/frontend-workspace-refactor.md`.
