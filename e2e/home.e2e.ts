@@ -14,7 +14,8 @@ test('exibe a interface principal do NeoCAD no fluxo inicial', async ({ page }) 
 
 	await expect(page.getByRole('heading', { name: 'NeoCAD', exact: true })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Abrir desenho CAD' }).first()).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Integração do viewer' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Arquivo' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Janela' })).toBeVisible();
 	await expect(
 		page.getByRole('heading', {
 			name: 'Abra um desenho e entre no workspace principal do NeoCAD'

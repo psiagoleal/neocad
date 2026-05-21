@@ -8,7 +8,6 @@
 		isMessagesVisible: boolean;
 		isOpening: boolean;
 		isTauriRuntime: boolean;
-		backgroundTheme: 'light' | 'dark';
 		recentDocuments: CadRecentDocument[];
 		onOpenDrawing: () => void | Promise<void>;
 		onEnterViewer: () => void;
@@ -22,7 +21,6 @@
 		isMessagesVisible,
 		isOpening,
 		isTauriRuntime,
-		backgroundTheme,
 		recentDocuments,
 		onOpenDrawing,
 		onEnterViewer,
@@ -58,34 +56,24 @@
 			>
 		</div>
 
-		<div class="meta-grid">
-			<div>
-				<span class="label">Viewer</span>
-				<strong>{isViewerReady ? 'Pronto' : 'Inicializando'}</strong>
-			</div>
-			<div>
-				<span class="label">Runtime</span>
-				<strong>{runtimeLabel}</strong>
-			</div>
-			<div>
-				<span class="label">Mensagens</span>
-				<strong>{isMessagesVisible ? 'Dock aberto' : 'Dock recolhido'}</strong>
-			</div>
-			<div>
-				<span class="label">Canvas</span>
-				<strong>{backgroundTheme === 'dark' ? 'Escuro' : 'Claro'}</strong>
-			</div>
+		<div class="home-status-row" aria-label="Resumo do estado inicial do workspace">
+			<span class="status-chip">{isViewerReady ? 'Viewer pronto' : 'Viewer inicializando'}</span>
+			<span class="status-chip">Runtime {runtimeLabel}</span>
+			<span class="status-chip"
+				>{isMessagesVisible ? 'Mensagens visíveis' : 'Mensagens recolhidas'}</span
+			>
 		</div>
 
-		<ul class="plain-list compact-listing">
-			<li>Use arrastar e soltar diretamente sobre o canvas para abrir DWG ou DXF.</li>
-			<li>O fluxo atual prioriza o viewer e deixa informações institucionais na tela Sobre.</li>
-			<li>
+		<div class="home-notes">
+			<p class="support-copy compact-copy">
+				Use o menu <strong>Arquivo</strong> ou arraste um arquivo diretamente para o canvas para começar.
+			</p>
+			<p class="support-copy compact-copy">
 				{isTauriRuntime
-					? 'No runtime Tauri, os recentes podem ser reabertos por caminho completo.'
-					: 'No navegador, o fluxo mantém fallback local sem reabertura por caminho persistido.'}
-			</li>
-		</ul>
+					? 'No runtime Tauri, os desenhos recentes podem ser reabertos por caminho completo.'
+					: 'No navegador, a abertura funciona por fallback local sem reabertura por caminho persistido.'}
+			</p>
+		</div>
 	</section>
 
 	<RecentDocumentsPanel

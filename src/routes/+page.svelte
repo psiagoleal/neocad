@@ -378,13 +378,10 @@
 <section class="app-shell">
 	<AppTopMenu
 		appName={appMetadata.name}
-		statusLabel={appMetadata.status}
-		{runtimeLabel}
 		{activeWorkspace}
 		currentDocumentTitle={currentDocument?.fileName ?? null}
 		{hasVisitedViewerWorkspace}
 		{unreadMessages}
-		{isViewerReady}
 		{isOpening}
 		{recentDocuments}
 		onGoHome={showHomeWorkspace}
@@ -410,7 +407,6 @@
 				{isMessagesVisible}
 				{isOpening}
 				{isTauriRuntime}
-				{backgroundTheme}
 				{recentDocuments}
 				onOpenDrawing={openCadDrawing}
 				onEnterViewer={() => showViewerWorkspace(true)}

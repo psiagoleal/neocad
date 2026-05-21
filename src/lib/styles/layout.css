@@ -8,10 +8,12 @@
 	margin: 0 auto;
 	padding: var(--space-3);
 	overflow: hidden;
+	isolation: isolate;
 }
 
 .workspace-stage {
 	position: relative;
+	z-index: var(--z-workspace);
 	min-height: 0;
 	height: 100%;
 	border-radius: var(--radius-xl);
@@ -95,18 +97,12 @@
 		grid-template-columns: 1fr;
 	}
 
-	.top-menu-bar,
-	.top-menu-meta {
+	.top-menu-bar {
 		grid-template-columns: 1fr;
 	}
 
-	.top-menu-actions,
-	.workspace-tabs {
+	.top-menu-actions {
 		justify-content: flex-start;
-	}
-
-	.top-menu-current-document {
-		width: 100%;
 	}
 
 	.messages-dock {

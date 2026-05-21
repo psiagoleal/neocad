@@ -58,23 +58,15 @@
 		/>
 	</header>
 
-	<div class="viewer-meta-strip viewer-meta-strip-compact">
-		<div class="meta-pill">
-			<span class="label">Modo</span>
-			<strong>{currentDocument?.mode ?? 'Aguardando'}</strong>
-		</div>
-		<div class="meta-pill">
-			<span class="label">Tema</span>
-			<strong>{backgroundTheme === 'dark' ? 'Escuro' : 'Claro'}</strong>
-		</div>
-		{#if progress}
-			<div class="progress-pill progress-pill-wide">
+	{#if progress}
+		<div class="viewer-status-row">
+			<div class="progress-pill viewer-progress-pill">
 				<span class="label">Carregamento</span>
 				<strong>{progress.percentage.toFixed(0)}%</strong>
 				<span>{progress.stage}{progress.subStage ? ` / ${progress.subStage}` : ''}</span>
 			</div>
-		{/if}
-	</div>
+		</div>
+	{/if}
 
 	<ViewerDropzone
 		{currentDocument}

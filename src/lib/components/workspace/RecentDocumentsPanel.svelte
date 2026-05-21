@@ -51,6 +51,8 @@
 			{/each}
 		</ul>
 	{:else}
-		<p class="empty-copy">Os desenhos abertos recentemente aparecerão aqui.</p>
+		<p class="empty-copy">
+			Abra um desenho pelo botão principal ou pelo menu <strong>Arquivo</strong> para começar.
+		</p>
 	{/if}
 </section>

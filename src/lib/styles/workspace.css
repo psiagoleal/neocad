@@ -1,15 +1,19 @@
 .top-menu {
+	position: relative;
+	z-index: var(--z-top-menu);
 	display: grid;
-	gap: var(--space-3);
+	gap: var(--space-2);
 	min-height: 0;
+	overflow: visible;
 }
 
-.top-menu-bar,
-.top-menu-meta {
+.top-menu-bar {
+	position: relative;
 	display: grid;
 	grid-template-columns: auto 1fr auto;
 	align-items: center;
 	gap: var(--space-3);
+	overflow: visible;
 }
 
 .menu-brand,
@@ -21,7 +25,11 @@
 }
 
 .menu-brand {
-	gap: var(--space-3);
+	gap: var(--space-2);
+}
+
+.compact-brand h1 {
+	font-size: 1.1rem;
 }
 
 .menu-groups {
@@ -34,6 +42,7 @@
 
 .menu-group {
 	position: relative;
+	z-index: 0;
 }
 
 .menu-dropdown {
@@ -47,7 +56,7 @@
 	gap: 0.35rem;
 	padding: 0.55rem;
 	border-radius: var(--radius-lg);
-	background: rgba(8, 20, 37, 0.96);
+	background: rgba(8, 20, 37, 0.98);
 	border: 1px solid var(--color-border-strong);
 	backdrop-filter: blur(12px);
 	box-shadow: var(--shadow-menu);
@@ -95,14 +104,29 @@
 
 .top-menu-actions {
 	justify-content: flex-end;
+	min-width: 0;
 }
 
-.top-menu-meta {
-	grid-template-columns: 1fr auto;
+.top-menu-document-name {
+	max-width: 22rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.84rem;
+	color: var(--color-text-soft);
 }
 
-.top-menu-current-document {
-	min-width: min(18rem, 100%);
+.home-status-row {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+
+.home-notes {
+	display: grid;
+	gap: 0.45rem;
+	max-width: 42rem;
 }
 
 .viewer-frame {
@@ -116,19 +140,14 @@
 	margin-bottom: 0.2rem;
 }
 
-.viewer-meta-strip {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 0.6rem;
+.viewer-status-row {
+	display: flex;
+	justify-content: flex-start;
 	margin-bottom: var(--space-3);
 }
 
-.viewer-meta-strip-compact {
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.progress-pill-wide {
-	grid-column: span 1;
+.viewer-progress-pill {
+	min-width: min(24rem, 100%);
 }
 
 .viewer-surface {
@@ -263,13 +282,16 @@
 }
 
 @media (max-width: 1360px) {
-	.top-menu-bar,
-	.top-menu-meta {
+	.top-menu-bar {
 		grid-template-columns: 1fr;
 	}
 
 	.menu-groups,
 	.top-menu-actions {
 		justify-content: flex-start;
+	}
+
+	.top-menu-document-name {
+		max-width: 100%;
 	}
 }

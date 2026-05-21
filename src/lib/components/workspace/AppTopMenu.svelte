@@ -6,13 +6,10 @@
 
 	type AppTopMenuProps = {
 		appName: string;
-		statusLabel: string;
-		runtimeLabel: string;
 		activeWorkspace: WorkspaceView;
 		currentDocumentTitle?: string | null;
 		hasVisitedViewerWorkspace: boolean;
 		unreadMessages: number;
-		isViewerReady: boolean;
 		isOpening: boolean;
 		recentDocuments: CadRecentDocument[];
 		onGoHome: () => void;
@@ -28,13 +25,10 @@
 
 	let {
 		appName,
-		statusLabel,
-		runtimeLabel,
 		activeWorkspace,
 		currentDocumentTitle = null,
 		hasVisitedViewerWorkspace,
 		unreadMessages,
-		isViewerReady,
 		isOpening,
 		recentDocuments,
 		onGoHome,
@@ -90,8 +84,7 @@
 
 <header class="top-menu card-panel" bind:this={menuRoot}>
 	<div class="top-menu-bar">
-		<div class="menu-brand">
-			<p class="eyebrow">NeoCAD Workspace</p>
+		<div class="menu-brand compact-brand">
 			<h1>{appName}</h1>
 		</div>
 
@@ -231,50 +224,15 @@
 		</nav>
 
 		<div class="top-menu-actions">
-			<span class="status-chip">{statusLabel}</span>
-			<span class="status-chip">Runtime {runtimeLabel}</span>
-			<span class="status-chip">Viewer {isViewerReady ? 'pronto' : 'inicializando'}</span>
+			{#if currentDocumentTitle}
+				<span class="top-menu-document-name">{currentDocumentTitle}</span>
+			{/if}
 			<button class="utility-button" type="button" onclick={onToggleMessages}>
 				Mensagens
 				{#if unreadMessages > 0}
 					<span class="badge">{unreadMessages}</span>
 				{/if}
 			</button>
-		</div>
-	</div>
-
-	<div class="top-menu-meta">
-		<div class="workspace-tabs" aria-label="Navegação rápida do workspace">
-			<button
-				class:active={activeWorkspace === 'home'}
-				class="nav-button"
-				type="button"
-				onclick={onGoHome}
-			>
-				Integração do viewer
-			</button>
-			<button
-				class:active={activeWorkspace === 'viewer'}
-				class="nav-button"
-				type="button"
-				onclick={onGoViewer}
-				disabled={!hasVisitedViewerWorkspace && currentDocumentTitle == null}
-			>
-				Canvas CAD
-			</button>
-			<button
-				class:active={activeWorkspace === 'about'}
-				class="nav-button"
-				type="button"
-				onclick={onGoAbout}
-			>
-				Sobre
-			</button>
-		</div>
-
-		<div class="top-menu-current-document">
-			<span class="label">Documento</span>
-			<strong>{currentDocumentTitle ?? 'Nenhum desenho aberto'}</strong>
 		</div>
 	</div>
 </header>

@@ -38,7 +38,9 @@
 	--space-7: 1.3rem;
 	--font-family-base: 'Inter', 'Segoe UI', system-ui, sans-serif;
 	--transition-fast: 180ms ease;
-	--z-dock: 4;
-	--z-fab: 3;
-	--z-menu: 6;
+	--z-workspace: 1;
+	--z-fab: 30;
+	--z-dock: 31;
+	--z-top-menu: 40;
+	--z-menu: 50;
 }

@@ -31,7 +31,7 @@ test('abre o arquivo DWG de referência do NeoCAD', async ({ page }) => {
 	const fileChooser = await fileChooserPromise;
 	await fileChooser.setFiles(referenceDwgPath);
 
-	await expect(page.getByRole('button', { name: 'Canvas CAD' })).toBeVisible({
+	await expect(page.getByRole('button', { name: 'Fundo escuro' })).toBeVisible({
 		timeout: 120_000
 	});
 	await expect(
