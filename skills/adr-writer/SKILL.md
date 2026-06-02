@@ -11,7 +11,7 @@ description: >-
 # adr-writer — Registros de Decisão de Arquitetura
 
 Os ADRs registram o contexto histórico e a justificativa técnica das escolhas de
-design. Modelos de IA exibem **maior conformidade** quando compreendem o *porquê* de
+design. Modelos de IA exibem **maior conformidade** quando compreendem o _porquê_ de
 uma limitação do que quando recebem apenas uma diretriz seca — fornecer o racional
 reduz o risco de o agente propor refatorações incompatíveis.
 
@@ -33,7 +33,7 @@ Veja `templates/adr-template.md`. Estrutura mínima:
 - **Status:** `Proposed | Accepted | Deprecated | Superseded by ADR-MMMM`
 - **Contexto:** forças em jogo, restrições (orçamento, hardware, regulação, prazos).
 - **Decisão:** o que foi decidido, em voz ativa ("Fica acordada a utilização de…").
-- **Consequências:** impactos positivos e negativos, *trade-offs* aceitos.
+- **Consequências:** impactos positivos e negativos, _trade-offs_ aceitos.
 - **Diretriz de Conformidade de Código:** o que o agente está **proibido** de fazer
   (ex.: "proibido introduzir Pyomo/MATLAB ou solvers proprietários").
 

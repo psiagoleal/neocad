@@ -134,13 +134,13 @@ src/lib/components/workspace/
 
 ```ts
 export interface CadCommandCatalogItem {
-  id: string;
-  label: string;
-  command: string;
-  category: 'navigation' | 'draw' | 'modify' | 'selection' | 'other';
-  status: 'implemented' | 'experimental' | 'planned';
-  access: Array<'menu' | 'toolbar' | 'command-bar' | 'shortcut'>;
-  notes?: string;
+	id: string;
+	label: string;
+	command: string;
+	category: 'navigation' | 'draw' | 'modify' | 'selection' | 'other';
+	status: 'implemented' | 'experimental' | 'planned';
+	access: Array<'menu' | 'toolbar' | 'command-bar' | 'shortcut'>;
+	notes?: string;
 }
 ```
 

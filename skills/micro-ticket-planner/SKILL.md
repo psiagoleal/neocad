@@ -30,6 +30,7 @@ aproximam dos limites da janela de contexto ("ansiedade de contexto"). A mitiga�
 
 ```markdown
 ### MT-<n>: <título imperativo curto>
+
 - **Objetivo:** <resultado único e verificável>
 - **Arquivos no escopo:** path/a.py, path/b.py
 - **Critério de aceite:** <comando de teste/linter que deve passar>
@@ -40,6 +41,7 @@ aproximam dos limites da janela de contexto ("ansiedade de contexto"). A mitiga�
 ## Conexão com os rituais ágeis (DoD)
 
 Um micro-ticket só é "Concluído" quando:
+
 - os scripts de teste/linter definidos no `AGENTS.md` passam;
 - o `docs/CURRENT-STATE.md` foi atualizado (ver skill `handoff-updater`);
 - a revisão humana de PR foi feita (ver skill `pr-review-guard`).

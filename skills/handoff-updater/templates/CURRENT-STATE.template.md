@@ -32,6 +32,6 @@
 
 ## Histórico (mais recente no topo)
 
-| Data | Commit | Resumo | MT |
-|------|--------|--------|----|
+| Data       | Commit    | Resumo   | MT         |
+| ---------- | --------- | -------- | ---------- |
 | AAAA-MM-DD | `abcdef1` | <resumo> | MT-1, MT-2 |
