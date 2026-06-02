@@ -1,5 +1,8 @@
 node_modules
 
+# Claude Code runtime
+.claude/scheduled_tasks.lock
+
 # Output
 .output
 .vercel

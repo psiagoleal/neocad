@@ -9,7 +9,7 @@
 
 - **Data:** 2026-06-02
 - **Branch:** `master`
-- **Commit:** `254cb2f` (Frente 2: catálogo de comandos em `Ajuda`)
+- **Commit:** `254cb2f` (Frente 2) — correção do canvas em branco nesta árvore, ainda **não commitada**
 
 ## Metas cumpridas / Em andamento / Próximo passo
 
@@ -19,6 +19,10 @@
 - [x] **Frente 2 implementada:** catálogo de comandos derivado em runtime do command
       stack, exposto em `Ajuda > Comandos CAD` (diálogo filtrável por categoria).
       Verificado: `pnpm check` (0/0), `pnpm test` (13/13), `pnpm lint` verde.
+- [x] **Bug do canvas em branco resolvido:** `.viewer-surface` colapsava para altura 0
+      (caía na trilha `auto` do grid quando a barra de progresso estava ausente).
+      `.viewer-frame` agora é flex em coluna. Diagnosticado com Playwright (cadeia de
+      ancestrais) e protegido por `e2e/viewer-render.e2e.ts` + fixture `minimal.dxf`.
 - [ ] **Próximo passo sugerido:** Frente 1 — painéis de camadas/propriedades em modo
       leitura (`cad-layers.ts` via `layerTable.newIterator()`; `cad-selection.ts` via
       `selectionSet.events` + `getEntityById`; `WorkspaceSidebar`). API já confirmada
@@ -36,9 +40,10 @@
 
 ## Histórico (mais recente no topo)
 
-| Data       | Commit    | Resumo                                           | MT  |
-| ---------- | --------- | ------------------------------------------------ | --- |
-| 2026-06-02 | `254cb2f` | Frente 2: catálogo de comandos em `Ajuda`        | —   |
-| 2026-06-02 | `b986b4f` | Prettier na documentação e governança            | —   |
-| 2026-06-02 | `d1e4dbd` | Governança de agentes + spike do upstream + ADR  | —   |
-| 2026-05-21 | `65081dc` | Planejamento de painéis e comandos CAD (roadmap) | —   |
+| Data       | Commit            | Resumo                                           | MT  |
+| ---------- | ----------------- | ------------------------------------------------ | --- |
+| 2026-06-02 | _(não commitado)_ | Corrige canvas em branco (altura 0) + regressão  | —   |
+| 2026-06-02 | `254cb2f`         | Frente 2: catálogo de comandos em `Ajuda`        | —   |
+| 2026-06-02 | `b986b4f`         | Prettier na documentação e governança            | —   |
+| 2026-06-02 | `d1e4dbd`         | Governança de agentes + spike do upstream + ADR  | —   |
+| 2026-05-21 | `65081dc`         | Planejamento de painéis e comandos CAD (roadmap) | —   |

@@ -130,8 +130,8 @@
 }
 
 .viewer-frame {
-	display: grid;
-	grid-template-rows: auto auto minmax(0, 1fr);
+	display: flex;
+	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
 }
@@ -152,8 +152,8 @@
 
 .viewer-surface {
 	position: relative;
+	flex: 1 1 auto;
 	min-height: 0;
-	height: 100%;
 	border-radius: var(--radius-md);
 	overflow: hidden;
 	background: #081121;

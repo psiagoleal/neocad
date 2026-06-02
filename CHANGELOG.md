@@ -44,6 +44,10 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Home screen simplified to prioritize file opening and recent documents, with less institutional noise in the initial view.
 - Viewer command bar from the upstream core remains available inside the canvas as the primary command entry mechanism.
 
+### Fixed
+
+- Blank CAD canvas after opening a drawing: the viewer surface collapsed to zero height because it landed on the `auto` grid track whenever the progress bar was absent. The viewer frame now uses a flex column so the canvas always fills the available height. Covered by a new E2E regression test with a minimal DXF fixture.
+
 ### Documented
 
 - Phase 0 planning artifacts for architecture, API contracts, changelog policy, and development workflow.

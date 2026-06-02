@@ -50,6 +50,7 @@
 
 .viewer-screen {
 	display: grid;
+	grid-template-rows: minmax(0, 1fr);
 	padding: var(--space-4);
 	overflow: hidden;
 }
