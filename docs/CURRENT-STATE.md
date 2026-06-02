@@ -9,7 +9,7 @@
 
 - **Data:** 2026-06-02
 - **Branch:** `master`
-- **Commit:** `d1e4dbd` (governança + spike) — Frente 2 nesta árvore, ainda **não commitada**
+- **Commit:** `254cb2f` (Frente 2: catálogo de comandos em `Ajuda`)
 
 ## Metas cumpridas / Em andamento / Próximo passo
 
@@ -36,8 +36,9 @@
 
 ## Histórico (mais recente no topo)
 
-| Data       | Commit            | Resumo                                           | MT  |
-| ---------- | ----------------- | ------------------------------------------------ | --- |
-| 2026-06-02 | _(não commitado)_ | Frente 2: catálogo de comandos em `Ajuda`        | —   |
-| 2026-06-02 | `d1e4dbd`         | Governança de agentes + spike do upstream + ADR  | —   |
-| 2026-05-21 | `65081dc`         | Planejamento de painéis e comandos CAD (roadmap) | —   |
+| Data       | Commit    | Resumo                                           | MT  |
+| ---------- | --------- | ------------------------------------------------ | --- |
+| 2026-06-02 | `254cb2f` | Frente 2: catálogo de comandos em `Ajuda`        | —   |
+| 2026-06-02 | `b986b4f` | Prettier na documentação e governança            | —   |
+| 2026-06-02 | `d1e4dbd` | Governança de agentes + spike do upstream + ADR  | —   |
+| 2026-05-21 | `65081dc` | Planejamento de painéis e comandos CAD (roadmap) | —   |
