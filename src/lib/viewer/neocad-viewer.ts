@@ -12,6 +12,7 @@ import type {
 	AcEdOpenMode as AcEdOpenModeType
 } from '@mlightcad/cad-simple-viewer';
 import type {
+	CadCommandDescriptor,
 	CadDocumentPayload,
 	CadOpenMode,
 	CadViewerDocumentState,
@@ -191,6 +192,44 @@ export class NeoCadViewer {
 		}
 
 		this.docManager.sendStringToExecute(command);
+	}
+
+	/**
+	 * Enumera os comandos registrados no command stack do upstream em tempo de
+	 * execução. É a fonte de verdade sobre quais comandos existem (ADR 0001).
+	 *
+	 * Retorna lista vazia quando o viewer ainda não foi inicializado.
+	 */
+	listCommandDescriptors(): CadCommandDescriptor[] {
+		if (this.docManager == null) {
+			return [];
+		}
+
+		const descriptors: CadCommandDescriptor[] = [];
+		const seenGlobalNames = new Set<string>();
+
+		for (const item of this.docManager.commandManager.iterator()) {
+			const command = item.command;
+			const globalName = command?.globalName?.trim();
+
+			if (command == null || globalName == null || globalName.length === 0) {
+				continue;
+			}
+
+			const normalizedName = globalName.toUpperCase();
+			if (seenGlobalNames.has(normalizedName)) {
+				continue;
+			}
+
+			seenGlobalNames.add(normalizedName);
+			descriptors.push({
+				globalName,
+				localName: command.localName?.trim() || globalName,
+				group: item.commandGroup ?? ''
+			});
+		}
+
+		return descriptors;
 	}
 
 	async destroy(): Promise<void> {

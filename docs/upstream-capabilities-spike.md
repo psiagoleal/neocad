@@ -30,7 +30,7 @@ acessível a partir do `docManager`/documento ativo.
   - `commandStack.iterator(): AcEdCommandIterator` — percorre todos os comandos de todos
     os grupos.
   - `commandStack.searchCommandsByPrefix(prefix, mode?): AcEdCommandIteratorItem[]` —
-    cada item tem `{ command: AcEdCommand, groupName: string }`.
+    cada item tem `{ command: AcEdCommand, commandGroup: string }`.
   - `AcEdCommand.globalName` / `localName` expõem os nomes.
 
 > Implicação: o catálogo de comandos da UI pode ser **derivado dinamicamente** do stack,
@@ -38,12 +38,12 @@ acessível a partir do `docManager`/documento ativo.
 
 ### Comandos registrados (por grupo)
 
-| Grupo | Comandos (globalName) |
-|-------|------------------------|
-| Navegação/sistema | `ZOOM`, `PAN`, `SELECT`, `OPEN`, `QNEW`, `REGEN`, `SWITCHBG`, `SYSVAR`, `LOG` |
-| Desenho | `LINE`, `CIRCLE`, `ARC`, `ELLIPSE`, `RECT`, `PLINE`, `POLYGON`, `SPLINE`, `POINT`, `RAY`, `XLINE`, `MLINE`, `MTEXT`, `DIMLINEAR`, `HATCH` |
-| Edição | `ERASE`, `MOVE`, `COPY`, `ROTATE` |
-| Camadas | `LAYER`, `LAYCUR`, `LAYON`, `LAYOFF`, `LAYFRZ`, `LAYTHW`, `LAYLCK`, `LAYULK`, `LAYISO`, `LAYUNISO`, `LAYP`, `LAYDEL`, `LAYCLOSE` |
+| Grupo             | Comandos (globalName)                                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Navegação/sistema | `ZOOM`, `PAN`, `SELECT`, `OPEN`, `QNEW`, `REGEN`, `SWITCHBG`, `SYSVAR`, `LOG`                                                             |
+| Desenho           | `LINE`, `CIRCLE`, `ARC`, `ELLIPSE`, `RECT`, `PLINE`, `POLYGON`, `SPLINE`, `POINT`, `RAY`, `XLINE`, `MLINE`, `MTEXT`, `DIMLINEAR`, `HATCH` |
+| Edição            | `ERASE`, `MOVE`, `COPY`, `ROTATE`                                                                                                         |
+| Camadas           | `LAYER`, `LAYCUR`, `LAYON`, `LAYOFF`, `LAYFRZ`, `LAYTHW`, `LAYLCK`, `LAYULK`, `LAYISO`, `LAYUNISO`, `LAYP`, `LAYDEL`, `LAYCLOSE`          |
 
 > Os `globalName` acima vêm das definições dos comandos; **confirmar a string exata em
 > runtime** iterando o stack antes de fixar no catálogo de apresentação.
@@ -112,8 +112,14 @@ Getters: `type`, `dxfTypeName`, `resolvedColor`, `rgbColor`, `objectId`, `handle
 ### Modelo pronto para UI — `AcDbEntityProperties`
 
 ```ts
-interface AcDbEntityProperties { type: string; groups: AcDbEntityPropertyGroup[]; }
-interface AcDbEntityPropertyGroup { groupName: string; properties: AcDbEntityRuntimeProperty[]; }
+interface AcDbEntityProperties {
+	type: string;
+	groups: AcDbEntityPropertyGroup[];
+}
+interface AcDbEntityPropertyGroup {
+	groupName: string;
+	properties: AcDbEntityRuntimeProperty[];
+}
 // cada propriedade: name, type ('string'|'int'|'float'|'enum'|'color'|'layer'|...),
 // editable?, accessor { get(); set?() }
 ```

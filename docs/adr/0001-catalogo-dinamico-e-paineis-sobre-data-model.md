@@ -22,13 +22,13 @@ no código de `@mlightcad/cad-simple-viewer@1.5.0` e `@mlightcad/data-model`, co
   runtime** via `iterator()` e `searchCommandsByPrefix(prefix, mode)`, e cada comando
   expõe `globalName`/`localName`/`groupName`. Há ~31 comandos registrados, incluindo
   desenho (`LINE, CIRCLE, ARC, ELLIPSE, RECT, PLINE, POLYGON, SPLINE, POINT, MTEXT,
-  HATCH`…), edição (`ERASE, MOVE, COPY, ROTATE`) e camadas (`LAYER, LAYON/OFF,
-  LAYFRZ/THW, LAYLCK/ULK, LAYISO`…). **Ausentes:** `UNDO/REDO, SCALE, MIRROR, ARRAY,
-  OFFSET, TRIM/EXTEND, BLOCK/INSERT`.
+HATCH`…), edição (`ERASE, MOVE, COPY, ROTATE`) e camadas (`LAYER, LAYON/OFF,
+LAYFRZ/THW, LAYLCK/ULK, LAYISO`…). **Ausentes:** `UNDO/REDO, SCALE, MIRROR, ARRAY,
+OFFSET, TRIM/EXTEND, BLOCK/INSERT`.
 - **Camadas:** acessíveis em `docManager.curDocument.database.tables.layerTable`
   (`AcDbLayerTable`), iteráveis por `newIterator()`/`getAt(name)`; os registros expõem
   getters e setters (`name, color, isOff, isFrozen, isLocked, linetype, lineWeight,
-  transparency`). Eventos `database.events.layerModified`/`layerAppended`.
+transparency`). Eventos `database.events.layerModified`/`layerAppended`.
 - **Seleção e propriedades:** `docManager.curView.selectionSet` (`ids`, `count`,
   eventos `selectionAdded`/`selectionRemoved`); resolução id→entidade por
   `database.tables.blockTable.getEntityById(id)`; `entity.properties` retorna um modelo
@@ -50,7 +50,7 @@ Fica acordado que:
    toolbars) será **derivado em runtime** do `AcEdCommandStack` do upstream, e não
    mantido como lista hardcoded. Um catálogo estático de metadados de apresentação
    (rótulo amigável PT-BR, categoria, ícone) **pode** existir, mas a fonte de verdade
-   sobre *quais comandos existem* é sempre o command stack consultado em tempo de
+   sobre _quais comandos existem_ é sempre o command stack consultado em tempo de
    execução.
 
 2. Os **painéis de camadas e propriedades** (Frente 1) serão construídos diretamente
@@ -86,7 +86,7 @@ Fica acordado que:
 - **Proibido:** manter no código uma lista hardcoded de comandos como fonte de verdade
   sobre disponibilidade; manter apenas metadados de apresentação opcionais.
 - **Proibido:** expor na UI comandos do grupo ausente (`UNDO/REDO, SCALE, MIRROR,
-  ARRAY, OFFSET, TRIM/EXTEND, BLOCK/INSERT`) como se fossem implementados, enquanto não
+ARRAY, OFFSET, TRIM/EXTEND, BLOCK/INSERT`) como se fossem implementados, enquanto não
   existirem no command stack.
 - **Obrigatório:** todo acesso a camadas, seleção e propriedades de entidade passa pelo
   adaptador `NeoCadViewer` e/ou pelos serviços de `src/lib/services/`, expondo contratos

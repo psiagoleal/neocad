@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import AboutScreen from '$lib/components/workspace/AboutScreen.svelte';
 	import AppTopMenu from '$lib/components/workspace/AppTopMenu.svelte';
+	import HelpCommandsDialog from '$lib/components/workspace/HelpCommandsDialog.svelte';
 	import HomeScreen from '$lib/components/workspace/HomeScreen.svelte';
 	import MessagesDock from '$lib/components/workspace/MessagesDock.svelte';
 	import ViewerScreen from '$lib/components/workspace/ViewerScreen.svelte';
@@ -13,12 +14,14 @@
 		readCadDocumentFromPath,
 		selectCadDocument
 	} from '$lib/services/cad-file';
+	import { listCadCommandCatalog } from '$lib/services/cad-commands';
 	import {
 		clearRecentDocuments as clearStoredRecentDocuments,
 		listRecentDocuments,
 		registerRecentDocument
 	} from '$lib/services/recent-documents';
 	import type {
+		CadCommandCatalogItem,
 		CadDocumentPayload,
 		CadRecentDocument,
 		CadViewerDocumentState,
@@ -45,6 +48,8 @@
 	let isMessagesVisible = $state(false);
 	let unreadMessages = $state(0);
 	let notificationSequence = 0;
+	let isCommandsHelpOpen = $state(false);
+	let commandCatalog: CadCommandCatalogItem[] = $state([]);
 
 	function pushNotification(kind: CadViewerMessage['kind'], text: string): void {
 		notifications = [
@@ -301,6 +306,23 @@
 		);
 	}
 
+	function showCommandsHelp(): void {
+		if (!isViewerReady || viewerController == null) {
+			pushNotification(
+				'info',
+				'O catálogo de comandos fica disponível após a inicialização do viewer.'
+			);
+			return;
+		}
+
+		commandCatalog = listCadCommandCatalog(viewerController);
+		isCommandsHelpOpen = true;
+	}
+
+	function closeCommandsHelp(): void {
+		isCommandsHelpOpen = false;
+	}
+
 	onMount(() => {
 		void refreshRecentDocuments();
 
@@ -393,6 +415,7 @@
 		onFitView={fitDrawingToView}
 		onToggleBackground={toggleViewerBackground}
 		onToggleMessages={toggleMessagesDock}
+		onShowCommands={showCommandsHelp}
 	/>
 
 	<div class="workspace-stage">
@@ -461,6 +484,12 @@
 			{unreadMessages}
 			onOpen={openMessagesDock}
 			onClose={closeMessagesDock}
+		/>
+
+		<HelpCommandsDialog
+			open={isCommandsHelpOpen}
+			commands={commandCatalog}
+			onClose={closeCommandsHelp}
 		/>
 	</div>
 </section>

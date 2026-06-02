@@ -9,33 +9,35 @@
 
 - **Data:** 2026-06-02
 - **Branch:** `master`
-- **Commit:** `65081dc` (último commitado) — alterações deste turno ainda **não commitadas**
+- **Commit:** `d1e4dbd` (governança + spike) — Frente 2 nesta árvore, ainda **não commitada**
 
 ## Metas cumpridas / Em andamento / Próximo passo
 
-- [x] Spike técnico do upstream `@mlightcad` concluído e documentado em
-  `docs/upstream-capabilities-spike.md`.
-- [x] Decisão arquitetural registrada em
-  `docs/adr/0001-catalogo-dinamico-e-paineis-sobre-data-model.md` (status `Proposed`).
-- [ ] **Em andamento:** scaffold de governança de agentes (`AGENTS.md`, `CLAUDE.md`,
-  `.claude/`, `skills/`, `.github/`, `docs/adr/`, etc.) ainda **não rastreado** no git.
-- [ ] **Próximo passo sugerido:** aceitar o ADR 0001 e iniciar a Frente 2 (catálogo de
-  comandos derivado do `AcEdCommandStack` + menu `Ajuda > Comandos CAD`) ou a Frente 1
-  (painéis de camadas/propriedades em modo leitura). API confirmada para ambas.
+- [x] Spike técnico do upstream `@mlightcad` documentado em
+      `docs/upstream-capabilities-spike.md`; ADR 0001 **Accepted**.
+- [x] Governança de agentes versionada no commit `d1e4dbd`.
+- [x] **Frente 2 implementada:** catálogo de comandos derivado em runtime do command
+      stack, exposto em `Ajuda > Comandos CAD` (diálogo filtrável por categoria).
+      Verificado: `pnpm check` (0/0), `pnpm test` (13/13), `pnpm lint` verde.
+- [ ] **Próximo passo sugerido:** Frente 1 — painéis de camadas/propriedades em modo
+      leitura (`cad-layers.ts` via `layerTable.newIterator()`; `cad-selection.ts` via
+      `selectionSet.events` + `getEntityById`; `WorkspaceSidebar`). API já confirmada
+      no spike. Em seguida, Frente 3 (disparo de comandos básicos pela UI).
 
-### Achados-chave do spike (desbloqueiam Frentes 1–3)
+### Mapa da Frente 2 (para continuidade)
 
-- Comandos enumeráveis em runtime via `docManager.commandManager.iterator()` /
-  `searchCommandsByPrefix`; ~31 comandos reais (desenho/edição/camadas).
-- Camadas em `docManager.curDocument.database.tables.layerTable` (iterável, com setters).
-- Seleção em `docManager.curView.selectionSet` (+ eventos); entidade via
-  `database.tables.blockTable.getEntityById(id)`; `entity.properties` pronto para UI.
+- Tipos: `CadCommandDescriptor`, `CadCommandCatalogItem` em `src/lib/types/cad.ts`.
+- Adaptador: `NeoCadViewer.listCommandDescriptors()` (única fonte de runtime).
+- Apresentação pura: `src/lib/config/cad-command-catalog.ts` (+ `.spec.ts`).
+- Serviço/fronteira: `src/lib/services/cad-commands.ts`.
+- UI: `HelpCommandsDialog.svelte`, fiado em `AppTopMenu.svelte` e `+page.svelte`.
 
 ---
 
 ## Histórico (mais recente no topo)
 
-| Data | Commit | Resumo | MT |
-|------|--------|--------|----|
-| 2026-06-02 | _(não commitado)_ | Spike do upstream + ADR 0001 + handoff | — |
-| 2026-05-21 | `65081dc` | Planejamento de painéis e comandos CAD (roadmap) | — |
+| Data       | Commit            | Resumo                                           | MT  |
+| ---------- | ----------------- | ------------------------------------------------ | --- |
+| 2026-06-02 | _(não commitado)_ | Frente 2: catálogo de comandos em `Ajuda`        | —   |
+| 2026-06-02 | `d1e4dbd`         | Governança de agentes + spike do upstream + ADR  | —   |
+| 2026-05-21 | `65081dc`         | Planejamento de painéis e comandos CAD (roadmap) | —   |

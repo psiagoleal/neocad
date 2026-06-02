@@ -281,6 +281,131 @@
 	z-index: var(--z-fab);
 }
 
+.command-dialog-backdrop {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-6);
+	background: rgba(4, 12, 24, 0.55);
+	backdrop-filter: blur(2px);
+	z-index: var(--z-menu);
+}
+
+.command-dialog {
+	width: min(36rem, 100%);
+	max-height: min(80%, 42rem);
+	display: grid;
+	grid-template-rows: auto auto auto minmax(0, 1fr);
+	gap: var(--space-4);
+	box-shadow: var(--shadow-menu);
+}
+
+.command-dialog-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-4);
+}
+
+.command-dialog-hint {
+	margin: 0;
+	font-size: 0.85rem;
+	color: var(--color-text-soft);
+}
+
+.command-dialog-filter {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+}
+
+.command-dialog-filter input {
+	flex: 1;
+	padding: 0.5rem 0.75rem;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--color-border-strong);
+	background: var(--color-surface-muted);
+	color: var(--color-text);
+	font-family: inherit;
+	font-size: 0.9rem;
+}
+
+.command-dialog-filter input::placeholder {
+	color: var(--color-text-soft);
+}
+
+.command-dialog-count {
+	font-size: 0.78rem;
+	color: var(--color-text-soft);
+	white-space: nowrap;
+}
+
+.command-dialog-body {
+	overflow: auto;
+	display: grid;
+	gap: var(--space-5);
+	padding-right: 0.2rem;
+}
+
+.command-group {
+	display: grid;
+	gap: var(--space-2);
+}
+
+.command-group-title {
+	margin: 0;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-label);
+}
+
+.command-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: var(--space-1);
+}
+
+.command-row {
+	display: grid;
+	gap: 0.2rem;
+	padding: 0.55rem 0.7rem;
+	border-radius: var(--radius-sm);
+	background: var(--color-surface-muted);
+	border: 1px solid var(--color-border);
+}
+
+.command-row-main {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--space-3);
+}
+
+.command-name {
+	font-size: 0.92rem;
+	color: var(--color-text);
+}
+
+.command-token {
+	font-family: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+	font-size: 0.78rem;
+	color: var(--color-accent);
+	background: var(--color-surface-strong);
+	padding: 0.1rem 0.45rem;
+	border-radius: 0.5rem;
+	white-space: nowrap;
+}
+
+.command-notes {
+	font-size: 0.8rem;
+	color: var(--color-text-soft);
+}
+
 @media (max-width: 1360px) {
 	.top-menu-bar {
 		grid-template-columns: 1fr;

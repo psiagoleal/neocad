@@ -21,6 +21,7 @@
 		onFitView: () => void;
 		onToggleBackground: () => void;
 		onToggleMessages: () => void;
+		onShowCommands: () => void;
 	};
 
 	let {
@@ -39,7 +40,8 @@
 		onClearRecents,
 		onFitView,
 		onToggleBackground,
-		onToggleMessages
+		onToggleMessages,
+		onShowCommands
 	}: AppTopMenuProps = $props();
 
 	let openMenu: MenuKey = $state(null);
@@ -215,6 +217,10 @@
 
 				{#if openMenu === 'help'}
 					<div class="menu-dropdown">
+						<button class="menu-item" type="button" onclick={() => runAction(onShowCommands)}>
+							Comandos CAD
+						</button>
+						<div class="menu-divider"></div>
 						<button class="menu-item" type="button" onclick={() => runAction(onGoAbout)}>
 							Sobre o NeoCAD
 						</button>

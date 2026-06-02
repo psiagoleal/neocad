@@ -29,6 +29,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Windows x64 packaging flow for portable `.zip`, NSIS current-user installer, and optional Fixed WebView2 Runtime variants via CMake.
 - `Makefile`, `CMakeLists.txt`, `CMakePresets.json` and Windows cross-build documentation.
 - Unit tests for CAD file helper services and updated E2E coverage for the Phase 2 interface, including the reference DWG file.
+- Runtime CAD command catalog derived from the upstream command stack, surfaced through `Ajuda > Comandos CAD` as a filterable dialog grouped by category.
+- `listCommandDescriptors()` on the viewer adapter and a `cad-commands` service that keep all `@mlightcad` access behind the NeoCAD boundary.
+- Unit tests for the command catalog builder.
 
 ### Changed
 
@@ -49,3 +52,5 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - MVP direction: visualization plus basic editing from the beginning.
 - Frontend workspace refactor plan and its resulting architecture for modular Svelte components and centralized CSS.
 - Roadmap for layers/properties panels, CAD command catalog in `Ajuda`, basic CAD commands, and optional FEM/CFD investigation.
+- Upstream capabilities spike (`docs/upstream-capabilities-spike.md`) and ADR 0001 fixing the dynamic command catalog and read panels over the `@mlightcad/data-model` API.
+- Agent governance scaffold (`AGENTS.md` as single source of truth, `CLAUDE.md`, skills, `.claude/`, `.cursorrules`, `.env.example`).
