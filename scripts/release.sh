@@ -90,28 +90,29 @@ cmd_publish() {
 		exit 1
 	fi
 
+	if gh release view "${tag}" >/dev/null 2>&1; then
+		gh release upload "${tag}" "${zip}" --clobber
+		echo "asset enviado/atualizado no release ${tag}."
+		return 0
+	fi
+
 	notes_file="$(mktemp)"
-	trap 'rm -f "$notes_file"' RETURN
 	if release_notes "$ver" | grep -q '[^[:space:]]'; then
 		release_notes "$ver" >"$notes_file"
 	else
 		echo "Build portátil Windows x64 com Fixed WebView2 Runtime." >"$notes_file"
 	fi
 
-	if gh release view "${tag}" >/dev/null 2>&1; then
-		gh release upload "${tag}" "${zip}" --clobber
-		echo "asset enviado/atualizado no release ${tag}."
-	else
-		local mode_flag="--draft"
-		if [[ "${NEOCAD_RELEASE_DRAFT:-1}" == "0" ]]; then
-			mode_flag="--latest"
-		fi
-		gh release create "${tag}" "${zip}" \
-			--title "NeoCAD ${tag}" \
-			--notes-file "${notes_file}" \
-			"${mode_flag}"
-		echo "release ${tag} criado (${mode_flag})."
+	local mode_flag="--draft"
+	if [[ "${NEOCAD_RELEASE_DRAFT:-1}" == "0" ]]; then
+		mode_flag="--latest"
 	fi
+	gh release create "${tag}" "${zip}" \
+		--title "NeoCAD ${tag}" \
+		--notes-file "${notes_file}" \
+		"${mode_flag}"
+	rm -f "$notes_file"
+	echo "release ${tag} criado (${mode_flag})."
 }
 
 cmd_all() {
