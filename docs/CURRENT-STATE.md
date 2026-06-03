@@ -9,7 +9,7 @@
 
 - **Data:** 2026-06-03
 - **Branch:** `master`
-- **Commit:** _(este turno; hash registrado em commit de follow-up)_
+- **Commit:** `6502246` (alinhamento à governança de IA + consolidação do CHANGELOG)
 
 ## Metas cumpridas / Em andamento / Próximo passo
 
@@ -47,6 +47,7 @@
 
 | Data       | Commit    | Resumo                                           | MT  |
 | ---------- | --------- | ------------------------------------------------ | --- |
+| 2026-06-03 | `6502246` | Governança alinhada às regras de IA + CHANGELOG  | —   |
 | 2026-06-02 | `2e8853f` | Corrige canvas em branco (altura 0) + regressão  | —   |
 | 2026-06-02 | `254cb2f` | Frente 2: catálogo de comandos em `Ajuda`        | —   |
 | 2026-06-02 | `b986b4f` | Prettier na documentação e governança            | —   |
