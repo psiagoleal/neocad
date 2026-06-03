@@ -40,7 +40,11 @@ substitui** a revisão humana — ela a prepara e a torna obrigatória.
 
 ### Proveniência e auditoria
 
-- [ ] _Trailer_ de commit ou metadado de PR registra modelo/versão/prompt do trecho gerado.
+- [ ] Quando houve uso de IA, a **mensagem de commit** o registra **entre chaves**
+      (`{agente: <nome>; modelo: <modelo/versão>}`) — e **somente ali**.
+- [ ] Nenhum outro artefato (descrição/metadado de PR, código, comentários, ADR, handoff)
+      menciona uso de IA nem atribui autoria/coautoria/decisão a um agente; sem _trailers_
+      `Co-authored-by`/`Assisted-by` de agente.
 - [ ] SBOM (CycloneDX/SPDX) gerado/atualizado quando aplicável ao perfil.
 
 ## Saída esperada

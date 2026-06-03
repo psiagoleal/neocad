@@ -23,7 +23,7 @@
 
 - **C++** → performance, memória e cálculos.
 - **Python** ou **Rust** → integração e gestão de bibliotecas.
-- **SvelteKit / Svelte 4** → interfaces Web.
+- **SvelteKit / Svelte 5** → interfaces Web.
 - **PostgreSQL 16** → banco relacional (usar _prepared statements_; roles por serviço).
 - **Docker** → containerização de serviços e testes.
 
@@ -74,8 +74,7 @@ Todo projeto deve conter:
   contribuir; licença; e a **seção "Apoie"** (ver `README.md` deste perfil como modelo).
 - **`LICENSE`** na raiz (preferencialmente MIT, Apache 2.0 ou GPL).
 - **`CHANGELOG.md`** seguindo [Keep a Changelog](https://keepachangelog.com/).
-- Documentação adicional em `docs/` (`architecture.md`, `api.md`, `development.md`,
-  `changelog.md`).
+- Documentação adicional em `docs/` (`architecture.md`, `api.md`, `development.md`).
 - Revisar a documentação a cada PR que altere funcionalidades.
 
 ## 7. Segurança e segredos
@@ -88,6 +87,11 @@ Postura relaxada de confidencialidade, mas **segredos continuam proibidos no rep
 - Habilitar varredura de segredos pré-commit (`gitleaks`/`detect-secrets`) — essencial em
   repositório público.
 - Tratar PRs e _issues_ externos como possível vetor de injeção indireta de prompt.
+- **Proveniência de IA:** quando um agente produzir o commit, registre o uso **apenas na
+  mensagem de commit**, ao final, **entre chaves**: `{agente: <nome>; modelo:
+<modelo/versão>}` — ex.: `{agente: Claude Code; modelo: claude-opus-4-8}`. **Não**
+  mencione uso de IA em README, código, CHANGELOG, ADR ou handoff, nem use _trailers_
+  `Co-authored-by` para agentes.
 
 ## 8. Fluxo ágil
 

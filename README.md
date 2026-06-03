@@ -179,8 +179,7 @@ pnpm test:e2e
 │   ├── architecture.md
 │   ├── api.md
 │   ├── development.md
-│   ├── windows-cross-build.md
-│   └── changelog.md
+│   └── windows-cross-build.md
 ├── e2e/                # Testes end-to-end do frontend
 ├── src/                # UI SvelteKit
 │   └── lib/

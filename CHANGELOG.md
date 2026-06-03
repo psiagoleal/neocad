@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+This is the canonical history of the project. Recommended sections, in priority
+order: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
+
+Maintenance rules:
+
+- every relevant functional change updates this file;
+- internal-only changes may be grouped when it makes sense;
+- significant documentation changes may also be recorded;
+- on release, items move from `[Unreleased]` to a dated version.
+
 ## [Unreleased]
 
 ### Added
@@ -43,6 +53,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Top-level workspace hierarchy refined toward a more desktop-like shell, with a more compact header and reduced redundant viewer metadata.
 - Home screen simplified to prioritize file opening and recent documents, with less institutional noise in the initial view.
 - Viewer command bar from the upstream core remains available inside the canvas as the primary command entry mechanism.
+- Consolidated the changelog maintenance policy into the canonical root `CHANGELOG.md` and removed the redundant `docs/changelog.md`.
 
 ### Fixed
 

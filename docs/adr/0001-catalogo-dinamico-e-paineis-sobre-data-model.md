@@ -92,5 +92,5 @@ ARRAY, OFFSET, TRIM/EXTEND, BLOCK/INSERT`) como se fossem implementados, enquant
   adaptador `NeoCadViewer` e/ou pelos serviços de `src/lib/services/`, expondo contratos
   NeoCAD em `src/lib/types/cad.ts`.
 
-> Qualquer tentativa de desvio desta regra viola as diretrizes de conformidade
-> arquitetural do projeto e deve ser reportada ao operador humano antes de prosseguir.
+> Qualquer desvio desta regra viola as diretrizes de conformidade arquitetural do projeto
+> e deve ser reportado para revisão antes de prosseguir.

@@ -4,8 +4,8 @@
 
 - **Status:** Proposed <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
 - **Data:** AAAA-MM-DD
-- **Decisores:** <nomes ou papéis>
-- **Tags:** <ex.: solver, dados, segurança>
+- **Decisores:** <nomes ou papéis humanos>
+- **Tags:** <ex.: dependências, dados, segurança>
 
 ## Contexto
 
@@ -16,22 +16,22 @@ regulação aplicável, prazos. Explique **por que uma decisão precisa ser toma
 
 Em voz ativa, declare o que foi decidido. Exemplo:
 
-> Fica acordada a utilização obrigatória da biblioteca de código aberto **PyPSA** para a
-> formulação dos modelos de rede; a resolução usará o solver livre **HiGHS** via Linopy
-> em todas as execuções locais e de CI/CD.
+> Fica acordada a utilização obrigatória da biblioteca de código aberto **X** para a
+> capacidade central do projeto, em todas as execuções locais e de CI/CD, em vez da
+> alternativa proprietária **Y**.
 
 ## Consequências
 
 - **Impacto positivo:** <ex.: zero custo de licenciamento; reprodutibilidade em qualquer hardware>
-- **Impacto negativo:** <ex.: limite de convergência acima de 10.000 barras nodais>
+- **Impacto negativo:** <ex.: desempenho inferior a soluções dedicadas em grande escala>
 - **Trade-offs aceitos:** <...>
 
 ## Diretriz de Conformidade de Código
 
-Liste o que o agente está **expressamente proibido** de fazer, e o que **deve** fazer:
+Liste o que é **expressamente proibido** e o que é **obrigatório** no código do projeto:
 
-- Proibido: <ex.: introduzir scripts baseados em Pyomo, MATLAB ou solvers proprietários (Gurobi/CPLEX)>.
-- Obrigatório: <ex.: toda otimização passa por HiGHS/Linopy>.
+- Proibido: <ex.: introduzir dependências proprietárias/licenciadas sem um ADR que as autorize>.
+- Obrigatório: <ex.: toda capacidade central passa pela biblioteca open-source escolhida>.
 
-> Qualquer tentativa de desvio desta regra viola as diretrizes de conformidade
-> arquitetural do projeto e deve ser reportada ao operador humano antes de prosseguir.
+> Qualquer desvio desta regra viola as diretrizes de conformidade arquitetural do projeto
+> e deve ser reportado para revisão antes de prosseguir.

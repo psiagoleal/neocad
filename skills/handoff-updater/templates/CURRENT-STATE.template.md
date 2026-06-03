@@ -9,7 +9,7 @@
 - **Data:** AAAA-MM-DD
 - **Branch:** `feature/...`
 - **Commit:** `abcdef1`
-- **Autor do turno:** <humano + modelo/versão usados>
+- **Autor do turno:** <nome do responsável humano>
 
 ## Metas cumpridas neste turno
 
@@ -22,11 +22,11 @@
 
 ## Impedimentos técnicos abertos
 
-- <ex.: solver não converge acima de 10k barras — aguardando decisão de ADR>
+- <ex.: serviço externo instável em CI — aguardando decisão de ADR>
 
 ## Próximo passo sugerido
 
-<o que a próxima pessoa/agente deve fazer primeiro>
+<o que a próxima pessoa deve fazer primeiro>
 
 ---
 

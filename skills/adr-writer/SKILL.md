@@ -34,8 +34,9 @@ Veja `templates/adr-template.md`. Estrutura mínima:
 - **Contexto:** forças em jogo, restrições (orçamento, hardware, regulação, prazos).
 - **Decisão:** o que foi decidido, em voz ativa ("Fica acordada a utilização de…").
 - **Consequências:** impactos positivos e negativos, _trade-offs_ aceitos.
-- **Diretriz de Conformidade de Código:** o que o agente está **proibido** de fazer
-  (ex.: "proibido introduzir Pyomo/MATLAB ou solvers proprietários").
+- **Diretriz de Conformidade de Código:** o que é **proibido** e **obrigatório** no código
+  do projeto (ex.: "proibido introduzir dependências proprietárias/licenciadas sem ADR").
+  Redija como restrição do projeto, sem se dirigir a um agente nem mencionar uso de IA.
 
 ## Numeração e localização
 
