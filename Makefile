@@ -1,4 +1,4 @@
-.PHONY: help install check lint format test build cargo-check tauri-dev tauri-debug tauri-debug-nobundle tauri-build e2e-install e2e cmake-configure cmake-smoke cmake-linux-bundle cmake-windows-x64-portable cmake-windows-x64-portable-fixed-runtime cmake-windows-x64-nsis cmake-windows-x64-nsis-fixed-runtime clean
+.PHONY: help install check lint format test build cargo-check tauri-dev tauri-debug tauri-debug-nobundle tauri-build e2e-install e2e cmake-configure cmake-smoke cmake-linux-bundle cmake-windows-x64-portable cmake-windows-x64-portable-fixed-runtime cmake-windows-x64-nsis cmake-windows-x64-nsis-fixed-runtime release-version release-package release-build release-tag release-publish release clean
 
 help:
 	@echo "Comandos disponíveis:"
@@ -21,6 +21,12 @@ help:
 	@echo "  make cmake-windows-x64-portable-fixed-runtime - gera .zip Windows portátil exigindo Fixed Runtime local"
 	@echo "  make cmake-windows-x64-nsis            - gera instalador NSIS current-user com embedBootstrapper"
 	@echo "  make cmake-windows-x64-nsis-fixed-runtime - gera instalador NSIS current-user com Fixed Runtime local"
+	@echo "  make release-version                   - imprime a versão atual (package.json)"
+	@echo "  make release-package                   - copia o .zip portátil para *_v<versão>.zip"
+	@echo "  make release-build                     - build portátil fixed-runtime + artefato versionado"
+	@echo "  make release-tag                       - cria a tag v<versão> e faz push para origin"
+	@echo "  make release-publish                   - cria/atualiza release no GitHub com o asset versionado"
+	@echo "  make release                           - pipeline completo: tag -> build -> publish"
 	@echo "  make clean                             - remove artefatos web e CMake"
 
 install:
@@ -82,6 +88,24 @@ cmake-windows-x64-nsis: cmake-configure
 
 cmake-windows-x64-nsis-fixed-runtime: cmake-configure
 	cmake --build --preset windows-x64-nsis-fixed-runtime
+
+release-version:
+	@./scripts/release.sh version
+
+release-package:
+	@./scripts/release.sh package
+
+release-build:
+	./scripts/release.sh build
+
+release-tag:
+	./scripts/release.sh tag
+
+release-publish:
+	./scripts/release.sh publish
+
+release:
+	./scripts/release.sh all
 
 clean:
 	rm -rf build .svelte-kit

@@ -19,6 +19,8 @@ Maintenance rules:
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-03
+
 ### Added
 
 - Official Phase 1 scaffold with SvelteKit, TypeScript, ESLint, Prettier, Vitest, and Playwright.
