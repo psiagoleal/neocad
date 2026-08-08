@@ -4,124 +4,155 @@
 
 ## Visão geral
 
-NeoCAD será um aplicativo desktop construído com **SvelteKit + Tauri 2** que encapsula o `cad-viewer` em uma experiência de instalação e uso mais simples para Windows e Linux.
+NeoCAD é um aplicativo desktop construído com **SvelteKit + Tauri 2**, com
+**kernel CAD próprio em Rust** compilado para WebAssembly. Os alvos são Windows e
+Linux.
 
-A arquitetura inicial foi desenhada para atender três objetivos ao mesmo tempo:
+O projeto começou como wrapper do ecossistema `@mlightcad`. Essa fase entregou
+uma aplicação que abre e exibe `DWG` e `DXF`, mas o teto funcional era o do
+upstream: sem undo/redo, sem salvamento, sem controle sobre a evolução. O
+[ADR 0003](./adr/0003-kernel-cad-proprio.md) decidiu construir kernel próprio, e
+o [ADR 0002](./adr/0002-relicenciamento-para-gpl-3.md) relicenciou o projeto para
+GPL-3.0, alinhando-o ao ecossistema copyleft de que ele depende.
 
-1. **entregar um wrapper desktop funcional rapidamente**;
-2. **evitar fork prematuro do `cad-viewer`**;
-3. **permitir evolução futura para plugins, UX desktop avançada e investigações BIM**.
+A arquitetura atual persegue três objetivos:
 
-## Decisões arquiteturais iniciais
+1. **o kernel é a fonte de verdade** sobre o que existe no desenho;
+2. **o upstream é substituível**, tratado como parser e renderer de transição;
+3. **o kernel é reutilizável fora do NeoCAD**, o que impõe disciplina de
+   biblioteca à sua API.
 
-### 1. Wrapper separado do upstream
+## Decisões arquiteturais vigentes
 
-A estratégia inicial é **não manter um fork pesado** do `cad-viewer` no MVP.
+Cada uma tem ADR próprio; aqui fica o resumo e o efeito prático.
 
-Em vez disso, NeoCAD deverá:
+### 1. Kernel próprio, upstream rebaixado a parser e renderer
 
-- consumir o upstream por versão fixa;
-- isolar a integração em um módulo adaptador;
-- manter customizações da UI e fluxo desktop do lado do NeoCAD;
-- considerar fork apenas se surgirem bloqueios concretos de API, build ou manutenção.
+[ADR 0003](./adr/0003-kernel-cad-proprio.md). O kernel vive em `kernel/`, um
+workspace Rust **independente** do de `src-tauri/`, e nenhuma de suas crates
+conhece Tauri, Svelte ou DOM. Isso é o que permite reaproveitá-lo em outros
+projetos.
 
-### 1.1 Decisão prática da Fase 2
+Enquanto K5 (renderização própria) e K6 (leitura DWG) não chegam, o upstream
+continua lendo o arquivo e desenhando. As duas representações convivem, e a
+concordância entre elas é verificada em `e2e/kernel-document.e2e.ts`.
 
-Na implementação inicial da Fase 2, a integração Svelte foi feita por meio de **`@mlightcad/cad-simple-viewer`**.
+### 2. Fronteira única de integração
 
-Essa decisão foi adotada porque:
+[ADR 0001](./adr/0001-catalogo-dinamico-e-paineis-sobre-data-model.md). Nem o
+upstream nem o kernel aparecem em componentes Svelte ou rotas. A UI consome
+contratos NeoCAD de `src/lib/types/cad.ts`; a tradução acontece uma vez, no
+adaptador e nos serviços.
 
-- `@mlightcad/cad-viewer` é um componente Vue 3 pronto, com UI própria;
-- NeoCAD precisa controlar sua interface em Svelte;
-- `@mlightcad/cad-simple-viewer` oferece o núcleo framework-agnostic do ecossistema MLightCAD.
+A regra vale para os dois lados: trocar o upstream, ou trocar a forma que o
+kernel expõe, muda um arquivo e não a interface inteira.
 
-Assim, o wrapper continua alinhado ao upstream, mas usando a camada mais adequada para uma UI própria em SvelteKit.
+### 3. Toda mutação do desenho é reversível
 
-### 2. Desktop first
+[ADR 0003](./adr/0003-kernel-cad-proprio.md), verificado pelo compilador. Alterar
+entidades ou propriedades de camada só é possível por `Document::edit()`, que
+registra a inversa de cada operação. As vias diretas são privadas à crate, e
+quatro doctests `compile_fail` garantem que continuem assim.
 
-O foco inicial é empacotar a aplicação para:
+Consequência: não existe alteração sem o que a desfaz.
 
-- **Windows**
-- **Linux**
+### 4. Licenciamento copyleft, com o kernel isolado
 
-A interface continuará web-based internamente, mas distribuída em shell desktop via Tauri.
+[ADR 0002](./adr/0002-relicenciamento-para-gpl-3.md). O projeto é
+`GPL-3.0-or-later` porque depende da LibreDWG e do `dxf-json`, ambos GPL-3.0.
 
-### 3. Edição básica já no MVP
+As dependências copyleft ficam confinadas à crate `neocad-io`; as demais crates
+do kernel permanecem livres delas, preservando a possibilidade de licenciar o
+kernel de forma independente quando for extraído. Ver
+[`THIRD-PARTY-LICENSES.md`](../THIRD-PARTY-LICENSES.md).
 
-O MVP não ficará restrito a visualização. A proposta é habilitar, de forma incremental e segura, as capacidades de edição básica já expostas pelo `cad-viewer`, sem assumir desde o início um escopo de CAD completo estilo AutoCAD.
+### 5. Desktop first, com interface headless prevista
 
-### 4. BIM fora do núcleo do MVP
+O empacotamento tem Windows e Linux como alvos. O
+[ADR 0004](./adr/0004-interface-para-agentes-de-ia.md) prevê, depois de K2, uma
+interface headless (`neocad-cli` e um servidor MCP) que só é possível porque o
+kernel não depende de navegador.
 
-Funcionalidades BIM são desejáveis, mas entram como **trilha posterior e modular**. Isso evita acoplamento prematuro entre o núcleo DXF/DWG e um futuro suporte a IFC, metadados de elementos, validações e navegação semântica.
+### 6. BIM e simulação numérica fora do núcleo
 
-## Camadas propostas
+Continuam como trilhas posteriores e modulares. A simulação, em particular, ficou
+formalmente dependente da topologia B-rep de K8 — sobre entidades 2D o
+pré-processamento seria improviso.
+
+## Camadas
 
 ```mermaid
 graph TD
-  A[UI SvelteKit] --> B[Application Services]
-  B --> C[Viewer Adapter]
-  C --> D[cad-viewer]
-  B --> E[Tauri Commands]
-  E --> F[Rust Backend]
-  F --> G[Sistema de arquivos / SO]
+  UI[UI SvelteKit] --> SVC[Serviços de aplicação]
+  SVC --> ADP[Adaptador do viewer]
+  SVC --> KDOC[cad-document.ts]
+
+  ADP --> UP["@mlightcad (parser + renderer)"]
+  KDOC --> WASM[neocad-wasm]
+
+  subgraph KERNEL["kernel/ — workspace Rust independente"]
+    WASM --> MODEL[neocad-model]
+    WASM --> TX[neocad-transaction]
+    TX --> MODEL
+    MODEL --> GEO[neocad-geometry]
+    TOPO[neocad-topology] --> GEO
+    IO[neocad-io] --> MODEL
+  end
+
+  SVC --> TAURI[Comandos Tauri]
+  TAURI --> RUST[Backend Rust]
+  RUST --> FS[Sistema de arquivos / SO]
 ```
 
 ### UI SvelteKit
 
-Responsável por:
+Layout, menus, painéis, estados visuais, navegação e fluxos de abertura.
+`src/routes/+page.svelte` atua como controlador do workspace, com componentes em
+`src/lib/components/workspace/`.
 
-- layout principal;
-- barras de ferramentas;
-- painéis laterais;
-- estados visuais;
-- navegação e preferências;
-- fluxos de abertura de arquivos e recentes.
+Não conhece o kernel nem o upstream.
 
-Na continuidade da Fase 2, a UI evoluiu para uma composição mais modular, com `src/routes/+page.svelte` atuando como controlador do workspace e componentes específicos em `src/lib/components/workspace/`. O plano e a referência dessa refatoração estão em `docs/frontend-workspace-refactor.md`.
+### Serviços de aplicação
 
-### Application Services
+Orquestração: ciclo de abertura de documentos, recentes, preferências, catálogo
+de comandos, e a ponte com o kernel.
 
-Camada de orquestração da aplicação, responsável por:
+`src/lib/services/cad-document.ts` é a **única** porta de acesso ao kernel. Ele
+carrega o WebAssembly por import dinâmico — o `.wasm` fica fora do bundle
+inicial — e converte entre as formas do kernel e os contratos NeoCAD.
 
-- ciclo de abertura e fechamento de documentos;
-- sincronização entre UI e viewer;
-- preferências de usuário;
-- gestão de arquivos recentes;
-- eventos de teclado, mouse e comandos;
-- futura extensão por plugins;
-- futura orquestração de painéis, catálogo de comandos e integrações opcionais de simulação.
+### Adaptador do viewer
 
-### Viewer Adapter
+`src/lib/viewer/neocad-viewer.ts` encapsula o upstream: inicialização do
+`AcApDocManager`, eventos, abertura de documento, operações de viewport e
+inventário de comandos.
 
-Camada crítica para reduzir acoplamento com o `cad-viewer`.
+Também extrai do documento aberto o retrato que alimenta o kernel. A extração
+reconhece entidades pela **forma** dos objetos, e não pelo campo `type`, cujos
+valores as declarações do upstream não especificam.
 
-Responsabilidades:
+### Kernel CAD
 
-- encapsular inicialização do viewer;
-- traduzir eventos e comandos do NeoCAD para a API do upstream;
-- concentrar ajustes de integração;
-- facilitar testes e troca de versão do upstream.
+Detalhado no [ADR 0003](./adr/0003-kernel-cad-proprio.md).
 
-Na próxima etapa, essa camada também tende a servir como ponto de investigação para:
+| Crate                | Responsabilidade                                         |
+| -------------------- | -------------------------------------------------------- |
+| `neocad-geometry`    | Primitivas, curvas e superfícies                         |
+| `neocad-topology`    | B-rep — vértice, aresta, face, shell, sólido (K8)        |
+| `neocad-model`       | Entidades, tabelas de símbolos, documento e journal      |
+| `neocad-transaction` | Transações nomeadas e pilha de desfazer/refazer          |
+| `neocad-io`          | Leitura e escrita de formatos; **única** com copyleft    |
+| `neocad-wasm`        | Fachada `wasm-bindgen`; **única** que conhece o ambiente |
 
-- inventário real dos comandos CAD aceitos pelo upstream;
-- obtenção de dados de camadas;
-- obtenção de propriedades de documento e seleção.
+O modelo endereça entidades por identificador geracional: um identificador de
+entidade removida resolve para `None` em vez de alcançar a entidade que ocupou o
+slot depois. É o que impede que seleção, histórico e referências entre entidades
+se corrompam em silêncio.
 
-### Tauri Commands / Rust Backend
+### Comandos Tauri e backend Rust
 
-Responsáveis por:
-
-- diálogo nativo de abertura/salvamento;
-- acesso controlado ao sistema de arquivos;
-- persistência local de configurações;
-- integração com recursos nativos da plataforma;
-- empacotamento e distribuição.
-
-Na Fase 2 inicial, essa camada já utiliza plugins do Tauri para:
-
-- abrir arquivos com `dialog`;
-- ler bytes do arquivo selecionado com `fs`.
+Diálogo nativo, acesso controlado ao sistema de arquivos, persistência local de
+configuração e empacotamento. Hoje usa os plugins `dialog` e `fs`.
 
 ## Fluxo de abertura de arquivo
 
@@ -130,108 +161,115 @@ sequenceDiagram
   participant U as Usuário
   participant UI as UI SvelteKit
   participant T as Tauri
-  participant FS as Sistema de Arquivos
-  participant A as Viewer Adapter
-  participant C as cad-viewer
+  participant A as Adaptador
+  participant UP as "@mlightcad"
+  participant K as Kernel (WASM)
 
-  U->>UI: Solicita abertura de arquivo
-  UI->>T: Invoca comando nativo
-  T->>FS: Lê arquivo selecionado
-  FS-->>T: Retorna conteúdo/caminho
-  T-->>UI: Entrega payload seguro
-  UI->>A: Solicita carregamento do documento
-  A->>C: Inicializa/parsa/renderiza
-  C-->>UI: Estado visual atualizado
+  U->>UI: Solicita abertura
+  UI->>T: Diálogo nativo e leitura do arquivo
+  T-->>UI: Bytes do desenho
+  UI->>A: openDocument(payload)
+  A->>UP: Parseia e renderiza
+  UP-->>UI: Documento ativo, canvas atualizado
+  UI->>A: extractDocumentSnapshot()
+  A-->>UI: Camadas, entidades e não suportadas
+  UI->>K: load(snapshot)
+  K-->>UI: Contagens; histórico zerado
 ```
 
-## Estrutura lógica proposta
+A carga no kernel acontece **depois** de o upstream ativar o documento, e uma
+falha ali não impede a exibição. Enquanto K6 não chega, quem lê o arquivo é o
+upstream.
+
+## Estrutura lógica
 
 ```text
+kernel/                  # Workspace Rust independente (ADR 0003)
+├── neocad-geometry/
+├── neocad-topology/
+├── neocad-model/
+├── neocad-transaction/
+├── neocad-io/
+└── neocad-wasm/         # Fachada WebAssembly
+
 src/
 ├── lib/
-│   ├── components/      # Componentes reutilizáveis de UI
+│   ├── components/      # Componentes de UI
 │   │   └── workspace/   # Telas e painéis do workspace desktop
-│   ├── features/        # Funcionalidades por domínio (viewer, files, settings)
-│   ├── services/        # Orquestração de aplicação
-│   ├── stores/          # Estado reativo
-│   ├── styles/          # CSS global, tokens e estilos compartilhados
-│   ├── viewer/          # Adaptador para cad-viewer
-│   └── types/           # Tipos compartilhados
-├── routes/              # Rotas SvelteKit
-│   ├── +layout.svelte   # Layout global e carga de estilos centralizados
-│   ├── +layout.ts
-│   └── +page.svelte     # Controlador do workspace desktop
+│   ├── config/          # Metadados e catálogo de apresentação
+│   ├── kernel/pkg/      # Pacote WASM gerado no build (não versionado)
+│   ├── services/        # Orquestração; fronteira com o kernel
+│   ├── styles/          # Tokens, layout e estilos compartilhados
+│   ├── types/           # Contratos NeoCAD
+│   └── viewer/          # Adaptador do upstream
+├── routes/
 └── app.html
 
-src-tauri/
-├── src/
-│   ├── commands/        # Comandos Tauri organizados por domínio
-│   ├── state/           # Estado nativo persistente
-│   └── main.rs
-└── tauri.conf.json
+src-tauri/               # Shell desktop
+scripts/                 # Release, workers, kernel, política de licenças
 ```
 
 ## Regras de modularidade
 
-- a UI não deve depender diretamente de detalhes internos do `cad-viewer`;
-- integrações nativas devem passar por comandos Tauri bem definidos;
-- lógica de produto deve ficar em serviços reutilizáveis, não espalhada em componentes;
-- `src/routes/+page.svelte` deve concentrar orquestração e ciclo de vida, não markup excessivo nem CSS compartilhado;
-- estilos visuais repetidos devem ser centralizados em `src/lib/styles`;
-- a shell desktop deve priorizar menu superior, canvas e comandos, reduzindo redundâncias informativas no topo da interface;
-- menus suspensos e overlays da shell devem permanecer visualmente acima do workspace e do canvas quando estiverem ativos;
-- suporte BIM futuro deve entrar como módulo separado, e não contaminar o núcleo do viewer DXF/DWG.
+- componentes e rotas não importam `$lib/kernel` nem `@mlightcad/*`;
+- nenhuma crate do kernel conhece Tauri, Svelte ou DOM, exceto `neocad-wasm`;
+- nenhuma crate do kernel além de `neocad-io` recebe dependência copyleft;
+- toda alteração do desenho passa pelo command stack transacional;
+- artefatos derivados — pacote WASM, workers do upstream — não são versionados,
+  e sim gerados no build;
+- lógica de produto fica em serviços, não espalhada em componentes;
+- estilos repetidos ficam em `src/lib/styles`;
+- BIM e simulação entram como módulos separados.
 
-## Trilha futura de simulação numérica
+## Riscos
 
-A evolução para FEM/CFD deve ser tratada como módulo opcional, separado do núcleo CAD.
+### Escala do kernel próprio
 
-Diretriz arquitetural recomendada:
+É o risco dominante. As fases K1–K9 são trabalho de anos concentrado em um
+mantenedor, e as fases 3D (K7–K9) são a parte mais difícil — a robustez de
+operações booleanas sobre NURBS com tolerâncias reais é problema notoriamente
+hostil. Mitigação: faseamento em que cada etapa entrega valor observável antes
+de a seguinte começar.
 
-- UI continua no NeoCAD;
-- execução de solver deve passar por serviços e comandos Tauri/Rust;
-- engines externas devem ser tratadas como backends desacoplados;
-- o fluxo deve ser incremental: pré-processamento, execução e pós-processamento;
-- OpenFOAM e FreeFEM++ fazem sentido como alvos de pesquisa, mas não devem contaminar a arquitetura central do viewer.
+### Duas representações vivas
 
-O planejamento macro dessa trilha está em `docs/cad-panels-commands-simulation-roadmap.md`.
+Entre K1 e K5/K6, o modelo do kernel e o do upstream coexistem. Divergência entre
+eles é a classe de bug mais provável do período, e apareceria tarde — painel
+mostrando o que o canvas não mostra. Mitigação: verificação de contagem em E2E.
 
-## Riscos identificados
+### Compatibilidade com arquivos reais
 
-### Dependência funcional do upstream
-
-Como o MVP depende da maturidade do `cad-viewer`, algumas funcionalidades de edição básica podem exigir adaptação adicional ou contribuição upstream.
+DXF e DWG carregam décadas de variações. O kernel modela hoje um conjunto mínimo
+de entidades; o restante é contado como não suportado. Mitigação: a contagem é
+visível ao usuário e vira a medida do que falta cobrir.
 
 ### Empacotamento multiplataforma
 
-Windows e Linux exigem dependências e pipelines diferentes. Isso impacta CI, instalação local e troubleshooting.
+Windows e Linux exigem pipelines diferentes. Mitigação: `make dist-test` gera os
+dois em uma execução, e a CI cobre ambos.
 
-### Escopo BIM
+### Escopo de BIM e simulação
 
-Adicionar BIM cedo demais pode aumentar radicalmente o escopo técnico e de produto. A mitigação é manter BIM explicitamente fora do núcleo do MVP.
+Antecipá-los multiplicaria custo de UX, integração nativa e suporte. Mitigação:
+mantê-los fora do núcleo, com a simulação formalmente posterior a K8.
 
-### Escopo de simulação numérica
+## Estado por fase
 
-Adicionar FEM/CFD cedo demais pode multiplicar o custo de UX, integração nativa, empacotamento e suporte multiplataforma. A mitigação é manter a trilha de simulação como módulo opcional, começando por pesquisa técnica e um piloto com engine única.
+| Fase  | Entrega                                             | Estado     |
+| ----- | --------------------------------------------------- | ---------- |
+| 1     | Scaffold SvelteKit + Tauri 2                        | concluída  |
+| 2     | Integração do viewer, workspace modular, abertura   | concluída  |
+| K1    | Modelo de documento e transações com undo/redo      | concluída  |
+| K2    | Leitura e escrita DXF nativas                       | próxima    |
+| K3–K6 | Geometria 2D, restrições, renderização, leitura DWG | planejadas |
+| K7–K9 | Geometria 3D, topologia B-rep, modelagem sólida     | planejadas |
 
-## Critérios de sucesso da Fase 1 e Fase 2
-
-### Fase 1
-
-- projeto SvelteKit criado pelo CLI oficial;
-- Tauri 2 inicializado com sucesso;
-- build e execução local em pelo menos uma plataforma alvo.
-
-### Fase 2
-
-- núcleo do ecossistema `cad-viewer` incorporado ao wrapper via `@mlightcad/cad-simple-viewer`;
-- abertura de arquivo local funcionando;
-- renderização básica validada;
-- workspace frontend modularizado e estilos centralizados;
-- base pronta para comandos iniciais de edição.
+O planejamento das frentes de interface e da trilha de simulação está em
+[`cad-panels-commands-simulation-roadmap.md`](./cad-panels-commands-simulation-roadmap.md).
 
 ## Referências
 
+- [ADRs do projeto](./adr/README.md)
 - [`cad-viewer`](https://github.com/mlightcad/cad-viewer)
 - [SvelteKit Documentation](https://kit.svelte.dev/docs)
 - [Tauri 2 Documentation](https://v2.tauri.app/)

@@ -4,192 +4,162 @@
 
 ## Objetivo
 
-Este documento registra os contratos internos atuais do NeoCAD na Fase 2. Eles continuam sendo **internos** e sujeitos a evolução.
+Registra os contratos internos do NeoCAD. Todos são **internos** e sujeitos a
+evolução — não há API pública remota, e não haverá antes do MVP.
 
-## Escopo
+A exceção prevista é o kernel: o [ADR 0003](./adr/0003-kernel-cad-proprio.md) o
+trata como biblioteca reutilizável, e a sua API pública passa a exigir
+disciplina de versionamento quando for extraída para repositório próprio. Até lá,
+também é interna.
 
-NeoCAD, no MVP, não terá uma API pública remota. O foco atual é definir contratos internos entre:
+## Fronteira de integração
 
-- UI SvelteKit;
-- serviços de aplicação;
-- adaptador do viewer;
-- plugins Tauri;
-- núcleo CAD fornecido por `@mlightcad/cad-simple-viewer`.
+Vale o [ADR 0001](./adr/0001-catalogo-dinamico-e-paineis-sobre-data-model.md):
+componentes Svelte e rotas consomem **apenas** os contratos de
+`src/lib/types/cad.ts`. Nem `@mlightcad/*` nem `$lib/kernel` aparecem fora do
+adaptador e dos serviços.
 
-## Contratos implementados ou iniciados
+## Contratos do documento
 
-### Serviço de arquivos CAD
+Tipos em `src/lib/types/cad.ts`.
 
-Arquivo principal:
+| Contrato                    | Papel                                              |
+| --------------------------- | -------------------------------------------------- |
+| `CadLayerId`, `CadEntityId` | Identificadores opacos, com `brand` distinto       |
+| `CadPoint`, `CadBounds`     | Ponto e caixa envolvente                           |
+| `CadColor`                  | Índice ACI ou cor verdadeira                       |
+| `CadLayer`                  | Camada com nome, cor e estados                     |
+| `CadGeometry`               | Linha, círculo, arco, polilinha ou texto           |
+| `CadEntity`                 | Entidade com camada, geometria e extensão          |
+| `CadHistoryState`           | Estado da pilha, para o menu `Editar`              |
+| `CadDocumentSnapshot`       | Retrato extraído do upstream, pronto para o kernel |
+| `CadLoadReport`             | Contagens do que o kernel recebeu                  |
 
-- `src/lib/services/cad-file.ts`
+Os identificadores são `string` com `brand` distinto de propósito: o kernel
+separa camada de entidade em tipos, e perder essa distinção ao cruzar a ponte
+faria o compilador aceitar a troca entre elas.
 
-Responsabilidades atuais:
+## Serviços
 
-- abrir seletor de arquivo no Tauri com diálogo nativo;
-- ler bytes do desenho via plugin de filesystem do Tauri;
-- oferecer fallback por `input[type=file]` no navegador;
-- validar extensões suportadas no MVP (`.dwg` e `.dxf`).
+### Fronteira com o kernel
 
-Funções atuais:
+`src/lib/services/cad-document.ts` — **única** porta de acesso ao kernel.
 
-- `selectCadDocument()`
-- `readCadDocumentFromPath(path)`
-- `createCadDocumentPayloadFromFile(file)`
-- `extractCadFileName(path)`
-- `isSupportedCadFile(fileName)`
-- `getCadRuntimeLabel()`
+Classe `CadDocument`:
 
-### Serviço de recentes
+- `create()` — carrega o WebAssembly e cria um documento vazio;
+- `load(snapshot)` — substitui o documento e zera o histórico;
+- `listLayers()`, `listEntities()`, `countEntities()`, `getBounds()`;
+- `getHistory()`;
+- `createLayer(name)`, `drawLine(layer, start, end)`, `eraseEntity(id)`,
+  `setLayerOff(layer, off)`;
+- `undo()`, `redo()`.
 
-Arquivo principal:
+Conversores puros, exportados para teste sem navegador:
 
-- `src/lib/services/recent-documents.ts`
+- `toCadLayer`, `toCadEntity`, `toCadGeometry`, `toCadBounds`, `toCadColor`,
+  `toCadHistoryState` — do kernel para os contratos NeoCAD;
+- `buildDocumentSnapshot`, `toCadGeometryFromUpstream`, `toCadLayerSnapshot`,
+  `toCadColorFromUpstream` — do upstream para o retrato do documento.
 
-Responsabilidades atuais:
-
-- registrar documentos recentes no frontend;
-- persistir recentes em `AppConfig/state/recent-documents.json` no runtime Tauri;
-- manter fallback em `localStorage` no navegador e para migração leve do estado web;
-- limpar a lista atual de recentes.
-
-Funções atuais:
-
-- `listRecentDocuments()`
-- `registerRecentDocument(document)`
-- `clearRecentDocuments()`
+Uma forma inesperada vinda do kernel lança `CadKernelContractError` com o caminho
+do campo. É defeito do kernel, não entrada não confiável, e falhar alto evita que
+`undefined` se espalhe pela interface.
 
 ### Adaptador do viewer
 
-Arquivo principal:
+`src/lib/viewer/neocad-viewer.ts`.
 
-- `src/lib/viewer/neocad-viewer.ts`
+- `mount(container)`, `destroy()`;
+- `openDocument(payload, mode)`;
+- `zoomToFit()`, `toggleBackground()`, `executeCommand(command)`;
+- `listCommandDescriptors()` — inventário de runtime do command stack upstream;
+- `extractDocumentSnapshot()` — retrato do documento aberto, para o kernel.
 
-Responsabilidades atuais:
+Aponta para os workers de DXF, DWG e MTEXT em `static/workers/`, derivados de
+`node_modules` no build.
 
-- carregar dinamicamente `@mlightcad/cad-simple-viewer`;
-- criar e destruir a instância do `AcApDocManager`;
-- conectar eventos do upstream à UI Svelte;
-- abrir documentos a partir de `ArrayBuffer`;
-- expor operações básicas de viewport e comandos.
+### Arquivos CAD
 
-Métodos atuais:
+`src/lib/services/cad-file.ts` — `selectCadDocument()`,
+`readCadDocumentFromPath(path)`, `createCadDocumentPayloadFromFile(file)`,
+`extractCadFileName(path)`, `isSupportedCadFile(fileName)`,
+`getCadRuntimeLabel()`.
 
-- `mount(container)`
-- `openDocument(payload, mode)`
-- `zoomToFit()`
-- `toggleBackground()`
-- `executeCommand(command)`
-- `destroy()`
+### Recentes
 
-Observação importante:
+`src/lib/services/recent-documents.ts` — `listRecentDocuments()`,
+`registerRecentDocument(document)`, `clearRecentDocuments()`. Persiste em
+`AppConfig/state/recent-documents.json` no Tauri, com fallback em `localStorage`.
 
-- o adaptador agora aponta explicitamente para workers estáticos em `static/workers/` para DXF, DWG e MTEXT.
+### Catálogo de comandos
 
-### Estado do documento no frontend
+`src/lib/services/cad-commands.ts` e `src/lib/config/cad-command-catalog.ts`.
+O catálogo é derivado em runtime do command stack do upstream (ADR 0001), com
+metadados de apresentação em PT-BR sobrepostos.
 
-Tipos principais em:
+## API do kernel
 
-- `src/lib/types/cad.ts`
+Superfície exposta por `neocad-wasm`, consumida somente por `cad-document.ts`.
 
-Contratos atuais:
+Classe `CadSession` — documento e histórico juntos, para não haver como desfazer
+contra o documento errado:
 
-- `CadDocumentPayload`
-- `CadViewerDocumentState`
-- `CadViewerProgressState`
-- `CadViewerMessage`
-- `CadOpenMode`
+- `layers()`, `entities()`, `entityCount()`, `boundingBox()`, `history()`;
+- `load(document)`;
+- `createLayer(name)`, `addLine(...)`, `removeEntity(id)`, `setLayerOff(...)`;
+- `undo()`, `redo()`.
 
-## Eventos atualmente consumidos do upstream
+Identificadores atravessam a ponte como **texto decimal**: um `u64` viraria
+`BigInt` do lado JavaScript, o que complica comparação e serialização sem ganho —
+o identificador é opaco de qualquer modo.
 
-A integração atual usa o `eventBus` do `cad-simple-viewer` para reagir a:
+### Invariantes do kernel
 
-- `open-file`
-- `open-file-progress`
-- `message`
-- `failed-to-open-file`
-- `font-not-found`
+- alterar entidades ou propriedades de camada só é possível por
+  `Document::edit()`, que registra a inversa de cada operação;
+- desfazer restaura o **mesmo** identificador e a **mesma** posição na ordem de
+  desenho, e não algo equivalente;
+- entidade só entra no documento se a camada existir;
+- remover camada com entidades é recusado; remover bloco leva as entidades dele.
 
-## Plugins Tauri atualmente usados
+## Eventos consumidos do upstream
 
-### Dialog
+`eventBus` do `cad-simple-viewer`: `open-file`, `open-file-progress`, `message`,
+`failed-to-open-file`, `font-not-found`.
 
-Uso atual:
+## Plugins Tauri
 
-- seletor nativo para arquivos CAD.
+| Plugin   | Uso                               | Permissão           |
+| -------- | --------------------------------- | ------------------- |
+| `dialog` | Seletor nativo de arquivos CAD    | `dialog:allow-open` |
+| `fs`     | Leitura do arquivo e estado local | `fs:read-files`     |
 
-Permissão relevante:
+## Contratos previstos
 
-- `dialog:allow-open`
+### Painéis de camadas e propriedades (Frente 1)
 
-### File system
+Consumirão `CadLayer` e `CadEntity` do kernel. Áreas prováveis:
+`src/lib/services/cad-layers.ts`, `cad-selection.ts` e componentes em
+`src/lib/components/workspace/`.
 
-Uso atual:
+O modo escrita depende de as tabelas de símbolos ganharem operações reversíveis —
+criar, renomear e remover camada ainda não passam pelo command stack.
 
-- leitura do arquivo selecionado no fluxo desktop.
+### Persistência de arquivo (K2)
 
-Permissão relevante:
+`neocad-io` ganhará leitura e escrita DXF nativas, e com elas `Salvar`,
+`Salvar como` e `Exportar`.
 
-- `fs:read-files`
+### Interface headless (ADR 0004)
 
-## Contratos planejados para a próxima etapa
-
-### Catálogo de comandos CAD
-
-Planeja-se introduzir um catálogo interno de comandos para alimentar:
-
-- menu `Ajuda` com lista dos comandos implementados;
-- futura toolbar de desenho/edição;
-- possíveis atalhos de teclado.
-
-Contrato sugerido:
-
-- `CadCommandCatalogItem`
-- `listImplementedCadCommands()`
-- `listPlannedCadCommands()`
-- `executeCadCommand(commandId)`
-
-### Painéis de camadas e propriedades
-
-Planeja-se investigar contratos internos para:
-
-- leitura da tabela de camadas do documento ativo;
-- estado de seleção de entidades;
-- propriedades de documento e entidades.
-
-Prováveis áreas de implementação:
-
-- `src/lib/services/cad-layers.ts`
-- `src/lib/services/cad-selection.ts`
-- componentes em `src/lib/components/workspace/`
-
-### Trilha de simulação numérica
-
-Para FEM/CFD, a recomendação atual é planejar contratos internos separados do núcleo CAD, envolvendo:
-
-- preparação de casos;
-- execução externa de engine por Tauri/Rust;
-- leitura de resultados e pós-processamento.
-
-Essa trilha ainda deve ser tratada como pesquisa arquitetural e não como API estável.
-
-## Comandos futuros ainda previstos
-
-Ainda faz sentido manter no radar:
-
-- preferências do usuário;
-- exportações;
-- integração de salvamento;
-- catálogo de comandos CAD;
-- painéis de propriedades e camadas;
-- integração opcional de simulação numérica.
-
-Mas esses contratos ainda não foram implementados como API estável do app.
+`neocad-cli` como núcleo funcional e `neocad-mcp` como fachada MCP, ambos sobre
+o kernel, depois de K2.
 
 ## Estabilidade
 
-Até a entrega do MVP:
-
-- os contratos aqui descritos devem ser tratados como **internos**;
-- não devem ser considerados API pública estável;
-- mudanças estruturais devem ser refletidas neste documento e em `docs/architecture.md`.
+- os contratos aqui descritos são **internos** e não constituem API pública;
+- mudanças estruturais se refletem neste documento e em
+  [`architecture.md`](./architecture.md);
+- quebra de contrato do CLI ou do esquema MCP, quando existirem, é registrada no
+  `CHANGELOG.md` (ADR 0004).

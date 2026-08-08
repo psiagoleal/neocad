@@ -16,8 +16,9 @@
 
 ## 1. Ambiente de desenvolvimento
 
-- SO: **WSL2 com Ubuntu 24** · Shell: **zsh**
+- SO: **Ubuntu 26.04 LTS nativo** · Shell: **zsh**
 - Python: **uv** · Versão: **git** · IDE: **VSCode** · Containerização: **Docker**
+- `sudo` exige senha: instalações de pacote precisam ser executadas pelo mantenedor.
 
 ## 2. Linguagens e frameworks preferenciais
 
