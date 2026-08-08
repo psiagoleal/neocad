@@ -1,0 +1,24 @@
+{
+	"$comment": "Gerado por scripts/sync-workers.mjs. Os arquivos .js correspondentes não são versionados; são derivados de node_modules no build. Ver THIRD-PARTY-LICENSES.md.",
+	"generatedFrom": "node_modules (@mlightcad)",
+	"workers": [
+		{
+			"file": "dxf-parser-worker.js",
+			"sourcePackage": "@mlightcad/data-model",
+			"sourceVersion": "1.7.33",
+			"sha256": "7bdaa468ac72eb23264e8d18e7d69806c0a70ccddf22a64c0ab0be32640af3cc"
+		},
+		{
+			"file": "libredwg-parser-worker.js",
+			"sourcePackage": "@mlightcad/cad-simple-viewer",
+			"sourceVersion": "1.5.0",
+			"sha256": "f759d7e1b23e9d2d28848f453217960ca762f10e10f3ee318377f6b66871d6cb"
+		},
+		{
+			"file": "mtext-renderer-worker.js",
+			"sourcePackage": "@mlightcad/cad-simple-viewer",
+			"sourceVersion": "1.5.0",
+			"sha256": "fcf4b3370db94ca4851ef909a66cfd8bf1553f365f3e4de039b6ce3261b4453a"
+		}
+	]
+}

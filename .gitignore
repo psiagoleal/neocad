@@ -29,6 +29,11 @@ vite.config.ts.timestamp-*
 # Local WebView2 runtime cache
 .webview2/
 
+# Workers do upstream @mlightcad: derivados de node_modules por
+# scripts/sync-workers.mjs no build. Apenas o manifesto é versionado.
+# Ver THIRD-PARTY-LICENSES.md.
+static/workers/*.js
+
 # Playwright
 test-results
 
@@ -36,8 +41,17 @@ test-results
 src-tauri/target
 src-tauri/gen
 
+# Kernel CAD (workspace Rust próprio)
+kernel/target
+# Pacote WebAssembly gerado por wasm-pack (derivado de kernel/)
+kernel/neocad-wasm/pkg
+src/lib/kernel/pkg
+
 # Local CAD fixtures
 ANT.DS.L2.01.0001.01.02 - Básico.dwg
 
 # Diretório de threads
 threads/
+
+# Builds locais de teste (não versionados)
+dist-test/

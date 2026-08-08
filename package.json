@@ -2,10 +2,12 @@
 	"name": "neocad",
 	"private": true,
 	"version": "0.1.1",
+	"license": "GPL-3.0-or-later",
 	"type": "module",
+	"packageManager": "pnpm@11.12.0",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
+		"dev": "pnpm workers:sync && pnpm kernel:build:dev && vite dev",
+		"build": "pnpm workers:sync && pnpm kernel:build && vite build",
 		"preview": "vite preview",
 		"tauri": "tauri",
 		"prepare": "svelte-kit sync || echo ''",
@@ -14,8 +16,15 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"test:unit": "vitest",
-		"test": "pnpm test:unit -- --run",
-		"test:e2e": "playwright test"
+		"test": "vitest run",
+		"test:e2e": "playwright test",
+		"workers:sync": "node scripts/sync-workers.mjs",
+		"workers:check": "node scripts/sync-workers.mjs --check",
+		"licenses:check": "node scripts/check-licenses.mjs",
+		"licenses:list": "node scripts/check-licenses.mjs --list",
+		"kernel:build": "node scripts/build-kernel.mjs",
+		"kernel:build:dev": "node scripts/build-kernel.mjs --dev",
+		"kernel:check": "node scripts/build-kernel.mjs --check"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.4",
