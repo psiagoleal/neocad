@@ -15,6 +15,7 @@
 		selectCadDocument
 	} from '$lib/services/cad-file';
 	import { listCadCommandCatalog } from '$lib/services/cad-commands';
+	import { CadDocument } from '$lib/services/cad-document';
 	import {
 		clearRecentDocuments as clearStoredRecentDocuments,
 		listRecentDocuments,
@@ -23,6 +24,7 @@
 	import type {
 		CadCommandCatalogItem,
 		CadDocumentPayload,
+		CadHistoryState,
 		CadRecentDocument,
 		CadViewerDocumentState,
 		CadViewerMessage,
@@ -50,6 +52,98 @@
 	let notificationSequence = 0;
 	let isCommandsHelpOpen = $state(false);
 	let commandCatalog: CadCommandCatalogItem[] = $state([]);
+
+	/** Documento do kernel próprio. Convive com o upstream durante a transição. */
+	let kernelDocument: CadDocument | null = $state(null);
+	const emptyHistory: CadHistoryState = {
+		canUndo: false,
+		canRedo: false,
+		undoLabel: null,
+		redoLabel: null,
+		undoDepth: 0,
+		redoDepth: 0
+	};
+	let history: CadHistoryState = $state(emptyHistory);
+
+	/**
+	 * Relê o estado da pilha após qualquer ação que possa tê-lo mudado.
+	 *
+	 * O kernel é a fonte de verdade; guardar uma cópia derivada aqui e mantê-la
+	 * sincronizada à mão seria a forma mais fácil de o menu passar a mentir.
+	 */
+	function refreshHistory(): void {
+		history = kernelDocument?.getHistory() ?? emptyHistory;
+	}
+
+	/**
+	 * Carrega no kernel o desenho que o upstream acabou de abrir.
+	 *
+	 * O upstream continua sendo quem lê o arquivo e quem desenha (K5 e K6 ainda
+	 * não chegaram); o kernel passa a ser a fonte de verdade sobre o que existe
+	 * no desenho.
+	 */
+	async function loadIntoKernel(): Promise<void> {
+		if (viewerController == null) {
+			return;
+		}
+
+		const snapshot = viewerController.extractDocumentSnapshot();
+
+		if (snapshot == null) {
+			return;
+		}
+
+		try {
+			kernelDocument ??= await CadDocument.create();
+			const report = kernelDocument.load(snapshot);
+			refreshHistory();
+
+			pushNotification(
+				'info',
+				`Kernel: ${report.entityCount} entidade(s) em ${report.layerCount} camada(s).` +
+					(report.unsupportedCount > 0
+						? ` ${report.unsupportedCount} entidade(s) ainda não suportada(s) pelo kernel.`
+						: '')
+			);
+		} catch (error) {
+			pushNotification(
+				'warning',
+				error instanceof Error
+					? `Kernel não pôde carregar o desenho: ${error.message}`
+					: 'Kernel não pôde carregar o desenho.'
+			);
+		}
+	}
+
+	async function undoAction(): Promise<void> {
+		try {
+			if (kernelDocument?.undo() !== true) {
+				return;
+			}
+
+			refreshHistory();
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error ? error.message : 'Falha ao desfazer a última ação.'
+			);
+		}
+	}
+
+	async function redoAction(): Promise<void> {
+		try {
+			if (kernelDocument?.redo() !== true) {
+				return;
+			}
+
+			refreshHistory();
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error ? error.message : 'Falha ao refazer a última ação.'
+			);
+		}
+	}
 
 	function pushNotification(kind: CadViewerMessage['kind'], text: string): void {
 		notifications = [
@@ -354,6 +448,7 @@
 					clearProgress();
 					void rememberDocument(state);
 					pushNotification('success', `Desenho carregado com sucesso: ${state.docTitle}`);
+					void loadIntoKernel();
 				}
 			});
 
@@ -381,6 +476,8 @@
 			currentDocument = null;
 			progress = null;
 			viewerController = null;
+			kernelDocument = null;
+			history = emptyHistory;
 
 			if (controller != null) {
 				void controller.destroy();
@@ -406,6 +503,9 @@
 		{unreadMessages}
 		{isOpening}
 		{recentDocuments}
+		{history}
+		onUndo={undoAction}
+		onRedo={redoAction}
 		onGoHome={showHomeWorkspace}
 		onGoViewer={() => showViewerWorkspace()}
 		onGoAbout={showAboutWorkspace}

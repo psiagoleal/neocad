@@ -46,6 +46,133 @@ export interface CadRecentDocument {
 	openedAt: string;
 }
 
+// -- Contratos do documento do kernel ----------------------------------------
+//
+// Estes tipos são a forma NeoCAD do documento. A UI depende deles, nunca das
+// estruturas do kernel WebAssembly nem do upstream (ADR 0001 e ADR 0003): a
+// tradução acontece uma vez, em `src/lib/services/cad-document.ts`.
+
+/**
+ * Identificador opaco de camada.
+ *
+ * O `brand` existe para o compilador recusar a troca entre identificador de
+ * camada e de entidade. O kernel distingue os dois em tipos; perder essa
+ * distinção ao cruzar a ponte seria um retrocesso — do lado JavaScript ambos são
+ * apenas texto.
+ */
+export type CadLayerId = string & { readonly brand: unique symbol };
+
+/** Identificador opaco de entidade. Ver [`CadLayerId`] sobre o `brand`. */
+export type CadEntityId = string & { readonly brand: unique symbol };
+
+/** Ponto no plano, em unidades do desenho. */
+export interface CadPoint {
+	x: number;
+	y: number;
+}
+
+/** Caixa envolvente alinhada aos eixos. */
+export interface CadBounds {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+}
+
+/** Cor: índice na paleta ACI ou cor verdadeira. */
+export type CadColor =
+	| { kind: 'index'; index: number }
+	| { kind: 'rgb'; red: number; green: number; blue: number };
+
+/** Camada do documento. */
+export interface CadLayer {
+	id: CadLayerId;
+	name: string;
+	color: CadColor;
+	/** Falso quando a camada está desligada **ou** congelada. */
+	isVisible: boolean;
+	isOff: boolean;
+	isFrozen: boolean;
+	isLocked: boolean;
+}
+
+/** Forma geométrica de uma entidade. */
+export type CadGeometry =
+	| { kind: 'line'; start: CadPoint; end: CadPoint }
+	| { kind: 'circle'; center: CadPoint; radius: number }
+	| { kind: 'arc'; center: CadPoint; radius: number; startAngle: number; endAngle: number }
+	| { kind: 'polyline'; vertices: CadPoint[]; closed: boolean }
+	| { kind: 'text'; position: CadPoint; content: string; height: number; rotation: number };
+
+/** Entidade de desenho. */
+export interface CadEntity {
+	id: CadEntityId;
+	layerId: CadLayerId;
+	geometry: CadGeometry;
+	bounds: CadBounds;
+}
+
+/**
+ * Estado da pilha de comandos, na forma que o menu `Editar` consome.
+ *
+ * Os rótulos vêm nomeados como ação — `Desenhar linha`, `Apagar` — para a UI
+ * compor `Desfazer <rótulo>` sem precisar conhecer os comandos.
+ */
+export interface CadHistoryState {
+	canUndo: boolean;
+	canRedo: boolean;
+	undoLabel: string | null;
+	redoLabel: string | null;
+	undoDepth: number;
+	redoDepth: number;
+}
+
+/** Camada de um documento a carregar no kernel. Referenciada por nome. */
+export interface CadLayerSnapshot {
+	name: string;
+	color: CadColor;
+	isOff: boolean;
+	isFrozen: boolean;
+	isLocked: boolean;
+}
+
+/** Entidade de um documento a carregar no kernel. */
+export interface CadEntitySnapshot {
+	/** Nome da camada — o parser não conhece os identificadores do kernel. */
+	layerName: string;
+	geometry: CadGeometry;
+}
+
+/**
+ * Entidade que o kernel ainda não modela.
+ *
+ * Registrada em vez de descartada em silêncio: é a medida de quanto de um
+ * arquivo real o kernel ainda não cobre, e a lista que orienta o que implementar
+ * em seguida.
+ */
+export interface CadUnsupportedEntity {
+	/** Tipo relatado pelo upstream, quando disponível. */
+	type: string;
+	layerName: string;
+}
+
+/** Documento extraído do upstream, pronto para carregar no kernel. */
+export interface CadDocumentSnapshot {
+	layers: CadLayerSnapshot[];
+	entities: CadEntitySnapshot[];
+	unsupported: CadUnsupportedEntity[];
+}
+
+/** Resumo do que o kernel recebeu ao carregar um documento. */
+export interface CadLoadReport {
+	layerCount: number;
+	entityCount: number;
+	/** Entidades recusadas pelo kernel por referenciarem camada inexistente. */
+	skippedCount: number;
+	/** Entidades que a extração não soube converter. */
+	unsupportedCount: number;
+}
+
 /** Categorias de apresentação para os comandos CAD no catálogo do menu `Ajuda`. */
 export type CadCommandCategory = 'navigation' | 'draw' | 'modify' | 'layer' | 'system' | 'other';
 

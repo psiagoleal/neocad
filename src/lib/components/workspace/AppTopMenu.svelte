@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { CadRecentDocument } from '$lib/types/cad';
+	import type { CadHistoryState, CadRecentDocument } from '$lib/types/cad';
 	import type { WorkspaceView } from '$lib/components/workspace/types';
 
-	type MenuKey = 'file' | 'view' | 'window' | 'help' | null;
+	type MenuKey = 'file' | 'edit' | 'view' | 'window' | 'help' | null;
 
 	type AppTopMenuProps = {
 		appName: string;
@@ -12,6 +12,9 @@
 		unreadMessages: number;
 		isOpening: boolean;
 		recentDocuments: CadRecentDocument[];
+		history: CadHistoryState;
+		onUndo: () => void | Promise<void>;
+		onRedo: () => void | Promise<void>;
 		onGoHome: () => void;
 		onGoViewer: () => void;
 		onGoAbout: () => void;
@@ -32,6 +35,9 @@
 		unreadMessages,
 		isOpening,
 		recentDocuments,
+		history,
+		onUndo,
+		onRedo,
 		onGoHome,
 		onGoViewer,
 		onGoAbout,
@@ -74,6 +80,14 @@
 	function runAction(action: () => void | Promise<void>): void {
 		closeMenus();
 		void action();
+	}
+
+	/**
+	 * Compõe o rótulo da ação. O nome vem do command stack, de modo que o menu
+	 * diz o que será desfeito em vez de um genérico "Desfazer".
+	 */
+	function historyLabel(action: string, name: string | null): string {
+		return name == null ? action : `${action} ${name.toLocaleLowerCase('pt-BR')}`;
 	}
 
 	function handleOpenRecent(recentDocument: CadRecentDocument): void {
@@ -135,6 +149,42 @@
 						>
 							Limpar recentes
 						</button>
+					</div>
+				{/if}
+			</div>
+
+			<div class="menu-group">
+				<button
+					class:active={openMenu === 'edit'}
+					class="menu-trigger"
+					type="button"
+					onclick={() => toggleMenu('edit')}
+				>
+					Editar
+				</button>
+
+				{#if openMenu === 'edit'}
+					<div class="menu-dropdown">
+						<button
+							class="menu-item"
+							type="button"
+							onclick={() => runAction(onUndo)}
+							disabled={!history.canUndo}
+						>
+							{historyLabel('Desfazer', history.undoLabel)}
+						</button>
+						<button
+							class="menu-item"
+							type="button"
+							onclick={() => runAction(onRedo)}
+							disabled={!history.canRedo}
+						>
+							{historyLabel('Refazer', history.redoLabel)}
+						</button>
+
+						{#if !history.canUndo && !history.canRedo}
+							<p class="menu-empty-copy">Nenhuma ação a desfazer nesta sessão.</p>
+						{/if}
 					</div>
 				{/if}
 			</div>

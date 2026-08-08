@@ -14,10 +14,12 @@ import type {
 import type {
 	CadCommandDescriptor,
 	CadDocumentPayload,
+	CadDocumentSnapshot,
 	CadOpenMode,
 	CadViewerDocumentState,
 	CadViewerProgressState
 } from '$lib/types/cad';
+import { buildDocumentSnapshot } from '$lib/services/cad-document';
 
 const DEFAULT_CAD_DATA_BASE_URL = 'https://mlightcad.gitlab.io/cad-data/';
 const DXF_PARSER_WORKER_URL = '/workers/dxf-parser-worker.js';
@@ -192,6 +194,29 @@ export class NeoCadViewer {
 		}
 
 		this.docManager.sendStringToExecute(command);
+	}
+
+	/**
+	 * Extrai do documento aberto pelo upstream o retrato que alimenta o kernel.
+	 *
+	 * Enquanto K5 e K6 não chegam, o upstream continua sendo quem lê o arquivo e
+	 * quem desenha; o kernel passa a ser a fonte de verdade sobre **o que existe**
+	 * no desenho. As duas representações convivem durante a transição, e é por
+	 * isso que a contagem de entidades de uma e de outra precisa bater.
+	 *
+	 * Devolve `null` quando não há documento ativo.
+	 */
+	extractDocumentSnapshot(): CadDocumentSnapshot | null {
+		const database = this.docManager?.curDocument?.database;
+
+		if (database == null) {
+			return null;
+		}
+
+		const layerTable = database.tables.layerTable;
+		const modelSpace = database.tables.blockTable.modelSpace;
+
+		return buildDocumentSnapshot(layerTable.newIterator(), modelSpace.newIterator());
 	}
 
 	/**
