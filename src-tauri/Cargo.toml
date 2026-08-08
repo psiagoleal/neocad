@@ -5,7 +5,7 @@ name = "neocad"
 version = "0.1.1"
 description = "Desktop shell do NeoCAD construído com Tauri 2 e SvelteKit"
 authors = ["Iago Leal"]
-license = "MIT"
+license = "GPL-3.0-or-later"
 edition = "2021"
 rust-version = "1.77.2"
 

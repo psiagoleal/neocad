@@ -12,7 +12,7 @@ export const appMetadata = {
 	tagline:
 		'Wrapper desktop open-source para CAD com SvelteKit, Tauri 2 e integração ao upstream MLightCAD.',
 	status: 'Fase 2 — integração inicial do viewer',
-	license: 'MIT'
+	license: 'GPL-3.0-or-later'
 } as const;
 
 export const supportedTargets = ['Windows', 'Linux'] as const;
