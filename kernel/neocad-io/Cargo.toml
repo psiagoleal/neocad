@@ -1,0 +1,21 @@
+# Caminho relativo: kernel/neocad-io/Cargo.toml
+#
+# Esta é a ÚNICA crate do kernel autorizada a receber dependências copyleft
+# (LibreDWG, dxf-json e afins), conforme o ADR 0003. O isolamento existe para
+# preservar a possibilidade de licenciar as demais crates de forma independente.
+
+[package]
+name = "neocad-io"
+description = "Leitura e escrita de formatos CAD para o kernel do NeoCAD"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+neocad-model = { path = "../neocad-model", version = "0.0.0" }
+
+[lints]
+workspace = true

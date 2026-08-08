@@ -1,0 +1,17 @@
+# Caminho relativo: kernel/neocad-topology/Cargo.toml
+
+[package]
+name = "neocad-topology"
+description = "Topologia B-rep do kernel CAD do NeoCAD"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+neocad-geometry = { path = "../neocad-geometry", version = "0.0.0" }
+
+[lints]
+workspace = true

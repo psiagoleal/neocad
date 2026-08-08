@@ -1,0 +1,17 @@
+# Caminho relativo: kernel/neocad-model/Cargo.toml
+
+[package]
+name = "neocad-model"
+description = "Modelo de documento do kernel CAD do NeoCAD: entidades e tabelas de símbolos"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+neocad-geometry = { path = "../neocad-geometry", version = "0.0.0" }
+
+[lints]
+workspace = true
