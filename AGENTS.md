@@ -14,6 +14,28 @@
   credenciais. Código aberto torna qualquer segredo vazado imediatamente público.
 - **Modelos permitidos:** APIs na nuvem livremente. Bom senso quanto a custo (ver seção 5).
 
+### 0.1 Fronteira com projetos confidenciais
+
+Este repositório é **público**. O mantenedor também trabalha em projetos
+**confidenciais** que se relacionam tecnicamente com este — o NeoCAD pode ser
+avaliado com dados desses projetos, mas a via é de mão única.
+
+- **Proibido** trazer para cá qualquer conteúdo daqueles projetos: nomes de
+  cliente ou de obra, dados de projeto, medições, trechos de documento, caminhos
+  de arquivo daqueles repositórios, seus nomes, ou capturas que os
+  revelem. Vale para código, testes, _fixtures_, documentação, comentários,
+  mensagens de commit, títulos de issue e descrições de PR.
+- **Fixtures** devem ser sintéticas ou de origem pública, e nunca recortes de
+  arquivo real.
+- Um achado obtido testando contra material confidencial entra aqui **apenas
+  como fato técnico despido de contexto** — "polilinha com abaulamento não é
+  suportada", nunca "o desenho X do cliente Y falhou".
+- Na dúvida sobre se algo pode ser publicado, **não publique** e pergunte.
+
+Coordenação entre os projetos acontece no repositório agregador do ecossistema,
+**fora daqui**. O caminho dele não é registrado neste arquivo, justamente pela
+regra acima.
+
 ## 1. Ambiente de desenvolvimento
 
 - SO: **Ubuntu 26.04 LTS nativo** · Shell: **zsh**
@@ -102,6 +124,26 @@ Postura relaxada de confidencialidade, mas **segredos continuam proibidos no rep
 - **DoD:** testes/linter passam em CI (GitHub Actions); revisão de PR (skill
   `pr-review-guard`) antes do merge.
 - **ADRs** para decisões estruturais (skill `adr-writer`).
+
+### 8.1 Sincronização entre sessões
+
+Sessões de agentes **não se comunicam entre si**: cada uma começa isolada e sem
+saber o que outra decidiu, publicou ou pediu. Sem um passo explícito de leitura,
+duas sessões divergem e o trabalho se contradiz.
+
+Por isso, **no início de toda sessão e antes de propor mudança funcional**:
+
+1. Ler `docs/CURRENT-STATE.md` e os ADRs ativos deste repositório.
+2. Ler o **log de trocas do ecossistema**, no repositório agregador — é o canal
+   assíncrono entre projetos, e é onde chegam pedidos dirigidos a este.
+3. Registrar o que for pertinente: o que afeta este repositório vira handoff ou
+   ADR **aqui**; o que este repositório publica ou responde vira entrada **lá**.
+
+O log é **append-only**: para corrigir uma entrada, acrescente outra referenciando
+a anterior, em vez de editar.
+
+Ao levar um resultado deste projeto para o ecossistema, vale a regra inversa da
+seção 0.1 — daqui pode sair tudo, porque é público.
 
 ## 9. Skills disponíveis
 
