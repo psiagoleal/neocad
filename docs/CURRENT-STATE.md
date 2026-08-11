@@ -325,11 +325,18 @@ o kernel próprio.
       ticket próprio: enumerar layouts, contar o que há em cada um e, no mínimo,
       **dizer ao usuário** que o conteúdo está no papel. Ler o papel de fato é
       escopo maior, porque envolve viewport e transformação de instância.
-- [ ] **Uma entidade sem explicação:** no degrau 1 o `*Model_Space` tem 794 e o
-      snapshot recebeu 793. Candidata a descarte silencioso do
-      `libredwg-converter`, cujo `createEntity` devolve `null` para tipo não
-      tratado e o chamador faz `y && p.push(y)` sem contar. Uma em 794 não muda
-      conclusão nenhuma, mas fica registrada.
+- [x] **A entidade que faltava era um `OLE2FRAME`.** No degrau 1 o
+      `*Model_Space` tem 794 e o snapshot recebeu 793; o histograma por tipo
+      mostra `OLE2FRAME=1`, objeto OLE embutido, único tipo do arquivo ausente do
+      `createEntity` do `libredwg-converter`. Sem ramo no dispatch, ele devolve
+      `null`, e `processEntities` faz `y && p.push(y)` — descartado sem contar.
+      Os outros três degraus não têm tipo fora do dispatch. Os quatro desenhos
+      ficam integralmente explicados.
+- [ ] **Consequência a lembrar: nossa contagem de "não modelada" subestima.** O
+      upstream descarta em silêncio o que não sabe converter, **antes** da nossa
+      fronteira; só vemos o que ele converteu. A medida honesta do que um arquivo
+      contém não é obtenível pela extração atual — é mais um argumento para a
+      leitura nativa. K2 resolve isso no caminho DXF; no DWG persiste até K6.
 
 - [x] **Defeito real corrigido: índice ACI não cabe em `u8`.** A paleta vai de 0
       a 256, e os extremos não são cores — `0` é ByBlock e `256` é ByLayer.
