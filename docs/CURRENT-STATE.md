@@ -7,9 +7,9 @@
 
 ## Último turno
 
-- **Data:** 2026-08-08
-- **Branch:** `master`
-- **Commit:** pendente (trabalho acumulado no working tree)
+- **Data:** 2026-08-11
+- **Branch:** `feat/kernel-cad-k1`
+- **Commit:** pendente (MT-K2-01)
 
 ### Fase K1 concluída
 
@@ -309,7 +309,27 @@ o kernel próprio.
       quatro blocos — fundação do formato, leitura, escrita e chegada ao produto.
       O MT-K2-05 (ler seção `BLOCKS`) é o que justifica a fase: lê a fixture que o
       upstream não lê. O MT-K2-12 fecha o ciclo removendo o `test.fail()`.
-- [ ] **Próximo passo:** executar **MT-K2-01** — leitor de pares código/valor.
+- [x] **MT-K2-01 concluído — bloco A aberto.** `neocad-io/src/dxf/pairs.rs` lê o
+      fluxo de pares código/valor e **tipa o valor pela faixa do código**, porque
+      o DXF não declara tipo em lugar nenhum; deixar essa tabela fora da leitura
+      obrigaria cada consumidor a reimplementá-la. Código fora das faixas
+      conhecidas vira texto em vez de recusar o arquivo — extensão desconhecida
+      não é motivo para não abrir um desenho. Erros são nomeados e carregam a
+      **linha**: `TruncatedPair`, `InvalidCode`, `InvalidValue`. 19 testes;
+      **258 testes** no kernel.
+- [x] **Depois do primeiro erro o iterador se esgota.** Fluxo de pares que perdeu
+      o sincronismo não sabe se a próxima linha é código ou valor; retomar
+      produziria pares inventados, que é pior do que parar.
+- [x] **Decodificação tolerante a Windows-1252.** DXF de origem real raramente é
+      UTF-8 — as ferramentas gravam na página de código do sistema. A leitura
+      tenta UTF-8 e cai para Windows-1252, preservando nomes de camada como
+      `Fiação`, que de outro modo virariam lixo. `$DWGCODEPAGE` ainda não é
+      consultada; quando for, `decode_line` é o único ponto a mudar.
+- [x] **Valor vazio legítimo distinguido do arquivo truncado.** Texto em branco
+      existe em arquivo real; o que o separa do par truncado é haver quebra de
+      linha depois dele. Sem essa distinção, `  0\nSECTION\n  2\n` entregava um
+      par com valor `""` em vez do erro nomeado que o critério de aceite exige.
+- [ ] **Próximo passo:** executar **MT-K2-02** — máquina de seções.
 - [ ] **Risco a tratar no MT-K2-11:** salvar um arquivo lido **descarta o que o
       modelo não representa**. Em desenho real isso é muito: cotas, hachuras,
       splines. É destruição silenciosa de trabalho alheio, e precisa aparecer ao

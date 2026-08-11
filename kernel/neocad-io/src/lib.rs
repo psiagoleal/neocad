@@ -7,8 +7,9 @@
 //! Responsabilidade: serialização e desserialização entre o modelo do kernel e
 //! os formatos de arquivo — DXF em K2, DWG em K6, STEP/IGES em K9.
 //!
-//! Permanece vazia durante K1: em K1 o modelo é populado a partir do documento
-//! já aberto pelo upstream, no frontend (MT-K1-14).
+//! A leitura DXF própria está sendo construída em K2, de baixo para cima: o
+//! fluxo de pares código/valor primeiro, depois seções, tabelas e entidades. O
+//! plano está em `docs/tickets/k2-dxf-nativo.md`.
 //!
 //! # Fronteira de licenciamento
 //!
@@ -17,3 +18,7 @@
 //! transações permanecem livres de copyleft para que o kernel possa ser
 //! licenciado de forma independente do aplicativo e reaproveitado em outros
 //! projetos.
+
+mod dxf;
+
+pub use dxf::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
