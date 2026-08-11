@@ -76,7 +76,11 @@ impl From<Aabb> for BoundsView {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ColorView {
-    /// Índice na paleta ACI.
+    /// Herda a cor do bloco.
+    ByBlock,
+    /// Herda a cor da camada.
+    ByLayer,
+    /// Índice na paleta ACI, de 1 a 255.
     Index {
         /// Índice.
         index: u8,
@@ -95,6 +99,8 @@ pub enum ColorView {
 impl From<Color> for ColorView {
     fn from(color: Color) -> Self {
         match color {
+            Color::ByBlock => Self::ByBlock,
+            Color::ByLayer => Self::ByLayer,
             Color::Index(index) => Self::Index { index },
             Color::Rgb { red, green, blue } => Self::Rgb { red, green, blue },
         }
@@ -211,6 +217,8 @@ impl From<PointView> for Point2 {
 impl From<ColorView> for Color {
     fn from(color: ColorView) -> Self {
         match color {
+            ColorView::ByBlock => Self::ByBlock,
+            ColorView::ByLayer => Self::ByLayer,
             ColorView::Index { index } => Self::Index(index),
             ColorView::Rgb { red, green, blue } => Self::Rgb { red, green, blue },
         }

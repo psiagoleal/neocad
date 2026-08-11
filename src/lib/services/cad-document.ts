@@ -152,6 +152,10 @@ export function toCadColor(raw: unknown, context = 'cor'): CadColor {
 	const record = asRecord(raw, context);
 	const kind = asString(record.kind, `${context}.kind`);
 
+	if (kind === 'byBlock' || kind === 'byLayer') {
+		return { kind };
+	}
+
 	if (kind === 'index') {
 		return { kind: 'index', index: asNumber(record.index, `${context}.index`) };
 	}
@@ -386,7 +390,10 @@ export function toCadColorFromUpstream(value: unknown): CadColor {
 
 		const index = readNumber(record.colorIndex);
 		if (index !== null) {
-			return { kind: 'index', index };
+			// A paleta ACI vai de 0 a 256, e os extremos são herança, não cor.
+			if (index === 0) return { kind: 'byBlock' };
+			if (index === 256) return { kind: 'byLayer' };
+			if (index >= 1 && index <= 255) return { kind: 'index', index };
 		}
 	}
 

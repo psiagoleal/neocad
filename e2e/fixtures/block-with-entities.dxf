@@ -3,9 +3,11 @@ Fixture de regressao: bloco com entidades dentro. O parser DXF do upstream
 999
 FALHA ao abrir arquivos assim - isolado por bisseccao contra um desenho real.
 999
-Bloco com conteudo e como se define todo simbolo e carimbo, entao DXF de
+Bloco com conteudo e como se define todo simbolo e carimbo. Medido em acervo
 999
-origem real nao abre hoje. A leitura DXF nativa de K2 deve corrigir isto.
+real: atinge cerca de 11% dos DXF, a minoria, porem a dos desenhos acabados.
+999
+A leitura DXF nativa de K2 deve corrigir isto.
 0
 SECTION
 2

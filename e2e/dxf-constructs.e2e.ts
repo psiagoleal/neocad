@@ -74,7 +74,8 @@ test('bloco com entidades dentro ainda não é legível pelo parser do upstream'
 	// esta asserção pela definitiva.
 	//
 	// Bloco com conteúdo é como se define todo símbolo, carimbo e marcador de
-	// estrutura, então na prática DXF de origem real não abre. A leitura DXF
+	// estrutura. Uma varredura de acervo real mediu o alcance: cerca de 11% dos
+	// DXF — a minoria, mas justamente a dos desenhos acabados. A leitura DXF
 	// nativa de K2 substitui este parser e deve corrigir o caso.
 	test.fail();
 

@@ -79,8 +79,16 @@ export interface CadBounds {
 	maxY: number;
 }
 
-/** Cor: índice na paleta ACI ou cor verdadeira. */
+/**
+ * Cor: índice na paleta ACI ou cor verdadeira.
+ *
+ * Os extremos da paleta não são cores: o índice `0` significa "herda do bloco" e
+ * o `256`, "herda da camada". Ficam como variantes próprias para que nenhum
+ * consumidor precise lembrar da convenção.
+ */
 export type CadColor =
+	| { kind: 'byBlock' }
+	| { kind: 'byLayer' }
 	| { kind: 'index'; index: number }
 	| { kind: 'rgb'; red: number; green: number; blue: number };
 

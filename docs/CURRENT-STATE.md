@@ -275,6 +275,32 @@ o kernel próprio.
       for corrigido** — que é quando queremos ser avisados. Todas sintéticas,
       derivadas de `minimal.dxf` mais construtos escritos à mão. Suíte E2E em 10
       testes.
+- [x] **Correção de um exagero meu.** Eu havia escrito que "DXF de origem real
+      não abre". Varredura de acervo real mediu o alcance: o defeito atinge ~11%
+      dos DXF (59 de 528) — a minoria, mas a que concentra desenhos acabados com
+      carimbo e simbologia. A maioria são exportações simples, sem blocos, e
+      abrem. O defeito segue valendo correção; a urgência é menor do que afirmei.
+- [x] **Validação contra quatro desenhos reais, com gabarito independente**
+      (apurado com a mesma LibreDWG que o app usa):
+
+      | degrau | gabarito | kernel recebeu | não modeladas | cobertura |
+      |---|---|---|---|---|
+      | silhueta | 936 | 484 | 309 | 85% |
+      | faseamento | 1493 | **0** | 0 | **0%** |
+      | fundação | 53 | 24 | 16 | 75% |
+      | planta-perfil | 391 | 233 | 154 | 99% |
+
+      Os 16 não modelados da fundação são exatamente os 16 `INSERT` do gabarito.
+      O faseamento abre mas entrega zero entidades ao kernel — o gabarito o marca
+      com erro de parse na própria LibreDWG, então a suspeita recai sobre o
+      upstream, não sobre a extração. **Fica como próxima investigação.**
+
+- [x] **Defeito real corrigido: índice ACI não cabe em `u8`.** A paleta vai de 0
+      a 256, e os extremos não são cores — `0` é ByBlock e `256` é ByLayer.
+      `Color` ganhou variantes próprias para os dois, em vez de obrigar todo
+      consumidor a lembrar da convenção. Achado por dado real: o degrau da
+      fundação falhava com `invalid value: integer 256, expected u8` e não
+      reportava nada ao usuário.
 - [x] **Degradação graciosa confirmada em campo.** Polilinha de estilo antigo e
       `INSERT` não são modelados pelo kernel e foram reportados como "não
       suportada" **sem impedir a abertura** — o comportamento que o MT-K1-14

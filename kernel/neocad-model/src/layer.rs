@@ -50,9 +50,20 @@ impl fmt::Display for LayerId {
 ///
 /// Cobre o índice ACI clássico e a cor verdadeira introduzida depois. A tradução
 /// fiel para os códigos de grupo do DXF acontece em K2, na crate de I/O.
+///
+/// # Os extremos da paleta ACI não são cores
+///
+/// O índice ACI vai de **0 a 256**, e os dois extremos carregam significado em
+/// vez de cor: `0` é "herda do bloco" e `256` é "herda da camada". Modelá-los
+/// como índice comum obrigaria todo consumidor a lembrar dessa convenção — e
+/// não caberia sequer em `u8`, o que quebrou a leitura de um desenho real.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
-    /// Índice na paleta ACI (`AutoCAD Color Index`).
+    /// Herda a cor do bloco que contém a entidade — índice ACI `0`.
+    ByBlock,
+    /// Herda a cor da camada — índice ACI `256`.
+    ByLayer,
+    /// Índice na paleta ACI (`AutoCAD Color Index`), de 1 a 255.
     Index(u8),
     /// Cor verdadeira, em componentes vermelho, verde e azul.
     Rgb {
@@ -63,6 +74,32 @@ pub enum Color {
         /// Componente azul.
         blue: u8,
     },
+}
+
+impl Color {
+    /// Interpreta um índice ACI cru, como vem de arquivo DXF ou DWG.
+    ///
+    /// Devolve `None` para valores fora de `0..=256`.
+    #[must_use]
+    pub fn from_aci(index: u16) -> Option<Self> {
+        match index {
+            0 => Some(Self::ByBlock),
+            256 => Some(Self::ByLayer),
+            1..=255 => u8::try_from(index).ok().map(Self::Index),
+            _ => None,
+        }
+    }
+
+    /// Índice ACI correspondente, quando a cor é expressável na paleta.
+    #[must_use]
+    pub const fn to_aci(self) -> Option<u16> {
+        match self {
+            Self::ByBlock => Some(0),
+            Self::ByLayer => Some(256),
+            Self::Index(index) => Some(index as u16),
+            Self::Rgb { .. } => None,
+        }
+    }
 }
 
 impl Default for Color {
