@@ -305,6 +305,15 @@ o kernel próprio.
       `INSERT` não são modelados pelo kernel e foram reportados como "não
       suportada" **sem impedir a abertura** — o comportamento que o MT-K1-14
       pretendia, agora observado fora de teste sintético.
+- [x] **K2 quebrada em 12 micro-tickets:** `docs/tickets/k2-dxf-nativo.md`, em
+      quatro blocos — fundação do formato, leitura, escrita e chegada ao produto.
+      O MT-K2-05 (ler seção `BLOCKS`) é o que justifica a fase: lê a fixture que o
+      upstream não lê. O MT-K2-12 fecha o ciclo removendo o `test.fail()`.
+- [ ] **Próximo passo:** executar **MT-K2-01** — leitor de pares código/valor.
+- [ ] **Risco a tratar no MT-K2-11:** salvar um arquivo lido **descarta o que o
+      modelo não representa**. Em desenho real isso é muito: cotas, hachuras,
+      splines. É destruição silenciosa de trabalho alheio, e precisa aparecer ao
+      usuário antes de `Salvar` sobrescrever o original.
 - [ ] **Fronteira do ADR 0001 ainda não é executável.** Verifiquei por `grep` que
       nenhum componente ou rota importa `$lib/kernel`, mas isso passa
       trivialmente hoje e apodrece. Uma regra `no-restricted-imports` no
