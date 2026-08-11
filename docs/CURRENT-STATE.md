@@ -261,6 +261,24 @@ o kernel próprio.
       compatibilidade com arquivos reais). `docs/api.md` reescrito com os
       contratos do documento, a fronteira única e as invariantes do kernel. O
       aviso provisório que apontava para o ADR 0003 saiu.
+- [x] **Achado que eleva a prioridade de K2:** o parser DXF do upstream **falha ao
+      abrir qualquer arquivo cuja seção `BLOCKS` contenha uma definição de bloco
+      com entidades dentro**. Isolado por bissecção com arquivos sintéticos: a
+      fixture de controle abre; somando `POLYLINE`/`VERTEX` antiga, abre; `INSERT`
+      sem `BLOCKS`, abre; seção `BLOCKS` vazia, abre; bloco declarado sem
+      conteúdo, abre; bloco **com uma `LINE` dentro**, **não abre**. O erro é
+      engolido dentro do `dxf-parser-worker.js` e não chega ao console. O caminho
+      DWG (LibreDWG) não é afetado.
+- [x] **Repros viraram fixture pública:** `e2e/dxf-constructs.e2e.ts` com
+      `legacy-polyline.dxf`, `block-reference.dxf` e `block-with-entities.dxf`.
+      A última usa `test.fail()`, então a suíte **quebra no dia em que o defeito
+      for corrigido** — que é quando queremos ser avisados. Todas sintéticas,
+      derivadas de `minimal.dxf` mais construtos escritos à mão. Suíte E2E em 10
+      testes.
+- [x] **Degradação graciosa confirmada em campo.** Polilinha de estilo antigo e
+      `INSERT` não são modelados pelo kernel e foram reportados como "não
+      suportada" **sem impedir a abertura** — o comportamento que o MT-K1-14
+      pretendia, agora observado fora de teste sintético.
 - [ ] **Fronteira do ADR 0001 ainda não é executável.** Verifiquei por `grep` que
       nenhum componente ou rota importa `$lib/kernel`, mas isso passa
       trivialmente hoje e apodrece. Uma regra `no-restricted-imports` no

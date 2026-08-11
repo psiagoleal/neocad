@@ -55,3 +55,7 @@ threads/
 
 # Builds locais de teste (não versionados)
 dist-test/
+
+# Desenhos de teste vindos de projetos confidenciais (AGENTS.md §0.1).
+# Nunca versionar: este repositório é público.
+docs/test/
