@@ -291,9 +291,45 @@ o kernel próprio.
       | planta-perfil | 391 | 233 | 154 | 99% |
 
       Os 16 não modelados da fundação são exatamente os 16 `INSERT` do gabarito.
-      O faseamento abre mas entrega zero entidades ao kernel — o gabarito o marca
-      com erro de parse na própria LibreDWG, então a suspeita recai sobre o
-      upstream, não sobre a extração. **Fica como próxima investigação.**
+      A coluna de cobertura compara contra o **arquivo inteiro** e por isso
+      engana; ver a medição por espaço logo abaixo.
+
+- [x] **Degrau 2 explicado — não era defeito, nem nosso nem do upstream.** Medido
+      contando entidades por `BLOCK_RECORD` na saída do `convert()`: o
+      `*Model_Space` do faseamento tem **zero** entidades na própria LibreDWG, e
+      1407 das 1493 estão em `*Paper_Space`. É um desenho montado no
+      **espaço-papel**, prática comum em projeto executivo. As 86 restantes são
+      `ATTRIB` pendurados em `INSERT`, que não figuram na lista de entidades de
+      nenhum bloco. O erro 68 não tem relação. A hipótese de exceção abortando o
+      laço de extração está descartada.
+- [x] **A "lacuna de contagem" é o espaço-papel, entidade por entidade.** O
+      snapshot do NeoCAD bate com `*Model_Space` em três degraus e erra por 1 no
+      quarto — não há categoria silenciosa na extração, o laço é total. O que o
+      gabarito contava a mais é exatamente `*Paper_Space`: 142, 1407, 13 e 4.
+
+      | degrau | gabarito | `*Model_Space` | `*Paper_Space` | snapshot | cobertura real |
+      |---|---|---|---|---|---|
+      | silhueta | 936 | 794 | 142 | 793 | 61% (484/794) |
+      | faseamento | 1493 | 0 | 1407 | 0 | — |
+      | fundação | 53 | 40 | 13 | 40 | 60% (24/40) |
+      | planta-perfil | 391 | 387 | 4 | 387 | 60% (233/387) |
+
+      A cobertura real contra o espaço-modelo é **pior** do que os 85–99%
+      anunciados, e a diferença é `INSERT`, `DIMENSION` e `HATCH` — lacunas de
+      modelo já conhecidas e priorizáveis, não perda.
+
+- [ ] **Lacuna de produto revelada: não lemos layout de espaço-papel.** A
+      extração lê `blockTable.modelSpace` e nada mais. Um desenho montado no
+      papel — como o degrau 2, e é prática comum — carrega **zero** entidades no
+      kernel, e a mensagem diz "0 entidade(s)" sem explicar por quê. Merece
+      ticket próprio: enumerar layouts, contar o que há em cada um e, no mínimo,
+      **dizer ao usuário** que o conteúdo está no papel. Ler o papel de fato é
+      escopo maior, porque envolve viewport e transformação de instância.
+- [ ] **Uma entidade sem explicação:** no degrau 1 o `*Model_Space` tem 794 e o
+      snapshot recebeu 793. Candidata a descarte silencioso do
+      `libredwg-converter`, cujo `createEntity` devolve `null` para tipo não
+      tratado e o chamador faz `y && p.push(y)` sem contar. Uma em 794 não muda
+      conclusão nenhuma, mas fica registrada.
 
 - [x] **Defeito real corrigido: índice ACI não cabe em `u8`.** A paleta vai de 0
       a 256, e os extremos não são cores — `0` é ByBlock e `256` é ByLayer.
