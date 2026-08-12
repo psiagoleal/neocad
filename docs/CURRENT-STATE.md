@@ -405,7 +405,27 @@ o kernel próprio.
       existe em arquivo real; o que o separa do par truncado é haver quebra de
       linha depois dele. Sem essa distinção, `  0\nSECTION\n  2\n` entregava um
       par com valor `""` em vez do erro nomeado que o critério de aceite exige.
-- [ ] **Próximo passo:** executar **MT-K2-02** — máquina de seções.
+- [x] **MT-K2-02 concluído — bloco A fechado.** `neocad-io/src/dxf/sections.rs`
+      entrega cada seção com seus pares e sem os marcadores de moldura
+      (`SECTION`, o nome e `ENDSEC`), na **ordem do arquivo** — o formato não
+      manda ordem, e supor a canônica recusaria arquivo de ferramenta de
+      terceiro. Seção que a especificação não define chega como
+      `SectionKind::Other` em vez de interromper. 37 testes na crate;
+      **277 testes** no kernel.
+- [x] **A distinção que organiza os erros:** falha do fluxo de pares **encerra**,
+      porque o leitor perdeu o sincronismo; `ENDSEC` ausente, nome ausente e par
+      fora de seção são **locais** — relatados, e o percurso retoma na seção
+      seguinte. É a diferença entre "não dá para ler este arquivo" e "esta parte
+      está torta", e só a primeira justifica perder o desenho inteiro.
+- [x] **Seção sem `ENDSEC` não leva a seguinte junto.** Quando um novo
+      `0/SECTION` aparece dentro de uma seção aberta, o marcador fica pendente e
+      é reaproveitado na próxima iteração. Sem isso, relatar o erro custaria a
+      seção seguinte — o arquivo torto perderia mais do que a parte torta.
+- [x] **Marcador é comparado aparado.** Gravador de origem real deixa espaço à
+      direita (`SECTION  `); comparar sem aparar recusaria arquivo que todo mundo
+      abre. Coberto por teste.
+- [ ] **Próximo passo:** executar **MT-K2-03** — ler a tabela de camadas. Antes,
+      decidir o requisito de layout registrado acima, que altera MT-K2-04.
 - [ ] **Risco a tratar no MT-K2-11:** salvar um arquivo lido **descarta o que o
       modelo não representa**. Em desenho real isso é muito: cotas, hachuras,
       splines. É destruição silenciosa de trabalho alheio, e precisa aparecer ao

@@ -19,31 +19,27 @@ substitui** a revisão humana — ela a prepara e a torna obrigatória.
 ## Checklist antes de abrir/aprovar o PR
 
 ### Correção e robustez
-
-- [ ] Compila/builda sem erros nem _warnings_ novos.
+- [ ] Compila/builda sem erros nem *warnings* novos.
 - [ ] Linter e checagem de tipos passam (comandos exatos do `AGENTS.md`).
 - [ ] Suíte de testes passa, incluindo testes **novos** para o comportamento alterado.
 - [ ] Tratamento de exceções presente — sem `except:`/`catch{}` vazios mascarando erros.
 
 ### Regressão
-
 - [ ] Funcionalidades adjacentes testadas continuam passando (não só o bug-alvo).
-- [ ] _Diff_ não remove validações, _guards_ ou testes existentes "para fazer passar".
+- [ ] *Diff* não remove validações, *guards* ou testes existentes "para fazer passar".
 
 ### Segurança (OWASP Top 10 / LLM)
-
 - [ ] Sem segredos no diff (ver skill `secrets-guard`); varredura `gitleaks`/`detect-secrets` limpa.
-- [ ] Entradas validadas; sem injeção (SQL/cmd/path); _prepared statements_ em consultas.
+- [ ] Entradas validadas; sem injeção (SQL/cmd/path); *prepared statements* em consultas.
 - [ ] Mudanças sensíveis revisadas com atenção redobrada: `.github/workflows/`, scripts de
-      _bootstrap_, configs de CI/CD, o próprio `AGENTS.md` (vetor de injeção indireta).
+      *bootstrap*, configs de CI/CD, o próprio `AGENTS.md` (vetor de injeção indireta).
 - [ ] SAST/SCA executados em CI **antes** da revisão humana — não no lugar dela.
 
 ### Proveniência e auditoria
-
 - [ ] Quando houve uso de IA, a **mensagem de commit** o registra **entre chaves**
       (`{agente: <nome>; modelo: <modelo/versão>}`) — e **somente ali**.
 - [ ] Nenhum outro artefato (descrição/metadado de PR, código, comentários, ADR, handoff)
-      menciona uso de IA nem atribui autoria/coautoria/decisão a um agente; sem _trailers_
+      menciona uso de IA nem atribui autoria/coautoria/decisão a um agente; sem *trailers*
       `Co-authored-by`/`Assisted-by` de agente.
 - [ ] SBOM (CycloneDX/SPDX) gerado/atualizado quando aplicável ao perfil.
 
@@ -51,7 +47,7 @@ substitui** a revisão humana — ela a prepara e a torna obrigatória.
 
 Produza um **resumo de revisão** com: itens do checklist marcados, riscos residuais e uma
 recomendação explícita (`aprovar` / `aprovar com ressalvas` / `bloquear`). Finalize sempre
-com: _"Requer validação humana antes do merge."_
+com: *"Requer validação humana antes do merge."*
 
 ## Definição de pronto da skill
 

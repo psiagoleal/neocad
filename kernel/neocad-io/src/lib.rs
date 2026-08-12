@@ -21,4 +21,7 @@
 
 mod dxf;
 
-pub use dxf::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
+pub use dxf::{
+    pairs, sections, DxfPair, DxfPairError, DxfPairs, DxfSectionError, DxfValue, Section,
+    SectionKind, Sections,
+};

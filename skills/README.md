@@ -3,25 +3,55 @@
 # Biblioteca de Skills de Governança para Agentes de IA
 
 Skills (Habilidades de Agente) são pacotes modulares, autocontidos e versionáveis,
-descritos por um arquivo `SKILL.md` com _frontmatter_ YAML (`name`, `description`). Sua
-propriedade central é a **divulgação progressiva** (_progressive disclosure_): o agente
+descritos por um arquivo `SKILL.md` com *frontmatter* YAML (`name`, `description`). Sua
+propriedade central é a **divulgação progressiva** (*progressive disclosure*): o agente
 carrega apenas o cabeçalho descritivo na inicialização e só expande o corpo completo
 quando a tarefa se enquadra nos gatilhos da `description`. Isso reduz o consumo de tokens
 em sessões onde a capacidade não é necessária e permite manter uma biblioteca extensa sem
 inflar o contexto de cada interação.
 
-Esta biblioteca contém apenas skills **de governança/fluxo, independentes de setor** —
-reutilizáveis nos três perfis (empresa, externo-confidencial, pessoal).
+A biblioteca tem **dois níveis**, e a distinção é o que mantém o catálogo previsível:
 
-## Catálogo
+- **Governança/fluxo** (raiz de `skills/`) — independentes de setor, reutilizáveis nos três
+  perfis. É o conjunto **instalado por padrão** em qualquer projeto.
+- **Domínio** (agrupadas em categoria, ex.: `dominio/`) — presas a uma tecnologia ou
+  assunto. **Nunca** entram por padrão; exigem `--skills` explícito com o caminho da
+  categoria. Um projeto de linhas de transmissão não deve carregar uma skill de
+  prototipagem de UI só porque ela existe na biblioteca.
 
-| Skill                                                   | Para quê                                            | Aciona quando                                               |
-| ------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------- |
-| [`secrets-guard`](secrets-guard/SKILL.md)               | Não-exposição de segredos antes de comandos/saída   | Há credenciais, `.env`, cofres, `aws/gcloud/kubectl config` |
-| [`adr-writer`](adr-writer/SKILL.md)                     | Criar/consultar ADRs como restrição cognitiva       | Decisão de stack/biblioteca/solver; "registrar decisão"     |
-| [`micro-ticket-planner`](micro-ticket-planner/SKILL.md) | Quebrar trabalho em tickets de um ciclo de contexto | Planejar sprint; tarefa ampla/ambígua                       |
-| [`handoff-updater`](handoff-updater/SKILL.md)           | Manter `docs/CURRENT-STATE.md`                      | Após commit/ticket; "onde paramos"                          |
-| [`pr-review-guard`](pr-review-guard/SKILL.md)           | Checklist do "problema dos 80%" + OWASP             | Antes de abrir/aprovar PR ou merge                          |
+## Catálogo — governança
+
+| Skill | Para quê | Aciona quando |
+|-------|----------|---------------|
+| [`secrets-guard`](secrets-guard/SKILL.md) | Não-exposição de segredos antes de comandos/saída | Há credenciais, `.env`, cofres, `aws/gcloud/kubectl config` |
+| [`adr-writer`](adr-writer/SKILL.md) | Criar/consultar ADRs como restrição cognitiva | Decisão de stack/biblioteca/solver; "registrar decisão" |
+| [`micro-ticket-planner`](micro-ticket-planner/SKILL.md) | Quebrar trabalho em tickets de um ciclo de contexto | Planejar sprint; tarefa ampla/ambígua |
+| [`handoff-updater`](handoff-updater/SKILL.md) | Manter `docs/CURRENT-STATE.md` | Após commit/ticket; "onde paramos" |
+| [`pr-review-guard`](pr-review-guard/SKILL.md) | Checklist do "problema dos 80%" + OWASP | Antes de abrir/aprovar PR ou merge |
+| [`delegacao-a-subagentes`](delegacao-a-subagentes/SKILL.md) | O que fica no modelo local vs. o que vai para a nuvem, e como pedir | Tarefa toca dado sensível; roteamento por task-class; "delegar"/"modelo local" |
+| [`novo-projeto`](novo-projeto/SKILL.md) | Adotar o framework num repo: escolher perfil, preservar conteúdo prévio, deixar pronto p/ `--update` | Projeto novo; "configurar o agente" / "aplicar o perfil" / "instalar as regras" |
+
+## Catálogo — domínio (sob demanda)
+
+| Skill | Para quê | Aciona quando |
+|-------|----------|---------------|
+| [`dominio/mockup-lab`](dominio/mockup-lab/SKILL.md) | Prototipar UI em HTML/CSS, comparar variantes por render headless, exportar a aprovada como SVG p/ Penpot | Prototipar/mockar tela; comparar variantes de layout; levar design ao Penpot |
+| [`dominio/pc-builder`](dominio/pc-builder/SKILL.md) | Preço/disponibilidade em KaBuM, Pichau e Terabyte + compatibilidade de peças | Montar/atualizar PC; comparar preço de componente; acompanhar queda de preço |
+
+Estas trazem *scripts* anexos e dependências próprias (Playwright, `curl_cffi`), instaladas
+sob demanda — por isso `node_modules/`, `.venv/` e `__pycache__/` nunca são copiados para o
+alvo. Dado do usuário (listas de compra, mockups) mora no diretório de trabalho do projeto,
+**nunca dentro da skill**.
+
+## Catálogo — deste projeto
+
+<!-- USER:BEGIN id=catalogo-local -->
+_(nenhuma — acrescente aqui as skills criadas especificamente para este repositório)_
+<!-- USER:END -->
+
+> Skills próprias do projeto vivem na pasta neutra ao lado das demais e **não são tocadas**
+> pelo `setup-profile.sh`: ele só escreve as skills que instala. Registre-as no bloco acima
+> para que o catálogo continue completo depois de um `--update`.
 
 ## Modelo de instalação (independente de agente)
 
@@ -51,6 +81,9 @@ scripts/setup-profile.sh empresa ~/dev/meu-projeto --skills-mode copy
 
 # selecionar skills específicas:
 scripts/setup-profile.sh pessoal ~/dev/oss --skills secrets-guard,pr-review-guard
+
+# incluir uma skill de domínio (exige o caminho da categoria):
+scripts/setup-profile.sh pessoal ~/dev/meu-app --skills secrets-guard,dominio/mockup-lab
 ```
 
 ### Forma manual
@@ -77,20 +110,20 @@ Trate este repositório como uma biblioteca interna de software:
 
 - **Revisão por pares** de toda alteração em `SKILL.md` via PR.
 - **Fixtures sintéticos** e exemplos de invocação para cada skill.
-- **Testes de invocação automatizados** quando a skill tiver _scripts_ anexos.
-- _Definition of Done_ específico por skill (ver seção final de cada `SKILL.md`).
+- **Testes de invocação automatizados** quando a skill tiver *scripts* anexos.
+- *Definition of Done* específico por skill (ver seção final de cada `SKILL.md`).
 
 ## Skills vs. Servidores MCP
 
 São camadas **complementares e ortogonais**:
 
-- **Skill** = camada _declarativa_ — orienta **como** o agente trabalha com uma
+- **Skill** = camada *declarativa* — orienta **como** o agente trabalha com uma
   capacidade (convenções, arquivos a consultar, armadilhas a evitar).
-- **Servidor MCP** = camada de _execução_ — expõe _tools_, _resources_ e _prompts_ a
+- **Servidor MCP** = camada de *execução* — expõe *tools*, *resources* e *prompts* a
   múltiplos agentes via protocolo padronizado, abrindo conexões a sistemas reais (bancos,
   APIs internas, simuladores).
 
 Uma skill pode invocar servidores MCP para executar leituras, disparar simulações ou
 consultar APIs, mantendo separados o **conhecimento operacional** (Skill) e a
 **infraestrutura de execução** (MCP). Servidores MCP corporativos devem ser tratados como
-serviços de produção (gestão de identidade, auditoria, _rate limiting_, isolamento de rede).
+serviços de produção (gestão de identidade, auditoria, *rate limiting*, isolamento de rede).

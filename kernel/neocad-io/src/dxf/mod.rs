@@ -14,5 +14,7 @@
 //! arquivos cuja seção `BLOCKS` contenha bloco com entidades.
 
 mod pairs;
+mod sections;
 
 pub use pairs::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
+pub use sections::{sections, DxfSectionError, Section, SectionKind, Sections};
