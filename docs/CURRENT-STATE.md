@@ -326,6 +326,25 @@ o kernel próprio.
       entregável é a prancha composta no papel, não o desenho no modelo. Reordena
       o roadmap — hoje nem K2 nem K5 preveem layout. Registrado em
       `docs/tickets/k2-dxf-nativo.md`; a decisão de prioridade é do usuário.
+- [x] **Dimensionado no acervo: 70% dos desenhos precisam de layout.** Varredura
+      de 2.396 DWG (de 2.525; fora 83 falhas de parse e 46 acima de 80 MB),
+      classificando cada entidade em modelo, papel ou bloco. Descontadas 407
+      **bibliotecas de ferragens e símbolos** — arquivos cuja geometria vive toda
+      em definição de bloco, e que não são desenhos —, sobram 1.989 desenhos:
+
+      | grupo | nº | % | como o NeoCAD abre hoje |
+      |---|---|---|---|
+      | modelo vazio | 153 | 8% | mostrando **nada** |
+      | ambos povoados | 1244 | 63% | **sem a folha** |
+      | só espaço-modelo | 592 | 30% | corretamente |
+
+      O corte por "espaço-modelo vazio" subestimava: são só 8%. Mas os 63% de
+      "ambos" também dependem de layout — neles o modelo tem a geometria e o
+      papel tem o carimbo e as viewports que compõem a prancha. **Somados, 70%.**
+      Os exemplos de modelo vazio são entregáveis numerados (prancha A1, série de
+      desenhos de estrutura), não rascunhos. Medido pelo que a LibreDWG entrega,
+      então serve para "onde o desenho foi montado" e **não** como cobertura.
+
 - [ ] **Achado que barateia a decisão:** no DXF as entidades de papel não estão
       em lugar separado — vivem na mesma seção `ENTITIES`, marcadas pelo código
       `67` (`1` = papel) e pelo `410` (aba de layout). Preservar o espaço de cada

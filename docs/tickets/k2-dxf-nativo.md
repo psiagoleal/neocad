@@ -41,9 +41,11 @@ AutoCAD, inclusive lendo os do AutoCAD, "pois é exatamente isto que gera os
 documentos". No domínio de LT o entregável não é o desenho no espaço-modelo — é a
 prancha composta no espaço-papel, com carimbo, escalas e viewports.
 
-A medição que originou isso está no handoff: dos quatro desenhos reais validados,
-um é **inteiramente** montado no papel e os outros três têm carimbo e viewports
-lá. Ler só o espaço-modelo desenha, mas não emite documento.
+A medição está no handoff. Varredura de 2.396 DWG de acervo real, descontadas as
+bibliotecas de ferragens: **70% dos 1.989 desenhos têm conteúdo no espaço-papel** —
+8% não têm nada no modelo (abrem mostrando nada) e 63% têm os dois espaços
+povoados (abrem sem a folha). Ler só o espaço-modelo desenha, mas não emite
+documento.
 
 **O que isso muda em K2, e é barato agora:** no DXF as entidades de papel não
 estão em lugar separado — vivem na mesma seção `ENTITIES`, marcadas pelo código
