@@ -33,6 +33,30 @@ arquivo), `SPLINE` (64), `HATCH`, `INSERT`, `MTEXT`, `LEADER`, `SOLID`, `ATTDEF`
 Essa lista é insumo para priorizar uma fase de ampliação do modelo, que é
 trabalho distinto de I/O e merece tickets próprios.
 
+## Requisito superveniente: o layout é o que gera o documento
+
+Registrado em 2026-08-11, vindo do usuário por outra sessão do ecossistema e
+**pendente de confirmação direta**: o NeoCAD precisa trabalhar com layouts como o
+AutoCAD, inclusive lendo os do AutoCAD, "pois é exatamente isto que gera os
+documentos". No domínio de LT o entregável não é o desenho no espaço-modelo — é a
+prancha composta no espaço-papel, com carimbo, escalas e viewports.
+
+A medição que originou isso está no handoff: dos quatro desenhos reais validados,
+um é **inteiramente** montado no papel e os outros três têm carimbo e viewports
+lá. Ler só o espaço-modelo desenha, mas não emite documento.
+
+**O que isso muda em K2, e é barato agora:** no DXF as entidades de papel não
+estão em lugar separado — vivem na mesma seção `ENTITIES`, marcadas pelo código
+`67` (`1` = espaço-papel) e pelo `410` (nome da aba de layout). Ler o espaço de
+cada entidade custa dois códigos de grupo; **descartá-lo agora obriga a reescrever
+o leitor depois**. Os tickets MT-K2-04 e MT-K2-08 devem preservar essa informação,
+mesmo que o modelo ainda não a use.
+
+**O que continua fora de K2, e é caro:** os objetos `LAYOUT` da seção `OBJECTS`
+(configuração de página, escala de plotagem), a entidade `VIEWPORT` (a janela para
+o espaço-modelo, com escala, rotação e recorte) e a composição da prancha. Isso é
+fase própria, não ticket avulso, e depende de decisão do usuário sobre prioridade.
+
 ## Restrições que valem para todos os tickets
 
 - `neocad-io` é a **única** crate do kernel autorizada a receber dependência

@@ -318,6 +318,20 @@ o kernel próprio.
       anunciados, e a diferença é `INSERT`, `DIMENSION` e `HATCH` — lacunas de
       modelo já conhecidas e priorizáveis, não perda.
 
+- [ ] **⚠️ Requisito superveniente, pendente de confirmação direta do usuário:**
+      chegou por outra sessão do ecossistema que o NeoCAD precisa trabalhar com
+      layouts como o AutoCAD, inclusive lendo os do AutoCAD, "pois é exatamente
+      isto que gera os documentos". Se confirmado, **ler layout deixa de ser
+      refinamento e vira condição do caso de uso principal**: em projeto de LT o
+      entregável é a prancha composta no papel, não o desenho no modelo. Reordena
+      o roadmap — hoje nem K2 nem K5 preveem layout. Registrado em
+      `docs/tickets/k2-dxf-nativo.md`; a decisão de prioridade é do usuário.
+- [ ] **Achado que barateia a decisão:** no DXF as entidades de papel não estão
+      em lugar separado — vivem na mesma seção `ENTITIES`, marcadas pelo código
+      `67` (`1` = papel) e pelo `410` (aba de layout). Preservar o espaço de cada
+      entidade em K2 custa dois códigos de grupo; descartá-lo obriga a reescrever
+      o leitor depois. O caro é o resto: objetos `LAYOUT`, entidade `VIEWPORT`
+      com escala e recorte, e a composição da prancha.
 - [ ] **Lacuna de produto revelada: não lemos layout de espaço-papel.** A
       extração lê `blockTable.modelSpace` e nada mais. Um desenho montado no
       papel — como o degrau 2, e é prática comum — carrega **zero** entidades no
