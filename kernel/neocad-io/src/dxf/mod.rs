@@ -15,6 +15,8 @@
 
 mod pairs;
 mod sections;
+mod tables;
 
 pub use pairs::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
 pub use sections::{sections, DxfSectionError, Section, SectionKind, Sections};
+pub use tables::{read_layer_table, LayerTableReading, RejectedLayer};

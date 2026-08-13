@@ -22,6 +22,6 @@
 mod dxf;
 
 pub use dxf::{
-    pairs, sections, DxfPair, DxfPairError, DxfPairs, DxfSectionError, DxfValue, Section,
-    SectionKind, Sections,
+    pairs, read_layer_table, sections, DxfPair, DxfPairError, DxfPairs, DxfSectionError, DxfValue,
+    LayerTableReading, RejectedLayer, Section, SectionKind, Sections,
 };

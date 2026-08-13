@@ -424,8 +424,36 @@ o kernel próprio.
 - [x] **Marcador é comparado aparado.** Gravador de origem real deixa espaço à
       direita (`SECTION  `); comparar sem aparar recusaria arquivo que todo mundo
       abre. Coberto por teste.
-- [ ] **Próximo passo:** executar **MT-K2-03** — ler a tabela de camadas. Antes,
-      decidir o requisito de layout registrado acima, que altera MT-K2-04.
+- [x] **MT-K2-03 concluído:** `neocad-io/src/dxf/tables.rs` lê a tabela de
+      camadas da seção `TABLES` — nome, cor, tipo de linha, espessura e estados —
+      ignorando as demais tabelas da seção. 57 testes na crate; **298 testes** no
+      kernel.
+- [x] **Os dois detalhes de formato que dado real cobra.** O código `62` carrega
+      **duas** informações: o índice é o valor absoluto e o **sinal negativo
+      significa camada desligada**; ler o sinal como parte da cor faria toda
+      camada apagada de um desenho real virar cor inválida. E quando `62` e `420`
+      vêm juntos, a **cor verdadeira vence** — o índice é a aproximação que o
+      gravador deixa para quem só entende a paleta antiga, e preferi-la
+      descartaria precisão que o arquivo tem.
+- [x] **A camada `0` é atualizada, não recriada.** Todo DXF a define e toda
+      `LayerTable` já nasce com ela; criar de novo seria recusa por nome
+      duplicado em **todo arquivo real**. Nome repetido também atualiza em vez de
+      recusar.
+- [x] **Nada é descartado em silêncio.** `LayerTableReading` traz a tabela, as
+      camadas que o modelo recusou com o motivo, e a **contagem por código de
+      grupo** do que o registro de camada trazia e ainda não interpretamos.
+      Códigos estruturais (handle, marcador de subclasse, dono) ficam fora da
+      contagem para ela significar "atributo que falta ler", não ruído.
+- [x] **Requisito de layout confirmado pelo usuário** em 2026-08-12: "extrema
+      importância", com "total compatibilidade com AutoCAD". O bloco de layout
+      entra **antes do MT-K2-04**, por decisão dele.
+- [ ] **Próximo passo:** escrever os micro-tickets do bloco de layout e o ADR que
+      a governança exige para mudança de rumo. Só então MT-K2-04, que passa a ler
+      também o espaço de cada entidade (códigos `67` e `410`).
+- [ ] **Lacuna do modelo registrada em código:** o DXF distingue espessura de
+      linha herdada do bloco (`-2`) da herdada da camada (`-1`) e da padrão
+      (`-3`); `LineWeight` só tem `Default` e `Hundredths`, então os três viram
+      `Default`. Resolver só faz sentido quando houver quem use a distinção.
 - [ ] **Risco a tratar no MT-K2-11:** salvar um arquivo lido **descarta o que o
       modelo não representa**. Em desenho real isso é muito: cotas, hachuras,
       splines. É destruição silenciosa de trabalho alheio, e precisa aparecer ao

@@ -35,11 +35,16 @@ trabalho distinto de I/O e merece tickets próprios.
 
 ## Requisito superveniente: o layout é o que gera o documento
 
-Registrado em 2026-08-11, vindo do usuário por outra sessão do ecossistema e
-**pendente de confirmação direta**: o NeoCAD precisa trabalhar com layouts como o
-AutoCAD, inclusive lendo os do AutoCAD, "pois é exatamente isto que gera os
-documentos". No domínio de LT o entregável não é o desenho no espaço-modelo — é a
-prancha composta no espaço-papel, com carimbo, escalas e viewports.
+**Confirmado pelo usuário em 2026-08-12**, com duas palavras que fixam o nível:
+"extrema importância" e "total compatibilidade com AutoCAD". O NeoCAD precisa
+trabalhar com layouts como o AutoCAD, inclusive lendo os do AutoCAD, "pois é
+exatamente isto que gera os documentos". No domínio de LT o entregável não é o
+desenho no espaço-modelo — é a prancha composta no espaço-papel, com carimbo,
+escalas e viewports.
+
+**Posição na ordem, decidida pelo usuário:** o bloco de layout entra **antes do
+MT-K2-04**. Os tickets ainda não estão escritos; o MT-K2-03 foi executado
+primeiro por não depender deles.
 
 A medição está no handoff. Varredura de 2.396 DWG de acervo real, descontadas as
 bibliotecas de ferragens: **70% dos 1.989 desenhos têm conteúdo no espaço-papel** —
