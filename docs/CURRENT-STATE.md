@@ -447,9 +447,28 @@ o kernel próprio.
 - [x] **Requisito de layout confirmado pelo usuário** em 2026-08-12: "extrema
       importância", com "total compatibilidade com AutoCAD". O bloco de layout
       entra **antes do MT-K2-04**, por decisão dele.
-- [ ] **Próximo passo:** escrever os micro-tickets do bloco de layout e o ADR que
-      a governança exige para mudança de rumo. Só então MT-K2-04, que passa a ler
-      também o espaço de cada entidade (códigos `67` e `410`).
+- [x] **ADR 0005 escrito, em `Proposed`:** layout de espaço-papel vira conceito de
+      primeira classe do kernel, com nova fase **KL entre K2 e K3** — emenda ao
+      ADR 0003 no mesmo espírito da que o ADR 0004 já fez a K2. As decisões
+      técnicas que ele fixa: layout é **registro de bloco mais metadados**, como
+      no AutoCAD, reaproveitando a `BlockTable` do K1; o espaço **não** vira
+      atributo da entidade, porque o bloco dono já diz onde ela está e um campo
+      paralelo seria segunda fonte de verdade; `LayoutTable` é a quarta tabela de
+      símbolos e por isso dispara a extração de `SymbolTable<T>` que a dívida já
+      previa; `Viewport` é entidade, com congelamento de camada por viewport.
+      **Aguarda aceite.**
+- [x] **KL quebrada em 14 micro-tickets:** `docs/tickets/kl-layouts-espaco-papel.md`,
+      em quatro blocos. A ordem interna põe **o curto antes do certo**: o bloco A
+      entrega exibição pelo upstream, que já sabe desenhar layout, para o usuário
+      abrir suas pranchas sem esperar o modelo próprio — com o custo declarado de
+      que os blocos seguintes reescrevem esse código de fronteira.
+- [x] **Achado que encurta o caminho:** o upstream expõe `activeLayoutBtrId` com
+      **leitura e escrita**, mais `activeLayout` e o dicionário
+      `database.objects.layout`. A camada de desenho de terceiros já sabe exibir
+      layout; o que falta é do nosso lado. Conhecido por inspeção do pacote, não
+      por execução — confirmar em navegador é parte do MT-KL-01.
+- [ ] **Próximo passo:** aceitar ou revisar o ADR 0005. Depois, MT-KL-01 (curto,
+      valor visível) ou MT-K2-04 já ciente do espaço — os dois estão liberados.
 - [ ] **Lacuna do modelo registrada em código:** o DXF distingue espessura de
       linha herdada do bloco (`-2`) da herdada da camada (`-1`) e da padrão
       (`-3`); `LineWeight` só tem `Default` e `Hundredths`, então os três viram
