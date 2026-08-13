@@ -13,10 +13,14 @@
 //! registrada em `docs/tickets/k2-dxf-nativo.md`: o parser upstream não lê
 //! arquivos cuja seção `BLOCKS` contenha bloco com entidades.
 
+mod entities;
 mod pairs;
 mod sections;
 mod tables;
 
+pub use entities::{
+    read_entities, EntitiesReading, EntitySpace, ReadEntity, RejectedEntity, DEFAULT_PAPER_SPACE,
+};
 pub use pairs::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
 pub use sections::{sections, DxfSectionError, Section, SectionKind, Sections};
 pub use tables::{read_layer_table, LayerTableReading, RejectedLayer};

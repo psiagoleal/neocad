@@ -42,9 +42,14 @@ exatamente isto que gera os documentos". No domínio de LT o entregável não é
 desenho no espaço-modelo — é a prancha composta no espaço-papel, com carimbo,
 escalas e viewports.
 
-**Posição na ordem, decidida pelo usuário:** o bloco de layout entra **antes do
-MT-K2-04**. Os tickets ainda não estão escritos; o MT-K2-03 foi executado
-primeiro por não depender deles.
+**Posição na ordem, decidida pelo usuário em 2026-08-12:** **K2 primeiro, KL
+depois**, como o [ADR 0005](../adr/0005-layouts-de-espaco-papel.md) fixou
+(K1 → K2 → KL → K3). Os tickets da fase estão em
+[`kl-layouts-espaco-papel.md`](kl-layouts-espaco-papel.md).
+
+Isso **aumenta** a importância de preservar o espaço já no MT-K2-04: como a KL
+vem depois, é a leitura de K2 que precisa chegar lá sem ter jogado fora a
+informação. A diretriz de conformidade do ADR 0005 proíbe descartá-la.
 
 A medição está no handoff. Varredura de 2.396 DWG de acervo real, descontadas as
 bibliotecas de ferragens: **70% dos 1.989 desenhos têm conteúdo no espaço-papel** —
@@ -118,12 +123,15 @@ fase própria, não ticket avulso, e depende de decisão do usuário sobre prior
 ### MT-K2-04: Ler as entidades que o modelo representa
 
 - **Objetivo:** `ENTITIES` → `Line`, `Circle`, `Arc`, `Polyline` e `Text`,
-  incluindo a polilinha de estilo antigo (`POLYLINE`/`VERTEX`/`SEQEND`).
+  incluindo a polilinha de estilo antigo (`POLYLINE`/`VERTEX`/`SEQEND`), com cada
+  entidade **atribuída ao espaço a que pertence** (códigos `67` e `410`).
 - **Arquivos no escopo:** `kernel/neocad-io/src/dxf/entities.rs`.
 - **Critério de aceite:** `cargo test -p neocad-io` lê as fixtures sintéticas de
-  `e2e/fixtures/` e confere contagem, camada e geometria de cada tipo.
-- **Fora de escopo:** entidades fora do modelo; abaulamento de polilinha.
-- **Depende de:** MT-K2-03.
+  `e2e/fixtures/` e confere contagem, camada e geometria de cada tipo; entidade
+  de espaço-papel é entregue **separada e nomeada pela aba**, e não descartada.
+- **Fora de escopo:** entidades fora do modelo; abaulamento de polilinha;
+  `LayoutTable` e `Viewport`, que são da fase KL.
+- **Depende de:** MT-K2-03, ADR-0005.
 
 ### MT-K2-05: Ler a seção `BLOCKS`
 

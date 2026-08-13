@@ -57,6 +57,7 @@ version = "0.0.0"
 name = "neocad-io"
 version = "0.0.0"
 dependencies = [
+ "neocad-geometry",
  "neocad-model",
 ]
 

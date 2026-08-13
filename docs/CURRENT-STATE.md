@@ -467,8 +467,34 @@ o kernel próprio.
       `database.objects.layout`. A camada de desenho de terceiros já sabe exibir
       layout; o que falta é do nosso lado. Conhecido por inspeção do pacote, não
       por execução — confirmar em navegador é parte do MT-KL-01.
-- [ ] **Próximo passo:** aceitar ou revisar o ADR 0005. Depois, MT-KL-01 (curto,
-      valor visível) ou MT-K2-04 já ciente do espaço — os dois estão liberados.
+- [x] **ADR 0005 aceito pelo usuário** em 2026-08-12, com a ordem definida:
+      **K2 inteira primeiro, KL depois** — o que o próprio ADR já fixava
+      (K1 → K2 → KL → K3). Isso **aumenta** a importância de preservar o espaço
+      na leitura de K2: como a KL vem depois, é a leitura de agora que precisa
+      chegar lá sem ter jogado a informação fora.
+- [x] **MT-K2-04 concluído:** `neocad-io/src/dxf/entities.rs` lê `LINE`,
+      `CIRCLE`, `ARC`, `LWPOLYLINE`, `TEXT` e a polilinha de estilo antigo
+      (`POLYLINE`/`VERTEX`/`SEQEND`), na ordem do arquivo, que é a ordem de
+      desenho. Ângulos vêm em graus e são convertidos para radianos. 78 testes na
+      crate; **320 testes** no kernel. As três fixtures sintéticas do E2E são
+      lidas pelo kernel e conferidas — o critério de aceite do ticket.
+- [x] **O espaço de cada entidade atravessa K2 sem se perder.** `EntitySpace` é
+      `Model` ou `Paper(aba)`, resolvido pelo `410` (que nomeia a aba, e tem
+      precedência) e pelo `67` (sinalizador antigo, sem nome). A aba literalmente
+      chamada `Model` é espaço-modelo — tratá-la como papel mandaria o desenho
+      inteiro para um layout inexistente. Cumpre a diretriz do ADR 0005 sem
+      exigir `LayoutTable`, que é da KL.
+- [x] **Camada citada e ausente é criada, como o AutoCAD faz.** Descartar a
+      entidade perderia desenho por uma inconsistência que o próprio formato
+      tolera. A criação é registrada em `created_layers`; nome que a tabela nem
+      assim aceita vira entidade recusada, com tipo, camada e motivo.
+- [x] **Geometria incompleta não vira entidade torta.** Círculo sem raio não
+      passa como raio zero: entra na contagem de não interpretadas. Silêncio
+      aqui produziria desenho errado, que é pior do que desenho faltando.
+- [ ] **Próximo passo:** **MT-K2-05** — ler a seção `BLOCKS`. É o ticket que
+      justifica a fase: lê a fixture `block-with-entities.dxf`, que o parser do
+      upstream não lê. O percurso de registros do MT-K2-04 já foi extraído para
+      ser reaproveitado lá.
 - [ ] **Lacuna do modelo registrada em código:** o DXF distingue espessura de
       linha herdada do bloco (`-2`) da herdada da camada (`-1`) e da padrão
       (`-3`); `LineWeight` só tem `Default` e `Hundredths`, então os três viram

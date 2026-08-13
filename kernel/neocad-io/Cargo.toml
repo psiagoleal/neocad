@@ -15,6 +15,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+neocad-geometry = { path = "../neocad-geometry", version = "0.0.0" }
 neocad-model = { path = "../neocad-model", version = "0.0.0" }
 
 [lints]

@@ -2,7 +2,7 @@
 
 # ADR 0005: Layouts de espaço-papel como conceito de primeira classe do kernel
 
-- **Status:** Proposed <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
+- **Status:** Accepted <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
 - **Data:** 2026-08-12
 - **Decisores:** Iago Leal
 - **Tags:** kernel, dxf, layout, espaço-papel, autocad, roadmap

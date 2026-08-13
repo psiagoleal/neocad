@@ -13,4 +13,4 @@ como `Superseded by ADR-NNNN`.
 | [0002](0002-relicenciamento-para-gpl-3.md)                   | Relicenciamento do NeoCAD para GPL-3.0                                              | Accepted |
 | [0003](0003-kernel-cad-proprio.md)                           | Kernel CAD próprio, com upstream rebaixado a parser e renderer                      | Accepted |
 | [0004](0004-interface-para-agentes-de-ia.md)                 | Interface headless para agentes de IA: CLI como núcleo, MCP como fachada            | Accepted |
-| [0005](0005-layouts-de-espaco-papel.md)                      | Layouts de espaço-papel como conceito de primeira classe do kernel                  | Proposed |
+| [0005](0005-layouts-de-espaco-papel.md)                      | Layouts de espaço-papel como conceito de primeira classe do kernel                  | Accepted |
