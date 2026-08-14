@@ -13,11 +13,13 @@
 //! registrada em `docs/tickets/k2-dxf-nativo.md`: o parser upstream não lê
 //! arquivos cuja seção `BLOCKS` contenha bloco com entidades.
 
+mod blocks;
 mod entities;
 mod pairs;
 mod sections;
 mod tables;
 
+pub use blocks::{read_blocks, BlockDefinition, BlocksReading};
 pub use entities::{
     read_entities, EntitiesReading, EntitySpace, ReadEntity, RejectedEntity, DEFAULT_PAPER_SPACE,
 };

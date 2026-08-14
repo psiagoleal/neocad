@@ -69,6 +69,17 @@ pub struct EntitiesReading {
 }
 
 impl EntitiesReading {
+    /// Leitura vazia, pronta para receber registros.
+    #[must_use]
+    pub(super) fn vazia() -> Self {
+        Self {
+            entities: Vec::new(),
+            unsupported: BTreeMap::new(),
+            created_layers: Vec::new(),
+            rejected: Vec::new(),
+        }
+    }
+
     /// Entidades de um espaço, na ordem de desenho.
     pub fn in_space<'a>(&'a self, space: &'a EntitySpace) -> impl Iterator<Item = &'a Entity> {
         self.entities
@@ -119,12 +130,7 @@ impl EntitiesReading {
 /// # Ok::<(), neocad_io::DxfSectionError>(())
 /// ```
 pub fn read_entities(section: &Section, layers: &mut LayerTable) -> EntitiesReading {
-    let mut leitura = EntitiesReading {
-        entities: Vec::new(),
-        unsupported: BTreeMap::new(),
-        created_layers: Vec::new(),
-        rejected: Vec::new(),
-    };
+    let mut leitura = EntitiesReading::vazia();
 
     if section.kind != SectionKind::Entities {
         return leitura;
@@ -138,7 +144,11 @@ pub fn read_entities(section: &Section, layers: &mut LayerTable) -> EntitiesRead
 ///
 /// Extraído de [`read_entities`] porque a seção `BLOCKS` vai reaproveitá-lo:
 /// dentro de uma definição de bloco as entidades têm exatamente esta forma.
-fn ler_registros(pares: &[DxfPair], layers: &mut LayerTable, leitura: &mut EntitiesReading) {
+pub(super) fn ler_registros(
+    pares: &[DxfPair],
+    layers: &mut LayerTable,
+    leitura: &mut EntitiesReading,
+) {
     let mut tipo = String::new();
     let mut atual: Vec<DxfPair> = Vec::new();
     let mut polilinha: Option<PolilinhaEmCurso> = None;
@@ -485,12 +495,7 @@ mod tests {
         let caminho = format!("{}/../../e2e/fixtures/{nome}", env!("CARGO_MANIFEST_DIR"));
         let bytes = std::fs::read(&caminho).expect("fixture existe");
         let mut camadas = LayerTable::new();
-        let mut leitura = EntitiesReading {
-            entities: Vec::new(),
-            unsupported: BTreeMap::new(),
-            created_layers: Vec::new(),
-            rejected: Vec::new(),
-        };
+        let mut leitura = EntitiesReading::vazia();
 
         for secao in sections(&bytes) {
             let secao = secao.expect("fixture bem formada");

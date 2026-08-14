@@ -491,10 +491,33 @@ o kernel próprio.
 - [x] **Geometria incompleta não vira entidade torta.** Círculo sem raio não
       passa como raio zero: entra na contagem de não interpretadas. Silêncio
       aqui produziria desenho errado, que é pior do que desenho faltando.
-- [ ] **Próximo passo:** **MT-K2-05** — ler a seção `BLOCKS`. É o ticket que
-      justifica a fase: lê a fixture `block-with-entities.dxf`, que o parser do
-      upstream não lê. O percurso de registros do MT-K2-04 já foi extraído para
-      ser reaproveitado lá.
+- [x] **MT-K2-05 concluído — o defeito que motivou a fase deixou de existir no
+      kernel.** `neocad-io/src/dxf/blocks.rs` lê a seção `BLOCKS`, e a fixture
+      `block-with-entities.dxf` — a que o parser do upstream **não abre** — é
+      lida corretamente, com o bloco e a entidade dentro dele. 92 testes na
+      crate; **335 testes** no kernel. Falta a troca na interface (MT-K2-12) para
+      o usuário sentir.
+- [x] **Cabeçalho e corpo do bloco separados por posição, não por código.** O
+      `10`/`20` do cabeçalho é o ponto-base e o do corpo é da entidade; o `8`
+      aparece nos dois. Separar por código faria um virar o outro. Tudo antes do
+      primeiro registro `0` é cabeçalho.
+- [x] **Referência externa guarda o caminho.** Bloco marcado como xref (bit `4`
+      do código `70`) não tem conteúdo local — as entidades vivem no arquivo
+      apontado. Guardar o caminho é o que impede a referência de sumir só porque
+      o outro arquivo não está em mãos.
+- [x] **Os espaços aparecem como blocos, e é assim que deve ser.** Arquivo real
+      declara `*Model_Space` e `*Paper_Space` na `BLOCKS`. São entregues como
+      definições comuns — fiel ao formato e ao ADR 0005, que modela layout
+      exatamente como registro de bloco.
+- [ ] **Próximo passo:** **MT-K2-06** — contar o que não é compreendido, agora
+      como relatório único que acompanha o documento. As três leituras já contam
+      por conta própria (`unsupported`, `created_layers`, `rejected`); o ticket é
+      consolidá-las.
+- [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
+      identificador só existe dentro de um `Document`. Por isso a leitura de
+      blocos devolve `BlockDefinition` com as entidades por valor, e não uma
+      `BlockTable` — montar a tabela exige a arena, que é do documento. A
+      montagem acontece quando o documento for construído.
 - [ ] **Lacuna do modelo registrada em código:** o DXF distingue espessura de
       linha herdada do bloco (`-2`) da herdada da camada (`-1`) e da padrão
       (`-3`); `LineWeight` só tem `Default` e `Hundredths`, então os três viram
