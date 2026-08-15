@@ -509,10 +509,40 @@ o kernel próprio.
       declara `*Model_Space` e `*Paper_Space` na `BLOCKS`. São entregues como
       definições comuns — fiel ao formato e ao ADR 0005, que modela layout
       exatamente como registro de bloco.
-- [ ] **Próximo passo:** **MT-K2-06** — contar o que não é compreendido, agora
-      como relatório único que acompanha o documento. As três leituras já contam
-      por conta própria (`unsupported`, `created_layers`, `rejected`); o ticket é
-      consolidá-las.
+- [x] **MT-K2-06 concluído — bloco B fechado.** `neocad-io/src/dxf/report.rs` e
+      o ponto de montagem `read_dxf` em `mod.rs`. Um arquivo com `HATCH`,
+      `DIMENSION` e um `SPLICE` inventado abre, entrega as entidades válidas e
+      reporta os três tipos com contagem. 110 testes na crate; **354 testes** no
+      kernel.
+- [x] **A ordem das seções deixou de importar.** As seções são colhidas antes de
+      interpretadas e a `TABLES` é processada primeiro, para as entidades
+      encontrarem suas camadas já criadas. Sem isso, arquivo que grava `ENTITIES`
+      antes de `TABLES` — comum em ferramenta de terceiro — criaria toda camada
+      por citação, perdendo cor, tipo de linha e estados.
+- [x] **`DxfReport` junta tudo o que não coube:** tipos não representados com
+      contagem, camadas criadas por citação, entidades e camadas recusadas,
+      códigos de camada não lidos, seções ainda não consumidas com o tamanho, e
+      as falhas locais de percurso. `unsupported_by_frequency()` ordena o que
+      falta implementar — num acervo real o peso é muito desigual, e adivinhar a
+      ordem custa trabalho no lugar errado.
+- [x] **Seção não consumida não é sujeira do arquivo.** `is_clean()` ignora
+      `skipped_sections`, senão todo DXF moderno pareceria problemático por causa
+      da `OBJECTS`. Essa contagem, aliás, é hoje a **medida direta do que falta
+      para a fase KL**: é lá que moram os objetos `LAYOUT`.
+- [x] **Uma perda silenciosa fechada de véspera:** arquivo com duas seções
+      `TABLES` — o que concatenação produz — fazia a segunda sobrescrever a
+      primeira. Agora só a primeira é consumida e a outra entra em
+      `skipped_sections`, para a perda **aparecer em vez de acontecer**.
+- [ ] **Decisão registrada: a leitura ainda não monta um `Document`.** Montar
+      exige pôr cada entidade num registro de bloco, e as de espaço-papel
+      precisam dos blocos `*Paper_Space*`, que a `BlockTable` recusa criar —
+      nomes com `*` são reservados. Abrir essa via é o **MT-KL-04**. A
+      alternativa seria descartar as entidades de papel para montar o documento
+      agora, e a diretriz do ADR 0005 proíbe. **Consequência para o MT-K2-09:** a
+      ida e volta completa depende da KL; até lá só o espaço-modelo é comparável.
+- [ ] **Próximo passo:** **MT-K2-07** — escrever cabeçalho e tabelas, com saída
+      byte a byte idêntica entre execuções. Abre o bloco C, e depende só do
+      MT-K2-03, já pronto.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma
