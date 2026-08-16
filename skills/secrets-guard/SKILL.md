@@ -10,7 +10,7 @@ description: >-
 
 # secrets-guard — Guardião de segredos
 
-Esta skill codifica a seção *Segurança da Informação no Desenvolvimento Acelerado*
+Esta skill codifica a seção _Segurança da Informação no Desenvolvimento Acelerado_
 da nota técnica. Vale para os três perfis (empresa, externo-confidencial, pessoal),
 com rigor decrescente — mas os princípios são sempre os mesmos.
 
@@ -19,21 +19,21 @@ com rigor decrescente — mas os princípios são sempre os mesmos.
 Um vetor frequente e subestimado de vazamento é a execução, **pelo próprio agente**,
 de comandos que imprimem segredos no histórico da conversa. Uma vez no histórico, o
 segredo pode ser reenviado a provedores externos de modelo, persistido em caches de
-prompt, registrado em *traces* de observabilidade, ou copiado inadvertidamente em
-*issues*, descrições de PR e mensagens de *commit*.
+prompt, registrado em _traces_ de observabilidade, ou copiado inadvertidamente em
+_issues_, descrições de PR e mensagens de _commit_.
 
 ## Os quatro princípios (obrigatórios)
 
 1. **Nunca executar** comandos cujo objetivo seja, direta ou indiretamente, exibir o
-   conteúdo de arquivos `.env`, cofres desbloqueados, *keyrings* do SO, históricos de
+   conteúdo de arquivos `.env`, cofres desbloqueados, _keyrings_ do SO, históricos de
    variáveis de ambiente sensíveis, tokens JWT ainda válidos ou trechos de log que
-   possam conter chaves, certificados ou *fingerprints* criptográficos.
+   possam conter chaves, certificados ou _fingerprints_ criptográficos.
 2. **Avaliar previamente**, antes de invocar qualquer comando, se a saída poderá
    conter material sensível. Em caso de dúvida, **abster-se** e relatar a hesitação ao
    operador humano.
 3. **Preferir verificações indiretas** quando for preciso validar uma credencial:
-   - testar a autenticação contra um *endpoint* de saúde (`/healthz`, `/me`);
-   - conferir apenas o *hash* SHA-256 truncado;
+   - testar a autenticação contra um _endpoint_ de saúde (`/healthz`, `/me`);
+   - conferir apenas o _hash_ SHA-256 truncado;
    - expor somente os últimos quatro caracteres mascarados (`****abcd`);
    - executar a chamada-fim e relatar apenas sucesso/insucesso funcional.
 4. Quando a inspeção direta for inevitável (ex.: depurar variável malformada),
@@ -88,7 +88,7 @@ carregadas do cofre — nunca materializadas em `.env` versionável.
 ## Rede de segurança
 
 Recomende ao operador habilitar varredura de segredos pré-commit (`gitleaks`,
-`trufflehog`, `detect-secrets`) e *hooks* de pré-execução de comando que bloqueiem os
+`trufflehog`, `detect-secrets`) e _hooks_ de pré-execução de comando que bloqueiem os
 padrões acima antes mesmo de o modelo invocá-los.
 
 ## Definição de pronto da skill

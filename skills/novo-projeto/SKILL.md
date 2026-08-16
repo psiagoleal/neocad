@@ -59,23 +59,23 @@ scripts/setup-profile.sh <perfil> <alvo>             # aplique
 
 Opções que costumam importar:
 
-| Situação | Opção |
-|---|---|
-| Checkout no Windows | `--skills-mode copy` (symlink não é portável) |
-| Só a pasta neutra, sem agente | `--skills-mode none` |
-| Subconjunto de skills | `--skills a,b,c` |
-| Repo já configurado | `--update` (ver seção 6) |
+| Situação                      | Opção                                         |
+| ----------------------------- | --------------------------------------------- |
+| Checkout no Windows           | `--skills-mode copy` (symlink não é portável) |
+| Só a pasta neutra, sem agente | `--skills-mode none`                          |
+| Subconjunto de skills         | `--skills a,b,c`                              |
+| Repo já configurado           | `--update` (ver seção 6)                      |
 
 ## 4. Redistribuir o conteúdo do projeto — a parte que importa
 
 Depois de instalar, **quase tudo em `AGENTS.md` é regenerado** no próximo `--update`. Só
 sobrevive o que está dentro das ilhas de marcadores:
 
-| Arquivo | Ilhas disponíveis |
-|---|---|
-| `AGENTS.md` | `id=comandos-exatos`, `id=estrutura-diretorios` |
-| `.claudeignore` | `id=projeto-ignore` |
-| `.env.example` | conforme o perfil |
+| Arquivo         | Ilhas disponíveis                               |
+| --------------- | ----------------------------------------------- |
+| `AGENTS.md`     | `id=comandos-exatos`, `id=estrutura-diretorios` |
+| `.claudeignore` | `id=projeto-ignore`                             |
+| `.env.example`  | conforme o perfil                               |
 
 Regra prática:
 

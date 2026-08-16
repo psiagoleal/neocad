@@ -58,6 +58,7 @@ print(f"[ASR] {dev}/{name} dur={info.duration:.0f}s proc={time.time()-t:.0f}s wo
 ```
 
 Notas:
+
 - `faster-whisper large-v3` em GPU roda a ~0,15× tempo real (≈6× mais rápido que a duração).
 - Extrair só o áudio ajuda: `ffmpeg -i in.mp4 -ac 1 -ar 16000 -c:a pcm_s16le out.wav`.
 - **Termos técnicos:** passe `initial_prompt="<glossário: siglas, nomes de sistemas/pessoas>"`

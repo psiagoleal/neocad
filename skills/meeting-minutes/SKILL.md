@@ -18,7 +18,7 @@ alto valor que se perde se não virar um registro durável e compartilhável. Ao
 **áudio e transcrições costumam ser o artefato mais sensível** de um projeto: contêm nomes,
 opiniões atribuíveis a pessoas e dados de terceiros. Registrar bem a reunião **e** respeitar
 o perímetro do dado são o **mesmo** trabalho — e é por isso que esta skill trata os dois
-juntos. Um agente compreende melhor uma restrição quando entende o *porquê*: aqui, o porquê é
+juntos. Um agente compreende melhor uma restrição quando entende o _porquê_: aqui, o porquê é
 que resumir um áudio confidencial num serviço externo pode **exfiltrar** o material mais
 sensível do projeto sem que ninguém tenha decidido isso.
 
@@ -97,7 +97,7 @@ apenas **antialucinação**, os **dois artefatos** e o **template** (o do usuár
 - [ ] Consentimento/retenção verificados e registrados.
 - [ ] Transcrição adequada à finalidade (ASR **local** quando confidencial / qualidade importa).
 - [ ] ATA **+** seção de observações/sentimento produzidas no template (o do usuário ou,
-  na ausência, o padrão da skill).
+      na ausência, o padrão da skill).
 - [ ] Antialucinação aplicada ("não registrado" onde ausente; sem atribuição indevida).
 - [ ] Proveniência (on-prem × externo) registrada; saída em área restrita; nada confidencial
-  versionado.
+      versionado.
