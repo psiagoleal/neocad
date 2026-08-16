@@ -18,11 +18,44 @@
 //! - **Identificadores.** Os handles saem de um contador monotônico, e não de
 //!   endereço de memória ou de ordem de alocação.
 
+mod entities;
 mod tables;
 
+use neocad_geometry::Point2;
 use neocad_model::LayerTable;
 
+use super::blocks::BlockDefinition;
+use super::entities::ReadEntity;
+use entities::{model_space_extents, write_blocks, write_entities};
 use tables::write_tables;
+
+/// O conteúdo de um desenho, na forma que a escrita consome.
+///
+/// Reúne o que a leitura produz — camadas, entidades com o seu espaço e
+/// definições de bloco — sem exigir um [`neocad_model::Document`], que ainda não
+/// pode ser montado enquanto os blocos de espaço-papel não existirem (fase KL).
+/// É também o que torna a ida e volta do MT-K2-09 exprimível.
+#[derive(Debug, Clone, Copy)]
+pub struct DxfContents<'a> {
+    /// Tabela de camadas do desenho.
+    pub layers: &'a LayerTable,
+    /// Entidades dos espaços, na ordem de desenho.
+    pub entities: &'a [ReadEntity],
+    /// Definições de bloco.
+    pub blocks: &'a [BlockDefinition],
+}
+
+impl<'a> DxfContents<'a> {
+    /// Conteúdo com apenas as camadas — um desenho sem traço nenhum.
+    #[must_use]
+    pub const fn from_layers(layers: &'a LayerTable) -> Self {
+        Self {
+            layers,
+            entities: &[],
+            blocks: &[],
+        }
+    }
+}
 
 /// Versão do formato que a escrita produz.
 ///
@@ -171,44 +204,43 @@ pub fn formatar_real(value: f64) -> String {
     curta
 }
 
-/// Escreve um DXF com cabeçalho e tabelas.
-///
-/// Entidades e blocos entram no MT-K2-08; as seções correspondentes saem vazias,
-/// que é um arquivo válido e abrível, apenas sem desenho.
+/// Escreve um DXF completo: cabeçalho, tabelas, blocos e entidades.
 ///
 /// # Exemplo
 ///
 /// ```
-/// use neocad_io::{read_dxf, write_dxf};
+/// use neocad_io::{read_dxf, write_dxf, DxfContents};
 /// use neocad_model::LayerTable;
 ///
 /// let mut camadas = LayerTable::new();
 /// camadas.create("Eixos")?;
 ///
-/// let bytes = write_dxf(&camadas);
+/// let conteudo = DxfContents::from_layers(&camadas);
+/// let bytes = write_dxf(&conteudo);
 ///
 /// // O que escrevemos, lemos de volta.
 /// let relido = read_dxf(&bytes);
 /// assert!(relido.layers.get_by_name("Eixos").is_some());
 ///
 /// // E duas execuções produzem os mesmos bytes.
-/// assert_eq!(bytes, write_dxf(&camadas));
+/// assert_eq!(bytes, write_dxf(&conteudo));
 /// # Ok::<(), neocad_model::LayerError>(())
 /// ```
 #[must_use]
-pub fn write_dxf(layers: &LayerTable) -> Vec<u8> {
+pub fn write_dxf(contents: &DxfContents<'_>) -> Vec<u8> {
     let mut handles = Handles::new();
 
-    // As tabelas vêm antes no tempo, ainda que depois no arquivo: só depois de
-    // distribuir os handles delas é que se sabe qual `$HANDSEED` declarar.
-    let mut tabelas = Saida::new();
-    write_tables(&mut tabelas, layers, &mut handles);
+    // O corpo vem antes no tempo, ainda que depois no arquivo: só depois de
+    // distribuir todos os handles é que se sabe qual `$HANDSEED` declarar, e a
+    // extensão do desenho depende das entidades já conhecidas.
+    let mut corpo = Saida::new();
+    write_tables(&mut corpo, contents, &mut handles);
+    write_blocks(&mut corpo, contents, &mut handles);
+    write_entities(&mut corpo, contents, &mut handles);
 
     let mut saida = Saida::new();
-    write_header(&mut saida, &handles);
-    saida.texto.push_str(tabelas.texto());
-    secao_vazia(&mut saida, "BLOCKS");
-    secao_vazia(&mut saida, "ENTITIES");
+    write_header(&mut saida, contents, &handles);
+    saida.texto.push_str(corpo.texto());
     saida.par(0, "EOF");
 
     saida.into_bytes()
@@ -219,7 +251,7 @@ pub fn write_dxf(layers: &LayerTable) -> Vec<u8> {
 /// "Mínimo" aqui é o que basta para um leitor identificar a versão e posicionar
 /// o desenho. As extensões (`$EXTMIN`/`$EXTMAX`) dependem das entidades e entram
 /// no MT-K2-08, junto com quem as produz.
-fn write_header(saida: &mut Saida, handles: &Handles) {
+fn write_header(saida: &mut Saida, contents: &DxfContents<'_>, handles: &Handles) {
     saida.par(0, "SECTION");
     saida.par(2, "HEADER");
 
@@ -230,18 +262,25 @@ fn write_header(saida: &mut Saida, handles: &Handles) {
     saida.par(5, &handles.semente());
 
     saida.par(9, "$INSBASE");
-    saida.real(10, 0.0);
-    saida.real(20, 0.0);
-    saida.real(30, 0.0);
+    escrever_ponto(saida, Point2::ORIGIN);
+
+    // Extensão só existe se houver desenho. Declarar a de um arquivo vazio
+    // seria inventar um retângulo que ninguém desenhou.
+    if let Some(extensao) = model_space_extents(contents) {
+        saida.par(9, "$EXTMIN");
+        escrever_ponto(saida, extensao.min());
+        saida.par(9, "$EXTMAX");
+        escrever_ponto(saida, extensao.max());
+    }
 
     saida.par(0, "ENDSEC");
 }
 
-/// Escreve uma seção sem conteúdo.
-fn secao_vazia(saida: &mut Saida, nome: &str) {
-    saida.par(0, "SECTION");
-    saida.par(2, nome);
-    saida.par(0, "ENDSEC");
+/// Escreve um ponto nos códigos `10`/`20`/`30`, como o cabeçalho os espera.
+fn escrever_ponto(saida: &mut Saida, ponto: Point2) {
+    saida.real(10, ponto.x);
+    saida.real(20, ponto.y);
+    saida.real(30, 0.0);
 }
 
 #[cfg(test)]
@@ -256,7 +295,9 @@ mod tests {
         camadas.create("Eixos").expect("nome válido");
         camadas.create("Cotas").expect("nome válido");
 
-        assert_eq!(write_dxf(&camadas), write_dxf(&camadas));
+        let conteudo = DxfContents::from_layers(&camadas);
+
+        assert_eq!(write_dxf(&conteudo), write_dxf(&conteudo));
     }
 
     #[test]
@@ -272,7 +313,10 @@ mod tests {
         outra.create("Cotas").expect("nome válido");
         outra.create("Eixos").expect("nome válido");
 
-        assert_eq!(write_dxf(&uma), write_dxf(&outra));
+        assert_eq!(
+            write_dxf(&DxfContents::from_layers(&uma)),
+            write_dxf(&DxfContents::from_layers(&outra))
+        );
     }
 
     #[test]
@@ -280,7 +324,7 @@ mod tests {
         let mut camadas = LayerTable::new();
         camadas.create("Fiação").expect("nome válido");
 
-        let leitura = read_dxf(&write_dxf(&camadas));
+        let leitura = read_dxf(&write_dxf(&DxfContents::from_layers(&camadas)));
 
         assert!(leitura.layers.get_by_name("Fiação").is_some());
         assert!(leitura.report.is_clean());
@@ -289,7 +333,8 @@ mod tests {
 
     #[test]
     fn o_arquivo_tem_as_secoes_esperadas() {
-        let bytes = write_dxf(&LayerTable::new());
+        let camadas = LayerTable::new();
+        let bytes = write_dxf(&DxfContents::from_layers(&camadas));
         let secoes: Vec<SectionKind> = crate::sections(&bytes)
             .map(|s| s.expect("bem formada").kind)
             .collect();
@@ -307,7 +352,8 @@ mod tests {
 
     #[test]
     fn as_linhas_terminam_em_crlf() {
-        let bytes = write_dxf(&LayerTable::new());
+        let camadas = LayerTable::new();
+        let bytes = write_dxf(&DxfContents::from_layers(&camadas));
         let texto = String::from_utf8(bytes).expect("saída é UTF-8");
 
         assert!(texto.starts_with("  0\r\nSECTION\r\n"));
@@ -318,7 +364,8 @@ mod tests {
 
     #[test]
     fn a_versao_declarada_suporta_layout() {
-        let bytes = write_dxf(&LayerTable::new());
+        let camadas = LayerTable::new();
+        let bytes = write_dxf(&DxfContents::from_layers(&camadas));
         let texto = String::from_utf8(bytes).expect("saída é UTF-8");
 
         assert!(texto.contains("$ACADVER"));
@@ -332,7 +379,7 @@ mod tests {
         let mut camadas = LayerTable::new();
         camadas.create("Fiação").expect("nome válido");
 
-        let bytes = write_dxf(&camadas);
+        let bytes = write_dxf(&DxfContents::from_layers(&camadas));
 
         assert!(ACAD_VERSION >= "AC1021", "versão anterior não é Unicode");
         assert!(String::from_utf8(bytes.clone())

@@ -576,8 +576,39 @@ o kernel próprio.
       mais um `62` de companhia no valor padrão `7`. O índice ACI **mais
       próximo** seria melhor para quem não lê `420`, mas exige a tabela da paleta,
       que o modelo não tem. O valor exato está no arquivo; falta a aproximação.
-- [ ] **Próximo passo:** **MT-K2-08** — escrever entidades e blocos, com
-      `$EXTMIN`/`$EXTMAX` que dependem delas.
+- [x] **MT-K2-08 concluído:** `writer/entities.rs` grava `BLOCKS` e `ENTITIES`.
+      Os cinco tipos do modelo sobrevivem à ida e volta, conferidos um a um; a
+      ordem de desenho é preservada, porque trocá-la muda o que fica por cima em
+      desenho com hachura. `$EXTMIN`/`$EXTMAX` saem do espaço-modelo — a entidade
+      de papel não entra, que a extensão é do desenho e não da prancha — e são
+      **omitidos** quando não há desenho, em vez de declararem um retângulo que
+      ninguém traçou. 152 testes na crate; **397 testes** no kernel.
+- [x] **`DxfContents` é a forma que a escrita consome:** camadas, entidades com o
+      seu espaço e definições de bloco. Existe porque o `Document` ainda não pode
+      ser montado (blocos de espaço-papel são da KL), e é o que torna a ida e
+      volta do MT-K2-09 exprimível.
+- [x] **Os blocos de espaço saem sempre, e sem duplicar.** O formato exige
+      `*Model_Space` e `*Paper_Space` mesmo vazios. Definição lida com um desses
+      nomes **não** é descartada: suas entidades saem dentro do bloco
+      correspondente, para o conteúdo não sumir por causa de um nome reservado.
+- [x] **`BLOCK_RECORD` entrou nas tabelas.** Toda entidade pertence a um registro
+      de bloco, e é essa tabela que declara quais existem; sem ela as entidades
+      ficam sem dono declarado, e leitor estrito recusa. É também a estrutura
+      sobre a qual o ADR 0005 modela layout — cada aba é um registro daqui.
+- [x] **Herança de cor sai por omissão**, como no AutoCAD: um `62` em toda
+      entidade engordaria o arquivo sem dizer nada. As quatro formas (`ByLayer`,
+      `ByBlock`, índice e cor verdadeira) foram conferidas na ida e volta.
+- [x] **A fixture que motivou a fase sobrevive à regravação.**
+      `block-with-entities.dxf` é lida, gravada e relida com o bloco e a entidade
+      intactos — e a segunda regravação é byte a byte igual à primeira.
+- [ ] **Perda declarada, a repetir no MT-K2-09:** o modelo guarda ângulo em
+      **radianos** e o formato grava **graus**. A conversão é exata só até o
+      último bit, então arco de ângulo arbitrário não volta idêntico. É inerente
+      à escolha do formato, e precisa estar escrito no teste de ida e volta em
+      vez de ser descoberto depois.
+- [ ] **Próximo passo:** **MT-K2-09** — fechar a ida e volta, com a perda
+      esperada declarada no teste. Atenção: a comparação por `Document` depende da
+      KL; até lá o que se compara é o `DxfContents`.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

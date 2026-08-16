@@ -6,7 +6,8 @@
 
 use neocad_model::{Color, LayerRecord, LayerTable, LineWeight};
 
-use super::{Handles, Saida};
+use super::entities::block_record_names;
+use super::{DxfContents, Handles, Saida};
 
 /// Tipo de linha padrão, que toda camada referencia enquanto não há tabela de
 /// tipos de linha no modelo.
@@ -30,15 +31,41 @@ const LINE_WEIGHT_DEFAULT: i64 = -3;
 ///
 /// Quando o modelo ganhar tabela própria de tipos de linha, esta função passa a
 /// escrevê-la por inteiro; a `LTYPE` mínima daqui é o piso, não o teto.
-pub(super) fn write_tables(saida: &mut Saida, layers: &LayerTable, handles: &mut Handles) {
+pub(super) fn write_tables(saida: &mut Saida, contents: &DxfContents<'_>, handles: &mut Handles) {
     saida.par(0, "SECTION");
     saida.par(2, "TABLES");
 
     write_linetype_table(saida, handles);
-    write_layer_table(saida, layers, handles);
+    write_layer_table(saida, contents.layers, handles);
     write_text_style_table(saida, handles);
+    write_block_record_table(saida, contents, handles);
 
     saida.par(0, "ENDSEC");
+}
+
+/// Escreve a tabela de registros de bloco.
+///
+/// # Por que ela precisa existir
+///
+/// Toda entidade pertence a um registro de bloco, e é essa tabela que declara
+/// quais existem — inclusive `*Model_Space` e `*Paper_Space`, que o formato exige
+/// mesmo num desenho sem bloco nenhum. Omiti-la deixa as entidades sem dono
+/// declarado, e é o tipo de ausência que um leitor estrito recusa.
+///
+/// É também a estrutura sobre a qual o ADR 0005 modela layout: cada aba é um
+/// registro daqui.
+fn write_block_record_table(saida: &mut Saida, contents: &DxfContents<'_>, handles: &mut Handles) {
+    let nomes = block_record_names(contents);
+
+    abrir_tabela(saida, "BLOCK_RECORD", nomes.len(), handles);
+
+    for nome in nomes {
+        abrir_registro(saida, "BLOCK_RECORD", "AcDbBlockTableRecord", handles);
+        saida.par(2, nome);
+        saida.inteiro(70, 0);
+    }
+
+    saida.par(0, "ENDTAB");
 }
 
 /// Abre uma tabela, com seu handle e a contagem de entradas.
@@ -190,11 +217,11 @@ fn write_text_style_table(saida: &mut Saida, handles: &mut Handles) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{read_dxf, write_dxf};
+    use crate::{read_dxf, write_dxf, DxfContents};
 
     /// Grava uma tabela de camadas e a lê de volta.
     fn ida_e_volta(layers: &LayerTable) -> LayerTable {
-        read_dxf(&write_dxf(layers)).layers
+        read_dxf(&write_dxf(&DxfContents::from_layers(layers))).layers
     }
 
     fn com_camada(nome: &str, ajuste: impl FnOnce(&mut LayerRecord)) -> LayerTable {
@@ -320,7 +347,9 @@ mod tests {
     #[test]
     fn as_tabelas_de_apoio_saem_no_arquivo() {
         // Sem elas, o `Continuous` que toda camada referencia fica pendurado.
-        let texto = String::from_utf8(write_dxf(&LayerTable::new())).expect("saída é UTF-8");
+        let camadas = LayerTable::new();
+        let texto = String::from_utf8(write_dxf(&DxfContents::from_layers(&camadas)))
+            .expect("saída é UTF-8");
 
         assert!(texto.contains("LTYPE"));
         assert!(texto.contains(CONTINUOUS));
@@ -339,7 +368,7 @@ mod tests {
             camada.set_frozen(true);
         });
 
-        let leitura = read_dxf(&write_dxf(&camadas));
+        let leitura = read_dxf(&write_dxf(&DxfContents::from_layers(&camadas)));
 
         assert!(
             leitura.report.unread_layer_codes.is_empty(),

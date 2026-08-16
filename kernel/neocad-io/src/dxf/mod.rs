@@ -29,7 +29,7 @@ pub use pairs::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
 pub use report::DxfReport;
 pub use sections::{sections, DxfSectionError, Section, SectionKind, Sections};
 pub use tables::{read_layer_table, LayerTableReading, RejectedLayer};
-pub use writer::{formatar_real, write_dxf, ACAD_VERSION};
+pub use writer::{formatar_real, write_dxf, DxfContents, ACAD_VERSION};
 
 use neocad_model::LayerTable;
 
