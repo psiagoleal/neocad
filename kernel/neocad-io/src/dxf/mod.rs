@@ -19,6 +19,7 @@ mod pairs;
 mod report;
 mod sections;
 mod tables;
+mod writer;
 
 pub use blocks::{read_blocks, BlockDefinition, BlocksReading};
 pub use entities::{
@@ -28,6 +29,7 @@ pub use pairs::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
 pub use report::DxfReport;
 pub use sections::{sections, DxfSectionError, Section, SectionKind, Sections};
 pub use tables::{read_layer_table, LayerTableReading, RejectedLayer};
+pub use writer::{formatar_real, write_dxf, ACAD_VERSION};
 
 use neocad_model::LayerTable;
 

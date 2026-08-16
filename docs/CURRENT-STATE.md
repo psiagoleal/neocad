@@ -540,9 +540,44 @@ o kernel próprio.
       alternativa seria descartar as entidades de papel para montar o documento
       agora, e a diretriz do ADR 0005 proíbe. **Consequência para o MT-K2-09:** a
       ida e volta completa depende da KL; até lá só o espaço-modelo é comparável.
-- [ ] **Próximo passo:** **MT-K2-07** — escrever cabeçalho e tabelas, com saída
-      byte a byte idêntica entre execuções. Abre o bloco C, e depende só do
-      MT-K2-03, já pronto.
+- [x] **MT-K2-07 concluído — bloco C aberto.** `neocad-io/src/dxf/writer/`
+      grava `HEADER` e `TABLES`. A saída é **byte a byte idêntica** entre
+      execuções, e — o que é o teste que importa — **entre duas tabelas de mesmo
+      conteúdo montadas em ordens diferentes**. Isso só vale porque a iteração da
+      `LayerTable` é alfabética desde o MT-K1-04. 134 testes na crate; **379
+      testes** no kernel.
+- [x] **Determinismo em três frentes, todas explícitas:** ordem (nada percorre
+      estrutura de ordem indefinida), números (`formatar_real`, sem locale e sem
+      notação científica) e identificadores (handles de contador monotônico, não
+      de endereço ou ordem de alocação).
+- [x] **`formatar_real` não perde e não usa expoente.** Usa a forma curta do Rust
+      quando ela não traz `e`, e senão busca a menor precisão decimal que ainda
+      round-trips. O limite do laço vai a **1074 casas** porque parar em 17 fazia
+      `f64::MIN_POSITIVE` virar `0.0` — a mesma perda silenciosa que passamos
+      dias caçando no conversor alheio. Valor patológico paga o laço; coordenada
+      de desenho sai na primeira iteração. `-0.0` é normalizado, senão dois
+      desenhos iguais gravariam bytes diferentes.
+- [x] **A versão declarada mudou de `AC1015` para `AC1021` por causa de
+      acentuação.** Achado ao inspecionar a saída: o piso funcional seria o
+      AutoCAD 2000, mas até o `AC1018` o DXF **não é Unicode** — o texto vale
+      pela página de código do `$DWGCODEPAGE`, e `Fiação` gravado em UTF-8
+      chegaria torto a um leitor que segue a especificação. Do `AC1021` em diante
+      o formato é UTF-8. Em desenho brasileiro nome acentuado é regra; custou
+      compatibilidade com leitores anteriores a 2007, e é troca boa.
+- [x] **Saem mais tabelas que a de camadas, e por necessidade.** Toda camada
+      referencia um tipo de linha pelo nome e todo texto um estilo. Gravar só a
+      `LAYER` deixaria essas referências penduradas, então `LTYPE`/`Continuous` e
+      `STYLE`/`Standard` saem com uma entrada cada — o mínimo para o arquivo se
+      sustentar sozinho.
+- [x] **Escrita e leitura são verificadas uma contra a outra.** Um teste confere
+      que nenhum código emitido pela escrita cai em `unread_layer_codes` da
+      leitura: é o que impede os dois lados de se separarem em silêncio.
+- [ ] **Aproximação assumida na escrita:** cor verdadeira sai com `420` exato
+      mais um `62` de companhia no valor padrão `7`. O índice ACI **mais
+      próximo** seria melhor para quem não lê `420`, mas exige a tabela da paleta,
+      que o modelo não tem. O valor exato está no arquivo; falta a aproximação.
+- [ ] **Próximo passo:** **MT-K2-08** — escrever entidades e blocos, com
+      `$EXTMIN`/`$EXTMAX` que dependem delas.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma
