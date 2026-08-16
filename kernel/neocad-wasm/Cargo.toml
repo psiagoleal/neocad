@@ -18,6 +18,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 neocad-geometry = { path = "../neocad-geometry", version = "0.0.0" }
+neocad-io = { path = "../neocad-io", version = "0.0.0" }
 neocad-model = { path = "../neocad-model", version = "0.0.0" }
 neocad-transaction = { path = "../neocad-transaction", version = "0.0.0" }
 serde = { version = "1", features = ["derive"] }

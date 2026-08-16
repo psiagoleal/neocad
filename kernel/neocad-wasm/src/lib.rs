@@ -21,6 +21,7 @@
 //! opaco de qualquer modo.
 
 use neocad_geometry::{Aabb, Point2};
+use neocad_io::{read_dxf, write_dxf, BlockDefinition, DxfContents, EntitySpace, ReadEntity};
 use neocad_model::{
     Arc, Circle, Color, Document, Entity, EntityId, Geometry, LayerId, LayerRecord, Line, Polyline,
     Text,
@@ -318,6 +319,91 @@ pub struct LoadReport {
     pub skipped_count: usize,
 }
 
+/// Um tipo de entidade que o modelo ainda não representa, com sua contagem.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsupportedView {
+    /// Tipo como veio do arquivo.
+    pub entity_type: String,
+    /// Quantas vezes apareceu.
+    pub count: usize,
+}
+
+/// Um layout de espaço-papel encontrado no arquivo.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaperSpaceView {
+    /// Nome da aba.
+    pub name: String,
+    /// Entidades que moram nela.
+    pub entity_count: usize,
+}
+
+/// O que uma gravação **descartaria** do que foi lido.
+///
+/// Existe para que a perda apareça antes de acontecer. Salvar por cima de um
+/// original sem avisar que a prancha não vai junto é destruição silenciosa de
+/// trabalho alheio — o ADR 0005 proíbe, e este relatório é o que permite
+/// cumprir a proibição na interface.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveLossView {
+    /// Entidades de tipo que o modelo não representa, por tipo.
+    pub unsupported: Vec<UnsupportedView>,
+    /// Total delas.
+    pub unsupported_count: usize,
+    /// Layouts de espaço-papel, que o documento ainda não guarda (fase KL).
+    pub paper_space: Vec<PaperSpaceView>,
+    /// Total de entidades em espaço-papel.
+    pub paper_space_count: usize,
+    /// Blocos que são referência externa, cujo caminho o modelo não guarda.
+    pub xref_count: usize,
+    /// Verdadeiro quando nada se perderia.
+    pub is_lossless: bool,
+}
+
+impl Default for SaveLossView {
+    /// Sessão sem arquivo aberto não perde nada.
+    ///
+    /// Escrito à mão porque o `bool` padrão é `false`, e derivar faria uma
+    /// sessão recém-criada anunciar perda que não existe — o tipo de defeito
+    /// que leva o usuário a desconfiar de um aviso verdadeiro depois.
+    fn default() -> Self {
+        Self {
+            unsupported: Vec::new(),
+            unsupported_count: 0,
+            paper_space: Vec::new(),
+            paper_space_count: 0,
+            xref_count: 0,
+            is_lossless: true,
+        }
+    }
+}
+
+/// Resultado da abertura de um DXF.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DxfOpenReport {
+    /// Camadas do documento após a abertura.
+    pub layer_count: usize,
+    /// Entidades de espaço-modelo carregadas.
+    pub entity_count: usize,
+    /// Entidades recusadas por referenciarem camada inexistente.
+    pub skipped_count: usize,
+    /// Definições de bloco lidas.
+    pub block_count: usize,
+    /// Entidades dentro de definições de bloco.
+    pub block_entity_count: usize,
+    /// Camadas que o arquivo citava sem definir, criadas na leitura.
+    pub created_layers: Vec<String>,
+    /// Falhas locais de percurso, que não impediram a abertura.
+    pub errors: Vec<String>,
+    /// O que uma gravação descartaria.
+    pub loss: SaveLossView,
+    /// Resumo de uma linha, pronto para mensagem de interface.
+    pub summary: String,
+}
+
 /// Entidade, na forma que atravessa a ponte.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -373,6 +459,11 @@ pub struct HistoryView {
 pub struct CadSession {
     document: Document,
     stack: CommandStack,
+    /// O que a última abertura de DXF traria a perder numa gravação.
+    ///
+    /// Guardado na sessão porque a pergunta "o que eu perco ao salvar?" é feita
+    /// no momento de salvar, não no de abrir.
+    loss: SaveLossView,
 }
 
 #[wasm_bindgen]
@@ -384,6 +475,7 @@ impl CadSession {
         Self {
             document: Document::new(),
             stack: CommandStack::new(),
+            loss: SaveLossView::default(),
         }
     }
 
@@ -531,6 +623,53 @@ impl CadSession {
         to_js(&report)
     }
 
+    /// Abre um DXF a partir dos bytes do arquivo, substituindo o documento.
+    ///
+    /// O histórico é zerado: desfazer para antes da abertura não faz sentido.
+    ///
+    /// Só o **espaço-modelo** entra no documento. As entidades de espaço-papel
+    /// são lidas, contadas e relatadas, mas ainda não têm onde morar — os blocos
+    /// `*Paper_Space*` chegam na fase KL. Elas aparecem em
+    /// [`DxfOpenReport::loss`] justamente para que a interface possa dizer ao
+    /// usuário que a prancha dele existe e ainda não é exibida.
+    ///
+    /// # Errors
+    ///
+    /// Falha se o documento não puder ser montado ou se a serialização para
+    /// JavaScript falhar. **Arquivo malformado não é erro:** o que não for
+    /// compreendido é contado no relatório.
+    #[wasm_bindgen(js_name = openDxf)]
+    pub fn open_dxf(&mut self, bytes: &[u8]) -> Result<JsValue, JsError> {
+        let report = self.try_open_dxf(bytes).map_err(js_error)?;
+
+        to_js(&report)
+    }
+
+    /// Serializa o documento para DXF.
+    ///
+    /// A saída é determinística: o mesmo documento produz os mesmos bytes
+    /// (ADR 0004).
+    ///
+    /// # Errors
+    ///
+    /// Falha se o documento estiver inconsistente.
+    #[wasm_bindgen(js_name = toDxf)]
+    pub fn to_dxf(&self) -> Result<Vec<u8>, JsError> {
+        Ok(self.try_to_dxf())
+    }
+
+    /// O que uma gravação descartaria do arquivo aberto.
+    ///
+    /// Deve ser consultado **antes** de sobrescrever um original.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a serialização para JavaScript falhar.
+    #[wasm_bindgen(js_name = saveLoss)]
+    pub fn save_loss(&self) -> Result<JsValue, JsError> {
+        to_js(&self.loss)
+    }
+
     /// Estado da pilha de comandos, para alimentar o menu `Editar`.
     ///
     /// # Errors
@@ -676,6 +815,165 @@ impl CadSession {
         })
     }
 
+    fn try_open_dxf(&mut self, bytes: &[u8]) -> Result<DxfOpenReport, String> {
+        let leitura = read_dxf(bytes);
+
+        let mut document = Document::new();
+
+        // As camadas vêm da leitura já resolvidas, inclusive as que o arquivo
+        // citava sem definir. A camada `0` existe em todo documento e é apenas
+        // redefinida.
+        for (_, registro) in leitura.layers.iter() {
+            let id = match document.layers().id_of(registro.name()) {
+                Some(existente) => existente,
+                None => document
+                    .create_layer(registro.name())
+                    .map_err(|error| error.to_string())?,
+            };
+
+            document
+                .edit()
+                .set_layer_record(id, registro.clone())
+                .map_err(|error| error.to_string())?;
+        }
+
+        let mut entity_count = 0;
+        let mut skipped_count = 0;
+
+        {
+            let mut editor = document.edit();
+
+            for lida in leitura
+                .entities
+                .iter()
+                .filter(|lida| lida.space == EntitySpace::Model)
+            {
+                let nome = leitura
+                    .layers
+                    .get(lida.entity.layer)
+                    .map(|camada| camada.name().to_owned());
+
+                let Some(layer) = nome.and_then(|nome| editor.document().layers().id_of(&nome))
+                else {
+                    skipped_count += 1;
+                    continue;
+                };
+
+                let mut entidade = lida.entity.clone();
+                entidade.layer = layer;
+
+                editor
+                    .insert_in_model_space(entidade)
+                    .map_err(|error| error.to_string())?;
+                entity_count += 1;
+            }
+
+            let _ = editor.finish();
+        }
+
+        let mut block_entity_count = 0;
+
+        for bloco in &leitura.blocks {
+            if bloco.name.starts_with('*') {
+                // Os blocos de espaço não são blocos do desenho: seu conteúdo já
+                // veio pela seção de entidades.
+                continue;
+            }
+
+            let id = document
+                .create_block(bloco.name.as_str())
+                .map_err(|error| error.to_string())?;
+            document
+                .set_block_origin(id, bloco.base_point)
+                .map_err(|error| error.to_string())?;
+
+            let mut editor = document.edit();
+
+            for entidade in &bloco.entities {
+                let nome = leitura
+                    .layers
+                    .get(entidade.layer)
+                    .map(|camada| camada.name().to_owned());
+
+                let Some(layer) = nome.and_then(|nome| editor.document().layers().id_of(&nome))
+                else {
+                    skipped_count += 1;
+                    continue;
+                };
+
+                let mut copia = entidade.clone();
+                copia.layer = layer;
+
+                editor
+                    .insert_entity(copia, id)
+                    .map_err(|error| error.to_string())?;
+                block_entity_count += 1;
+            }
+
+            let _ = editor.finish();
+        }
+
+        let loss = loss_view(&leitura);
+        let summary = leitura.report.to_string();
+
+        self.loss = loss.clone();
+        self.document = document;
+        self.stack = CommandStack::new();
+
+        Ok(DxfOpenReport {
+            layer_count: self.document.layers().len(),
+            entity_count,
+            skipped_count,
+            block_count: self.document.blocks().len().saturating_sub(1),
+            block_entity_count,
+            created_layers: leitura.report.created_layers.clone(),
+            errors: leitura
+                .report
+                .section_errors
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+            loss,
+            summary,
+        })
+    }
+
+    fn try_to_dxf(&self) -> Vec<u8> {
+        let entidades: Vec<ReadEntity> = self
+            .document
+            .entities_in_block(self.document.model_space())
+            .map(|(_, entidade)| ReadEntity {
+                space: EntitySpace::Model,
+                entity: entidade.clone(),
+            })
+            .collect();
+
+        let blocos: Vec<BlockDefinition> = self
+            .document
+            .blocks()
+            .iter()
+            .filter(|(id, _)| *id != self.document.model_space())
+            .map(|(_, registro)| BlockDefinition {
+                name: registro.name().to_owned(),
+                base_point: registro.origin(),
+                entities: registro
+                    .entities()
+                    .iter()
+                    .filter_map(|id| self.document.entity(*id).cloned())
+                    .collect(),
+                // O modelo não guarda caminho de referência externa; ver a
+                // perda declarada em `SaveLossView::xref_count`.
+                xref_path: None,
+            })
+            .collect();
+
+        write_dxf(&DxfContents {
+            layers: self.document.layers(),
+            entities: &entidades,
+            blocks: &blocos,
+        })
+    }
+
     fn try_undo(&mut self) -> Result<bool, String> {
         self.stack
             .undo(&mut self.document)
@@ -692,6 +990,45 @@ impl CadSession {
 impl Default for CadSession {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Monta o relatório de perda a partir de uma leitura.
+fn loss_view(leitura: &neocad_io::DxfReading) -> SaveLossView {
+    let unsupported: Vec<UnsupportedView> = leitura
+        .report
+        .unsupported_by_frequency()
+        .into_iter()
+        .map(|(entity_type, count)| UnsupportedView {
+            entity_type: entity_type.to_owned(),
+            count,
+        })
+        .collect();
+
+    let paper_space: Vec<PaperSpaceView> = leitura
+        .paper_space_layouts()
+        .into_iter()
+        .map(|name| PaperSpaceView {
+            name: name.to_owned(),
+            entity_count: leitura
+                .entities
+                .iter()
+                .filter(|lida| matches!(&lida.space, EntitySpace::Paper(aba) if aba == name))
+                .count(),
+        })
+        .collect();
+
+    let unsupported_count = unsupported.iter().map(|item| item.count).sum();
+    let paper_space_count = paper_space.iter().map(|item| item.entity_count).sum();
+    let xref_count = leitura.blocks.iter().filter(|b| b.is_xref()).count();
+
+    SaveLossView {
+        unsupported,
+        unsupported_count,
+        paper_space,
+        paper_space_count,
+        xref_count,
+        is_lossless: unsupported_count == 0 && paper_space_count == 0 && xref_count == 0,
     }
 }
 
@@ -757,6 +1094,159 @@ fn entity_view(id: EntityId, entity: &Entity) -> EntityView {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Carrega uma fixture sintética do E2E.
+    fn fixture(nome: &str) -> Vec<u8> {
+        let caminho = format!("{}/../../e2e/fixtures/{nome}", env!("CARGO_MANIFEST_DIR"));
+
+        std::fs::read(&caminho).unwrap_or_else(|erro| panic!("{caminho}: {erro}"))
+    }
+
+    #[test]
+    fn abre_dxf_e_carrega_o_espaco_modelo() {
+        let mut session = CadSession::new();
+
+        let relatorio = session
+            .try_open_dxf(&fixture("minimal.dxf"))
+            .expect("fixture bem formada");
+
+        assert_eq!(relatorio.entity_count, 2);
+        assert_eq!(session.entity_count(), 2);
+        assert_eq!(relatorio.skipped_count, 0);
+        assert!(relatorio.loss.is_lossless);
+        assert_eq!(relatorio.summary, "arquivo compreendido por inteiro");
+    }
+
+    #[test]
+    fn abrir_zera_o_historico() {
+        // Desfazer para antes da abertura não faz sentido.
+        let mut session = CadSession::new();
+        let layer = encode_layer(session.document.layers().default_layer());
+        session
+            .try_add_line(&layer, 0.0, 0.0, 1.0, 1.0)
+            .expect("camada existe");
+        assert!(session.stack.can_undo());
+
+        session
+            .try_open_dxf(&fixture("minimal.dxf"))
+            .expect("fixture bem formada");
+
+        assert!(!session.stack.can_undo());
+    }
+
+    #[test]
+    fn abre_o_arquivo_que_o_upstream_nao_le() {
+        // A fixture que motivou a fase K2 inteira.
+        let mut session = CadSession::new();
+
+        let relatorio = session
+            .try_open_dxf(&fixture("block-with-entities.dxf"))
+            .expect("fixture bem formada");
+
+        assert_eq!(relatorio.entity_count, 2);
+        assert_eq!(relatorio.block_count, 1);
+        assert_eq!(relatorio.block_entity_count, 1);
+    }
+
+    #[test]
+    fn entidade_nao_modelada_aparece_na_perda_em_vez_de_sumir() {
+        let mut session = CadSession::new();
+
+        let relatorio = session
+            .try_open_dxf(&fixture("with-unsupported.dxf"))
+            .expect("fixture bem formada");
+
+        assert!(!relatorio.loss.is_lossless);
+        assert_eq!(relatorio.loss.unsupported_count, 1);
+        assert_eq!(relatorio.loss.unsupported[0].entity_type, "SOLID");
+        // E continua consultável no momento de salvar.
+        assert_eq!(session.loss.unsupported_count, 1);
+    }
+
+    #[test]
+    fn desenho_montado_no_papel_e_relatado_e_nao_confundido_com_vazio() {
+        // O caso dos 8% do acervo: sem este relatório a interface diria
+        // "0 entidade(s)" sem explicar que a prancha existe.
+        let arquivo = b"  0\nSECTION\n  2\nENTITIES\n\
+                        0\nLINE\n  8\n0\n 67\n1\n410\nPrancha A1\n\
+                        10\n0.0\n 20\n0.0\n 11\n1.0\n 21\n1.0\n\
+                        0\nENDSEC\n  0\nEOF\n";
+        let mut session = CadSession::new();
+
+        let relatorio = session.try_open_dxf(arquivo).expect("bem formado");
+
+        assert_eq!(relatorio.entity_count, 0);
+        assert_eq!(relatorio.loss.paper_space_count, 1);
+        assert_eq!(relatorio.loss.paper_space[0].name, "Prancha A1");
+        assert!(!relatorio.loss.is_lossless);
+    }
+
+    #[test]
+    fn arquivo_malformado_nao_impede_a_abertura() {
+        // `ENDSEC` faltando: relatado, e o que veio depois ainda entra.
+        let arquivo = b"  0\nSECTION\n  2\nHEADER\n  9\n$ACADVER\n\
+                        0\nSECTION\n  2\nENTITIES\n\
+                        0\nLINE\n  8\n0\n 10\n0.0\n 20\n0.0\n 11\n1.0\n 21\n1.0\n\
+                        0\nENDSEC\n  0\nEOF\n";
+        let mut session = CadSession::new();
+
+        let relatorio = session.try_open_dxf(arquivo).expect("abre assim mesmo");
+
+        assert_eq!(relatorio.entity_count, 1);
+        assert_eq!(relatorio.errors.len(), 1);
+    }
+
+    #[test]
+    fn grava_o_documento_e_reabre_com_o_mesmo_conteudo() {
+        let mut session = CadSession::new();
+        session
+            .try_open_dxf(&fixture("block-with-entities.dxf"))
+            .expect("fixture bem formada");
+
+        let bytes = session.try_to_dxf();
+        let mut outra = CadSession::new();
+        let relatorio = outra.try_open_dxf(&bytes).expect("o que gravamos, abrimos");
+
+        assert_eq!(relatorio.entity_count, 2);
+        assert_eq!(relatorio.block_count, 1);
+        assert_eq!(relatorio.block_entity_count, 1);
+        assert!(relatorio.loss.is_lossless);
+    }
+
+    #[test]
+    fn a_gravacao_e_deterministica() {
+        let mut session = CadSession::new();
+        session
+            .try_open_dxf(&fixture("legacy-polyline.dxf"))
+            .expect("fixture bem formada");
+
+        assert_eq!(session.try_to_dxf(), session.try_to_dxf());
+    }
+
+    #[test]
+    fn desenho_feito_na_sessao_atravessa_a_gravacao() {
+        let mut session = CadSession::new();
+        let layer = session.try_create_layer("Eixos").expect("nome válido");
+        session
+            .try_add_line(&layer, 0.0, 0.0, 10.0, 5.0)
+            .expect("camada existe");
+
+        let mut outra = CadSession::new();
+        let relatorio = outra
+            .try_open_dxf(&session.try_to_dxf())
+            .expect("o que gravamos, abrimos");
+
+        assert_eq!(relatorio.entity_count, 1);
+        assert!(outra.document.layers().id_of("Eixos").is_some());
+    }
+
+    #[test]
+    fn sessao_sem_arquivo_aberto_nao_tem_perda() {
+        let session = CadSession::new();
+
+        assert!(session.loss.is_lossless);
+        assert_eq!(session.loss.unsupported_count, 0);
+    }
 
     #[test]
     fn sessao_nova_tem_camada_zero_e_nenhuma_entidade() {

@@ -88,6 +88,7 @@ name = "neocad-wasm"
 version = "0.0.0"
 dependencies = [
  "neocad-geometry",
+ "neocad-io",
  "neocad-model",
  "neocad-transaction",
  "serde",

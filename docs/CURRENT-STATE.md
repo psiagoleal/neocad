@@ -631,9 +631,43 @@ o kernel próprio.
 - [x] **Desenho montado no papel atravessa com a aba** — o caso dos 8% do
       acervo. O espaço de cada entidade sobrevive à gravação, senão a prancha
       viraria desenho solto no espaço-modelo.
-- [ ] **Próximo passo:** **MT-K2-10** — expor leitura e escrita na fachada
-      WebAssembly, registrando o tamanho do `.wasm`, que já dobrou uma vez sem
-      ninguém notar.
+- [x] **MT-K2-10 concluído — bloco D aberto.** `CadSession` ganhou `openDxf`,
+      `toDxf` e `saveLoss`. 29 testes na crate; **418 testes** no kernel.
+      `pnpm check` verde (873 arquivos, 0 erros).
+- [x] **⚠️ O `.wasm` triplicou, e o ticket mandava vigiar isso.** Foi de
+      **106,2 KB** para **321,2 KB** ao entrar a leitura e a escrita DXF. Um
+      perfil de release no workspace (`opt-level = "z"`, `lto`,
+      `codegen-units = 1`) trouxe para **260,5 KB** — 19% de volta. Continua
+      2,5× o tamanho anterior, o que é o preço honesto de um leitor e um gravador
+      DXF próprios. `panic = "abort"` **não** foi adotado: economizaria mais e
+      custaria as mensagens de pânico, que são o que resta para diagnosticar
+      defeito do kernel dentro do navegador.
+- [x] **`saveLoss()` existe para a perda aparecer antes de acontecer.** Diz o que
+      uma gravação descartaria do arquivo aberto: entidades de tipo não modelado
+      por tipo, layouts de espaço-papel com contagem, e blocos que são referência
+      externa. É o que permite o MT-K2-11 avisar antes de `Salvar` sobrescrever
+      um original — a diretriz do ADR 0005 exige, e sem este dado a interface não
+      teria como cumprir.
+- [x] **Defeito evitado no `Default`:** `SaveLossView` derivava `Default`, e
+      `bool` padrão é `false` — uma sessão recém-criada anunciava perda que não
+      existia. Escrito à mão. Aviso falso é o que ensina o usuário a ignorar o
+      aviso verdadeiro.
+- [x] **Só o espaço-modelo entra no documento.** As entidades de papel são lidas,
+      contadas e relatadas, mas não têm onde morar até o MT-KL-04. Aparecem em
+      `saveLoss` justamente para a interface poder dizer que a prancha existe e
+      ainda não é exibida — o caso dos 8% do acervo.
+- [ ] **Perda nova declarada:** o caminho de referência externa (xref) não
+      atravessa o documento, porque `BlockRecord` não tem esse campo. A leitura o
+      guarda, o documento o esquece, e a gravação emite bloco vazio. Contado em
+      `saveLoss.xrefCount`.
+- [ ] **Nota de licenciamento:** `neocad-wasm` passou a depender de `neocad-io`.
+      Não contamina nada hoje — `neocad-io` não tem dependência copyleft, por ser
+      implementação própria. Quando K6 trouxer a LibreDWG, a fachada herda a
+      GPL junto; o que o ADR 0003 protege continua protegido, porque geometria,
+      topologia, modelo e transações seguem limpas.
+- [ ] **Próximo passo:** **MT-K2-11** — ligar `Salvar` e `Salvar como` à
+      interface, com a capability do Tauri **restrita ao arquivo escolhido** e o
+      aviso de perda antes de sobrescrever original.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

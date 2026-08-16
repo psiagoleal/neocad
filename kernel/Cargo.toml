@@ -34,3 +34,13 @@ unsafe_code = "deny"
 
 [workspace.lints.clippy]
 all = { level = "deny", priority = -1 }
+
+# O perfil de release existe por causa do tamanho do `.wasm`, que o frontend
+# baixa a cada visita. Ao chegar a leitura e a escrita DXF (MT-K2-10) o pacote
+# saltou de 106 KB para 321 KB de uma vez; estas opções recuperam parte disso
+# sem tirar as mensagens de pânico, que são o que resta para diagnosticar um
+# defeito do kernel dentro do navegador.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
