@@ -606,9 +606,34 @@ o kernel próprio.
       último bit, então arco de ângulo arbitrário não volta idêntico. É inerente
       à escolha do formato, e precisa estar escrito no teste de ida e volta em
       vez de ser descoberto depois.
-- [ ] **Próximo passo:** **MT-K2-09** — fechar a ida e volta, com a perda
-      esperada declarada no teste. Atenção: a comparação por `Document` depende da
-      KL; até lá o que se compara é o `DxfContents`.
+- [x] **MT-K2-09 concluído — bloco C fechado.** `kernel/neocad-io/tests/round_trip.rs`,
+      11 testes de integração sobre as cinco fixtures sintéticas.
+      **408 testes** no kernel.
+- [x] **A comparação é entre a primeira e a segunda gravação, não contra a
+      origem.** A escrita normaliza o arquivo — ordena camadas, converte
+      polilinha antiga em leve, acrescenta os blocos de espaço. Exigir igualdade
+      contra o arquivo de origem cobraria fidelidade que nem o AutoCAD entrega. O
+      que se exige é **ponto fixo**: depois da primeira normalização, a segunda
+      gravação é byte a byte igual. É o que permite versionar um desenho sem que
+      cada abertura produza diff.
+- [x] **Camada resolvida por nome na comparação.** Comparar `Entity` direto
+      enganaria: ela guarda `LayerId`, que é posição na arena, e duas leituras do
+      mesmo desenho criam as camadas em ordens diferentes — a primeira na ordem
+      do arquivo, a segunda na ordem alfabética em que a escrita as grava.
+      Identificadores iguais significariam camadas diferentes.
+- [x] **As perdas estão escritas, não descobertas depois.** Entidade não
+      modelada (`SOLID`) e referência de bloco (`INSERT`) **não sobrevivem** à
+      regravação; polilinha de estilo antigo vira `LWPOLYLINE`, o que é mudança
+      de representação e não de geometria; o cabeçalho gravado é o nosso, e as
+      variáveis do arquivo de origem não voltam; ângulo de arco perde o último
+      bit na conversão radianos/graus. Cada uma tem teste próprio, nomeado
+      `perda_declarada_*`.
+- [x] **Desenho montado no papel atravessa com a aba** — o caso dos 8% do
+      acervo. O espaço de cada entidade sobrevive à gravação, senão a prancha
+      viraria desenho solto no espaço-modelo.
+- [ ] **Próximo passo:** **MT-K2-10** — expor leitura e escrita na fachada
+      WebAssembly, registrando o tamanho do `.wasm`, que já dobrou uma vez sem
+      ninguém notar.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

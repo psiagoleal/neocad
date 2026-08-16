@@ -188,6 +188,14 @@ fase própria, não ticket avulso, e depende de decisão do usuário sobre prior
   precisa estar escrito, não descoberto depois.
 - **Fora de escopo:** preservação de conteúdo desconhecido.
 - **Depende de:** MT-K2-08, MT-K2-06.
+- **Escopo revisado na execução:** a comparação **não** é por `Document`.
+  Montá-lo exige pôr cada entidade num registro de bloco, e as de espaço-papel
+  precisam dos blocos `*Paper_Space*`, que a `BlockTable` recusa criar — abrir
+  essa via é o MT-KL-04. A comparação é feita sobre um retrato normalizado
+  (camadas, entidades com espaço e camada **resolvida por nome**, e blocos), e a
+  igualdade exigida é entre a **primeira e a segunda gravação**: a escrita
+  normaliza o arquivo, então comparar contra a origem cobraria fidelidade que
+  nem o AutoCAD entrega.
 
 ---
 
