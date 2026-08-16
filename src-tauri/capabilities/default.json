@@ -1,13 +1,16 @@
 {
 	"$schema": "../gen/schemas/desktop-schema.json",
 	"identifier": "default",
-	"description": "Permissões padrão do NeoCAD para integração inicial do viewer e abertura local de desenhos.",
+	"description": "Permissões padrão do NeoCAD: abertura e gravação de desenhos escolhidos pelo usuário. A escrita NÃO tem escopo de caminho: `fs:allow-write-file` concede apenas o comando, e o acesso a um caminho é liberado em tempo de execução pelos diálogos de abrir e salvar, que registram o arquivo escolhido no escopo. Conceder escopo amplo aqui daria ao aplicativo poder de sobrescrever qualquer arquivo do usuário.",
 	"windows": ["main"],
 	"permissions": [
 		"core:default",
 		"dialog:allow-open",
+		"dialog:allow-save",
+		"dialog:allow-confirm",
 		"fs:default",
 		"fs:read-files",
+		"fs:allow-write-file",
 		"fs:allow-appconfig-write-recursive"
 	]
 }

@@ -152,3 +152,77 @@ export async function selectCadDocument(): Promise<CadDocumentPayload | null> {
 
 	return payload;
 }
+
+/**
+ * Escolhe onde gravar o desenho.
+ *
+ * No Tauri, o diálogo de gravação **concede acesso ao arquivo escolhido** no
+ * escopo do sistema de arquivos: é esse mecanismo que permite ao aplicativo
+ * gravar sem receber permissão ampla de escrita. Fora dele, não há caminho a
+ * escolher — o navegador entrega o arquivo por download.
+ */
+export async function chooseCadSavePath(defaultFileName: string): Promise<string | null> {
+	if (!isTauri()) {
+		return null;
+	}
+
+	const { save } = await import('@tauri-apps/plugin-dialog');
+
+	const selectedPath = await save({
+		title: 'Salvar desenho como',
+		defaultPath: defaultFileName,
+		filters: [{ name: 'Desenho DXF', extensions: ['dxf'] }]
+	});
+
+	return selectedPath ?? null;
+}
+
+/**
+ * Grava os bytes do desenho.
+ *
+ * Com `path`, grava no arquivo (Tauri). Sem ele, entrega por download, que é o
+ * que o navegador permite — e que, por não sobrescrever nada, nunca destrói
+ * trabalho anterior.
+ */
+export async function writeCadDocument(
+	bytes: Uint8Array,
+	fileName: string,
+	path?: string
+): Promise<void> {
+	if (isTauri() && path != null) {
+		const { writeFile } = await import('@tauri-apps/plugin-fs');
+		await writeFile(path, bytes);
+
+		return;
+	}
+
+	downloadCadDocument(bytes, fileName);
+}
+
+/** Entrega o desenho por download do navegador. */
+function downloadCadDocument(bytes: Uint8Array, fileName: string): void {
+	const blob = new Blob([bytes as BlobPart], { type: 'application/dxf' });
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement('a');
+
+	anchor.href = url;
+	anchor.download = fileName;
+	anchor.style.display = 'none';
+	document.body.append(anchor);
+	anchor.click();
+	anchor.remove();
+	URL.revokeObjectURL(url);
+}
+
+/**
+ * Troca a extensão do nome do arquivo para `.dxf`.
+ *
+ * Um desenho aberto de `.dwg` é gravado em DXF, porque escrita DWG depende de
+ * especificação fechada e fica fora do projeto (ADR 0003). Manter a extensão
+ * original faria o arquivo mentir sobre o próprio conteúdo.
+ */
+export function toDxfFileName(fileName: string): string {
+	const semExtensao = fileName.replace(/\.[^./\\]+$/, '');
+
+	return `${semExtensao || fileName}.dxf`;
+}

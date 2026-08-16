@@ -665,9 +665,39 @@ o kernel próprio.
       implementação própria. Quando K6 trouxer a LibreDWG, a fachada herda a
       GPL junto; o que o ADR 0003 protege continua protegido, porque geometria,
       topologia, modelo e transações seguem limpas.
-- [ ] **Próximo passo:** **MT-K2-11** — ligar `Salvar` e `Salvar como` à
-      interface, com a capability do Tauri **restrita ao arquivo escolhido** e o
-      aviso de perda antes de sobrescrever original.
+- [x] **MT-K2-11 concluído:** menu `Arquivo` com `Salvar` e `Salvar como...`,
+      gravando pelo Tauri e por download no navegador. `pnpm check` (873
+      arquivos, 0 erros), `pnpm lint`, `pnpm test` (**67**) e `pnpm test:e2e`
+      (**10**) verdes; `cargo check` do `src-tauri` valida a capability.
+- [x] **A capability de escrita não tem escopo de caminho, e é de propósito.**
+      `fs:allow-write-file` concede apenas o **comando**; o acesso a um caminho é
+      liberado em tempo de execução pelos diálogos de abrir e salvar, que
+      registram o arquivo escolhido no escopo do sistema de arquivos —
+      confirmado lendo o `tauri-plugin-dialog`, que chama `allow_file` no
+      caminho escolhido. Dar escopo amplo aqui daria ao aplicativo poder de
+      sobrescrever qualquer arquivo do usuário.
+- [x] **A perda aparece antes de acontecer.** Sobrescrever o original com perda
+      pede confirmação nomeando o que fica de fora; a mensagem depois da
+      gravação repete a lista. Só pergunta no caminho que de fato destrói — no
+      navegador a gravação é download, que não sobrescreve nada. É o risco que o
+      ticket registrava desde o planejamento, e a diretriz do ADR 0005.
+- [x] **Desenho aberto de `.dwg` é gravado como `.dxf`.** Escrita DWG depende de
+      especificação fechada e está fora do projeto (ADR 0003); manter a extensão
+      original faria o arquivo mentir sobre o próprio conteúdo.
+- [ ] **Fonte do aviso ainda é a extração do upstream.** `saveLoss()` do kernel
+      só se popula por `openDxf`, que a aplicação ainda não chama — a abertura
+      passa pelo upstream até o MT-K2-12. Por isso a rota compõe o aviso com o
+      `unsupportedCount` do retrato **mais** o que o kernel souber. O MT-K2-12
+      colapsa as duas fontes numa só.
+- [ ] **⚠️ `pnpm lint` já estava vermelho antes desta mudança.** 14 arquivos
+      fora do formato do prettier — `AGENTS.md`, `skills/**` e `README` das
+      skills —, todos de governança e nenhum tocado por mim. Verificado com
+      `git stash`. **A CI está falhando no job `frontend` por isso.** Formatei
+      apenas os arquivos deste ticket; o conserto dos 14 é `pnpm format` e merece
+      commit próprio, para não misturar reformatação de governança com código.
+- [ ] **Próximo passo:** **MT-K2-12** — trocar a leitura do upstream pela nativa
+      e remover o `test.fail()` de `block-with-entities.dxf`. É o ticket que
+      encerra a K2 e faz o defeito deixar de existir para o usuário.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

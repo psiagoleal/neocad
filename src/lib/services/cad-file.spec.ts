@@ -11,7 +11,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	createCadDocumentPayloadFromFile,
 	extractCadFileName,
-	isSupportedCadFile
+	isSupportedCadFile,
+	toDxfFileName
 } from './cad-file';
 
 describe('cad file helpers', () => {
@@ -33,5 +34,26 @@ describe('cad file helpers', () => {
 		expect(payload.fileName).toBe('drag-drop-sample.dwg');
 		expect(payload.source).toBe('browser');
 		expect(payload.content.byteLength).toBe(3);
+	});
+});
+
+describe('nome do arquivo gravado', () => {
+	it('troca a extensão para dxf', () => {
+		// Escrita DWG depende de especificação fechada e fica fora do projeto;
+		// manter a extensão original faria o arquivo mentir sobre o conteúdo.
+		expect(toDxfFileName('planta.dwg')).toBe('planta.dxf');
+		expect(toDxfFileName('planta.DXF')).toBe('planta.dxf');
+	});
+
+	it('acrescenta a extensão quando não há nenhuma', () => {
+		expect(toDxfFileName('planta')).toBe('planta.dxf');
+	});
+
+	it('preserva ponto no meio do nome', () => {
+		expect(toDxfFileName('LT-138kV.rev2.dwg')).toBe('LT-138kV.rev2.dxf');
+	});
+
+	it('não confunde ponto de diretório com extensão', () => {
+		expect(toDxfFileName('/home/iago/proj.v1/planta')).toBe('/home/iago/proj.v1/planta.dxf');
 	});
 });

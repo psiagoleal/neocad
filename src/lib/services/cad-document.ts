@@ -26,7 +26,10 @@ import type {
 	CadLayerId,
 	CadLayerSnapshot,
 	CadLoadReport,
-	CadPoint
+	CadPaperSpaceLayout,
+	CadPoint,
+	CadSaveLoss,
+	CadUnsupportedCount
 } from '$lib/types/cad';
 
 /** Superfície do módulo WebAssembly que este serviço consome. */
@@ -47,6 +50,9 @@ interface CadKernelSession {
 	removeEntity(entity: string): void;
 	setLayerOff(layer: string, off: boolean): void;
 	load(document: unknown): unknown;
+	openDxf(bytes: Uint8Array): unknown;
+	toDxf(): Uint8Array;
+	saveLoss(): unknown;
 	undo(): boolean;
 	redo(): boolean;
 }
@@ -217,6 +223,43 @@ export function toCadGeometry(raw: unknown, context = 'geometria'): CadGeometry 
 		default:
 			throw new CadKernelContractError(`${context} tem tipo desconhecido: ${kind}.`);
 	}
+}
+
+/** Converte o relatório de perda de gravação vindo do kernel. */
+export function toCadSaveLoss(raw: unknown, context = 'perda de gravação'): CadSaveLoss {
+	const record = asRecord(raw, context);
+
+	const unsupported: CadUnsupportedCount[] = asArray(
+		record.unsupported,
+		`${context}.unsupported`
+	).map((item, index) => {
+		const entry = asRecord(item, `${context}.unsupported[${index}]`);
+
+		return {
+			entityType: asString(entry.entityType, `${context}.unsupported[${index}].entityType`),
+			count: asNumber(entry.count, `${context}.unsupported[${index}].count`)
+		};
+	});
+
+	const paperSpace: CadPaperSpaceLayout[] = asArray(record.paperSpace, `${context}.paperSpace`).map(
+		(item, index) => {
+			const entry = asRecord(item, `${context}.paperSpace[${index}]`);
+
+			return {
+				name: asString(entry.name, `${context}.paperSpace[${index}].name`),
+				entityCount: asNumber(entry.entityCount, `${context}.paperSpace[${index}].entityCount`)
+			};
+		}
+	);
+
+	return {
+		unsupported,
+		unsupportedCount: asNumber(record.unsupportedCount, `${context}.unsupportedCount`),
+		paperSpace,
+		paperSpaceCount: asNumber(record.paperSpaceCount, `${context}.paperSpaceCount`),
+		xrefCount: asNumber(record.xrefCount, `${context}.xrefCount`),
+		isLossless: asBoolean(record.isLossless, `${context}.isLossless`)
+	};
 }
 
 /** Converte uma camada do kernel. */
@@ -551,6 +594,28 @@ export class CadDocument {
 			skippedCount: asNumber(record.skippedCount, 'relatório.skippedCount'),
 			unsupportedCount: snapshot.unsupported.length
 		};
+	}
+
+	/**
+	 * Serializa o documento para DXF.
+	 *
+	 * A saída é determinística: o mesmo documento produz os mesmos bytes, o que
+	 * é o que torna um desenho versionável sem ruído (ADR 0004).
+	 */
+	toDxf(): Uint8Array {
+		return this.session.toDxf();
+	}
+
+	/**
+	 * O que uma gravação descartaria do desenho aberto.
+	 *
+	 * Enquanto a abertura passar pelo upstream (até o MT-K2-12), o kernel só
+	 * conhece o que recebeu pelo retrato: esta consulta cobre a parte que a
+	 * leitura nativa já sabe relatar, e a rota completa com o que a extração
+	 * contou.
+	 */
+	getSaveLoss(): CadSaveLoss {
+		return toCadSaveLoss(this.session.saveLoss());
 	}
 
 	/** Desfaz a última ação. Devolve `false` se não houver o que desfazer. */

@@ -9,10 +9,13 @@
 	import type { WorkspaceView } from '$lib/components/workspace/types';
 	import { appMetadata, nextMilestones, primaryStack, supportedTargets } from '$lib/config/app';
 	import {
+		chooseCadSavePath,
 		createCadDocumentPayloadFromFile,
 		getCadRuntimeLabel,
 		readCadDocumentFromPath,
-		selectCadDocument
+		selectCadDocument,
+		toDxfFileName,
+		writeCadDocument
 	} from '$lib/services/cad-file';
 	import { listCadCommandCatalog } from '$lib/services/cad-commands';
 	import { CadDocument } from '$lib/services/cad-document';
@@ -25,6 +28,7 @@
 		CadCommandCatalogItem,
 		CadDocumentPayload,
 		CadHistoryState,
+		CadLoadReport,
 		CadRecentDocument,
 		CadViewerDocumentState,
 		CadViewerMessage,
@@ -55,6 +59,16 @@
 
 	/** Documento do kernel próprio. Convive com o upstream durante a transição. */
 	let kernelDocument: CadDocument | null = $state(null);
+	let isSaving = $state(false);
+
+	/**
+	 * Último retrato carregado no kernel.
+	 *
+	 * Guardado porque é dele que sai o aviso de perda ao salvar: enquanto a
+	 * abertura passar pelo upstream, é a extração que sabe quantas entidades não
+	 * couberam no modelo. O MT-K2-12 troca essa fonte pela leitura nativa.
+	 */
+	let lastLoadReport: CadLoadReport | null = $state(null);
 	const emptyHistory: CadHistoryState = {
 		canUndo: false,
 		canRedo: false,
@@ -96,6 +110,7 @@
 		try {
 			kernelDocument ??= await CadDocument.create();
 			const report = kernelDocument.load(snapshot);
+			lastLoadReport = report;
 			refreshHistory();
 
 			pushNotification(
@@ -113,6 +128,131 @@
 					: 'Kernel não pôde carregar o desenho.'
 			);
 		}
+	}
+
+	/**
+	 * Descreve, em uma frase, o que uma gravação descartaria.
+	 *
+	 * `null` quando nada se perde. A frase existe para a perda **aparecer antes
+	 * de acontecer**: salvar por cima de um original sem dizer que a cota e a
+	 * prancha não vão junto é destruir trabalho alheio em silêncio, e o ADR 0005
+	 * proíbe.
+	 */
+	function describeSaveLoss(): string | null {
+		const partes: string[] = [];
+		const naoModeladas = lastLoadReport?.unsupportedCount ?? 0;
+
+		if (naoModeladas > 0) {
+			partes.push(`${naoModeladas} entidade(s) que o kernel ainda não representa`);
+		}
+
+		try {
+			const perda = kernelDocument?.getSaveLoss();
+
+			if (perda != null && !perda.isLossless) {
+				if (perda.paperSpaceCount > 0) {
+					const abas = perda.paperSpace.map((layout) => layout.name).join(', ');
+					partes.push(`${perda.paperSpaceCount} entidade(s) em espaço-papel (${abas})`);
+				}
+
+				if (perda.xrefCount > 0) {
+					partes.push(`${perda.xrefCount} referência(s) externa(s)`);
+				}
+			}
+		} catch (error) {
+			// Consultar a perda não pode impedir de salvar; o que não pode é
+			// salvar fingindo que não há perda.
+			pushNotification(
+				'warning',
+				error instanceof Error
+					? `Não foi possível apurar o que se perde ao salvar: ${error.message}`
+					: 'Não foi possível apurar o que se perde ao salvar.'
+			);
+		}
+
+		return partes.length > 0 ? partes.join('; ') : null;
+	}
+
+	/**
+	 * Confirma a gravação quando ela sobrescreve um arquivo existente e há perda.
+	 *
+	 * Só pergunta no caminho que de fato destrói: no navegador a gravação é um
+	 * download, que não sobrescreve nada.
+	 */
+	async function confirmLossyOverwrite(perda: string, fileName: string): Promise<boolean> {
+		const mensagem =
+			`Salvar sobre ${fileName} descarta: ${perda}.\n\n` +
+			'O kernel grava apenas o que representa. Deseja continuar?';
+
+		if (!isTauriRuntime) {
+			return true;
+		}
+
+		const { confirm } = await import('@tauri-apps/plugin-dialog');
+
+		return confirm(mensagem, { title: 'Salvar com perda', kind: 'warning' });
+	}
+
+	/** Grava o desenho do kernel, escolhendo o destino quando necessário. */
+	async function saveDrawing(escolherDestino: boolean): Promise<void> {
+		if (kernelDocument == null || currentDocument == null || isSaving) {
+			return;
+		}
+
+		isSaving = true;
+
+		try {
+			const fileName = toDxfFileName(currentDocument.fileName);
+			const sobrescreveOriginal =
+				!escolherDestino && isTauriRuntime && currentDocument.path != null;
+			const perda = describeSaveLoss();
+
+			if (sobrescreveOriginal && perda != null) {
+				const seguir = await confirmLossyOverwrite(perda, fileName);
+
+				if (!seguir) {
+					pushNotification('info', 'Gravação cancelada.');
+					return;
+				}
+			}
+
+			let destino = sobrescreveOriginal ? currentDocument.path : undefined;
+
+			if (!sobrescreveOriginal && isTauriRuntime) {
+				const escolhido = await chooseCadSavePath(fileName);
+
+				if (escolhido == null) {
+					pushNotification('info', 'Gravação cancelada.');
+					return;
+				}
+
+				destino = escolhido;
+			}
+
+			await writeCadDocument(kernelDocument.toDxf(), fileName, destino);
+
+			pushNotification(
+				perda == null ? 'success' : 'warning',
+				perda == null
+					? `Desenho gravado em ${destino ?? fileName}.`
+					: `Desenho gravado em ${destino ?? fileName}. Ficou de fora: ${perda}.`
+			);
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error ? `Falha ao salvar: ${error.message}` : 'Falha ao salvar o desenho.'
+			);
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	async function saveDrawingAction(): Promise<void> {
+		await saveDrawing(false);
+	}
+
+	async function saveDrawingAsAction(): Promise<void> {
+		await saveDrawing(true);
 	}
 
 	async function undoAction(): Promise<void> {
@@ -510,6 +650,10 @@
 		onGoViewer={() => showViewerWorkspace()}
 		onGoAbout={showAboutWorkspace}
 		onOpenDrawing={openCadDrawing}
+		onSaveDrawing={saveDrawingAction}
+		onSaveDrawingAs={saveDrawingAsAction}
+		canSaveDrawing={kernelDocument != null && currentDocument != null}
+		{isSaving}
 		onOpenRecent={openRecentDrawing}
 		onClearRecents={clearRecentDocumentsList}
 		onFitView={fitDrawingToView}

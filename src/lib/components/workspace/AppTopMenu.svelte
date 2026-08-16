@@ -19,6 +19,10 @@
 		onGoViewer: () => void;
 		onGoAbout: () => void;
 		onOpenDrawing: () => void | Promise<void>;
+		onSaveDrawing: () => void | Promise<void>;
+		onSaveDrawingAs: () => void | Promise<void>;
+		canSaveDrawing: boolean;
+		isSaving: boolean;
 		onOpenRecent: (recentDocument: CadRecentDocument) => void | Promise<void>;
 		onClearRecents: () => void | Promise<void>;
 		onFitView: () => void;
@@ -42,6 +46,10 @@
 		onGoViewer,
 		onGoAbout,
 		onOpenDrawing,
+		onSaveDrawing,
+		onSaveDrawingAs,
+		canSaveDrawing,
+		isSaving,
 		onOpenRecent,
 		onClearRecents,
 		onFitView,
@@ -119,6 +127,25 @@
 					<div class="menu-dropdown">
 						<button class="menu-item" type="button" onclick={() => runAction(onOpenDrawing)}>
 							{isOpening ? 'Abrindo desenho...' : 'Abrir desenho CAD'}
+						</button>
+
+						<div class="menu-divider"></div>
+
+						<button
+							class="menu-item"
+							type="button"
+							onclick={() => runAction(onSaveDrawing)}
+							disabled={!canSaveDrawing || isSaving}
+						>
+							{isSaving ? 'Salvando...' : 'Salvar'}
+						</button>
+						<button
+							class="menu-item"
+							type="button"
+							onclick={() => runAction(onSaveDrawingAs)}
+							disabled={!canSaveDrawing || isSaving}
+						>
+							Salvar como...
 						</button>
 
 						<div class="menu-divider"></div>

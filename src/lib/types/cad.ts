@@ -181,6 +181,35 @@ export interface CadLoadReport {
 	unsupportedCount: number;
 }
 
+/** Um tipo de entidade que o kernel ainda não representa, com sua contagem. */
+export interface CadUnsupportedCount {
+	entityType: string;
+	count: number;
+}
+
+/** Um layout de espaço-papel encontrado no arquivo. */
+export interface CadPaperSpaceLayout {
+	name: string;
+	entityCount: number;
+}
+
+/**
+ * O que uma gravação descartaria do desenho aberto.
+ *
+ * Existe para a perda **aparecer antes de acontecer**. Salvar por cima de um
+ * original sem avisar que a prancha ou as cotas não vão junto é destruição
+ * silenciosa de trabalho alheio; o ADR 0005 proíbe, e este contrato é o que
+ * permite cumprir a proibição na interface.
+ */
+export interface CadSaveLoss {
+	unsupported: CadUnsupportedCount[];
+	unsupportedCount: number;
+	paperSpace: CadPaperSpaceLayout[];
+	paperSpaceCount: number;
+	xrefCount: number;
+	isLossless: boolean;
+}
+
 /** Categorias de apresentação para os comandos CAD no catálogo do menu `Ajuda`. */
 export type CadCommandCategory = 'navigation' | 'draw' | 'modify' | 'layer' | 'system' | 'other';
 

@@ -27,7 +27,8 @@ import {
 	toCadHistoryState,
 	toCadLayer,
 	toCadLayers,
-	toCadPoint
+	toCadPoint,
+	toCadSaveLoss
 } from './cad-document';
 
 /** Camada como o kernel a serializa (ver `LayerView` em neocad-wasm). */
@@ -574,5 +575,50 @@ describe('CadKernelContractError', () => {
 
 		expect(erro.name).toBe('CadKernelContractError');
 		expect(erro.message).toContain('Contrato do kernel violado');
+	});
+});
+
+describe('relatório de perda de gravação', () => {
+	const perdaCompleta = {
+		unsupported: [{ entityType: 'HATCH', count: 3 }],
+		unsupportedCount: 3,
+		paperSpace: [{ name: 'Prancha A1', entityCount: 19 }],
+		paperSpaceCount: 19,
+		xrefCount: 1,
+		isLossless: false
+	};
+
+	it('converte o relatório do kernel', () => {
+		const perda = toCadSaveLoss(perdaCompleta);
+
+		expect(perda.unsupported).toEqual([{ entityType: 'HATCH', count: 3 }]);
+		expect(perda.paperSpace).toEqual([{ name: 'Prancha A1', entityCount: 19 }]);
+		expect(perda.xrefCount).toBe(1);
+		expect(perda.isLossless).toBe(false);
+	});
+
+	it('aceita o caso sem perda alguma', () => {
+		const perda = toCadSaveLoss({
+			unsupported: [],
+			unsupportedCount: 0,
+			paperSpace: [],
+			paperSpaceCount: 0,
+			xrefCount: 0,
+			isLossless: true
+		});
+
+		expect(perda.isLossless).toBe(true);
+		expect(perda.unsupported).toHaveLength(0);
+	});
+
+	it('falha alto quando a forma do kernel não bate', () => {
+		// Forma inesperada aqui é defeito do kernel, não entrada não confiável:
+		// deixar passar faria o sintoma aparecer longe da causa.
+		expect(() => toCadSaveLoss({ ...perdaCompleta, isLossless: 'não' })).toThrow(
+			CadKernelContractError
+		);
+		expect(() => toCadSaveLoss({ ...perdaCompleta, paperSpace: null })).toThrow(
+			CadKernelContractError
+		);
 	});
 });
