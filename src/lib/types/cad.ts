@@ -210,6 +210,29 @@ export interface CadSaveLoss {
 	isLossless: boolean;
 }
 
+/**
+ * Resultado da abertura de um DXF pela leitura nativa do kernel.
+ *
+ * Substitui, para DXF, o `CadLoadReport` do retrato extraído do upstream: aqui
+ * o kernel leu o arquivo por conta própria, então sabe mais — quantos blocos
+ * há, o que não compreendeu, e o que se perderia ao gravar.
+ */
+export interface CadDxfOpenReport {
+	layerCount: number;
+	entityCount: number;
+	/** Entidades recusadas por referenciarem camada impossível. */
+	skippedCount: number;
+	blockCount: number;
+	blockEntityCount: number;
+	/** Camadas que o arquivo citava sem definir, criadas na leitura. */
+	createdLayers: string[];
+	/** Falhas locais de percurso, que não impediram a abertura. */
+	errors: string[];
+	loss: CadSaveLoss;
+	/** Resumo de uma linha, pronto para mensagem. */
+	summary: string;
+}
+
 /** Categorias de apresentação para os comandos CAD no catálogo do menu `Ajuda`. */
 export type CadCommandCategory = 'navigation' | 'draw' | 'modify' | 'layer' | 'system' | 'other';
 

@@ -15,8 +15,8 @@
  *
  * - o que o kernel **ainda não modela** deve ser contado e reportado, sem
  *   impedir a abertura;
- * - o que o parser do upstream **não consegue ler** fica registrado como falha
- *   conhecida, para que a correção seja percebida quando acontecer.
+ * - o que o parser do upstream **não consegue ler** deve continuar sendo um
+ *   documento aqui, porque desde o MT-K2-12 quem lê o DXF é o kernel.
  */
 
 import path from 'node:path';
@@ -48,36 +48,59 @@ async function mensagemDoKernel(page: Page) {
 	return mensagem;
 }
 
-test('polilinha de estilo antigo abre e é contada como não suportada', async ({ page }) => {
+test('polilinha de estilo antigo é lida como polilinha, e não contada como perda', async ({
+	page
+}) => {
 	test.setTimeout(90_000);
 
 	// POLYLINE/VERTEX/SEQEND é como o DXF R12 representa polilinha, e aparece em
-	// desenho real. O kernel modela LWPOLYLINE, não esta — o esperado é contar,
-	// não engasgar.
+	// desenho real. Enquanto a extração vinha do upstream, ela era **contada
+	// como não suportada**; a leitura nativa de K2 a monta como polilinha de
+	// verdade. As três entidades da fixture chegam inteiras.
 	expect(await abrir(page, 'legacy-polyline.dxf')).toBe(true);
-	await expect(await mensagemDoKernel(page)).toContainText('não suportada(s)');
+
+	const mensagem = await mensagemDoKernel(page);
+	await expect(mensagem).toContainText('3 entidade(s)');
+	await expect(mensagem).toContainText('compreendido por inteiro');
 });
 
-test('referência de bloco abre e é contada como não suportada', async ({ page }) => {
+test('referência de bloco abre e é contada como não representada', async ({ page }) => {
 	test.setTimeout(90_000);
 
+	// `INSERT` exige transformação de instância, que é fase K3. Até lá o esperado
+	// é contar e relatar, não engasgar.
 	expect(await abrir(page, 'block-reference.dxf')).toBe(true);
-	await expect(await mensagemDoKernel(page)).toContainText('não suportada(s)');
+	await expect(await mensagemDoKernel(page)).toContainText('não representada(s)');
 });
 
-test('bloco com entidades dentro ainda não é legível pelo parser do upstream', async ({ page }) => {
+test('bloco com entidades dentro é lido pelo kernel, ainda que o upstream falhe', async ({
+	page
+}) => {
 	test.setTimeout(90_000);
 
-	// Falha conhecida, e não expectativa: `test.fail()` inverte o resultado, de
-	// modo que este teste passa enquanto o defeito existir e **quebra no dia em
-	// que ele for corrigido** — que é quando queremos ser avisados, para trocar
-	// esta asserção pela definitiva.
+	// Este teste nasceu com `test.fail()`, registrando um defeito: o parser DXF
+	// do upstream não abre arquivo cuja seção `BLOCKS` contenha bloco com
+	// entidades — cerca de 11% de um acervo real, justamente a fatia dos
+	// desenhos acabados, com carimbo e simbologia. Bloco com conteúdo é como se
+	// define todo símbolo e marcador de estrutura.
 	//
-	// Bloco com conteúdo é como se define todo símbolo, carimbo e marcador de
-	// estrutura. Uma varredura de acervo real mediu o alcance: cerca de 11% dos
-	// DXF — a minoria, mas justamente a dos desenhos acabados. A leitura DXF
-	// nativa de K2 substitui este parser e deve corrigir o caso.
-	test.fail();
+	// A leitura DXF nativa de K2 corrigiu a **compreensão** do arquivo. O que
+	// segue sem funcionar é o traçado na tela, porque quem desenha ainda é o
+	// upstream até K5. A asserção mede exatamente isso, e não mais: o desenho
+	// existe, é contado, e é salvável.
+	await page.goto('/');
 
-	expect(await abrir(page, 'block-with-entities.dxf')).toBe(true);
+	const fileChooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await (await fileChooser).setFiles(path.join(FIXTURES, 'block-with-entities.dxf'));
+
+	// Duas entidades no espaço-modelo e um bloco — o que a fixture contém.
+	const mensagem = await mensagemDoKernel(page);
+	await expect(mensagem).toContainText('2 entidade(s)');
+	await expect(mensagem).toContainText('1 bloco(s)');
+
+	// E a aplicação fica com um documento aberto, e não em estado de falha: o
+	// menu `Arquivo` oferece `Salvar` habilitado.
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await expect(page.getByRole('button', { name: 'Salvar', exact: true })).toBeEnabled();
 });

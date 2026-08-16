@@ -695,9 +695,39 @@ o kernel próprio.
       `git stash`. **A CI está falhando no job `frontend` por isso.** Formatei
       apenas os arquivos deste ticket; o conserto dos 14 é `pnpm format` e merece
       commit próprio, para não misturar reformatação de governança com código.
-- [ ] **Próximo passo:** **MT-K2-12** — trocar a leitura do upstream pela nativa
-      e remover o `test.fail()` de `block-with-entities.dxf`. É o ticket que
-      encerra a K2 e faz o defeito deixar de existir para o usuário.
+- [x] **MT-K2-12 concluído — fase K2 encerrada.** A abertura de **DXF** passa
+      pelo kernel: `readDxfWithKernel` lê os bytes antes e **independentemente**
+      do upstream, que segue apenas desenhando. DWG continua no caminho antigo,
+      pelo retrato extraído, até K6. `pnpm check`, `pnpm lint`, `pnpm test`
+      (**67**) e `pnpm test:e2e` (**10**) verdes.
+- [x] **O `test.fail()` saiu, e a asserção definitiva entrou.** O defeito que
+      motivou a fase deixou de existir **na compreensão** do arquivo: o kernel lê
+      `block-with-entities.dxf`, conta as 2 entidades e o bloco, e a aplicação
+      fica com documento aberto e `Salvar` habilitado. O que **continua sem
+      funcionar** é o traçado na tela, porque quem desenha ainda é o upstream até
+      K5 — e o teste mede exatamente isso, nem mais nem menos.
+- [x] **Arquivo que o upstream não abre continua sendo documento aqui.**
+      `adoptKernelOnlyDocument` adota o desenho que só o kernel leu: contagens
+      reais, camadas, e gravação funcionando. Antes, a aplicação ficava no estado
+      "nada aberto" e descartava um documento que o kernel tinha em mãos.
+- [x] **Duas melhorias que só apareceram quando os testes quebraram.** A
+      polilinha de estilo antigo (`POLYLINE`/`VERTEX`/`SEQEND`) era **contada
+      como não suportada** pela extração do upstream; a leitura nativa a monta
+      como polilinha de verdade, e `legacy-polyline.dxf` passou a ser
+      "compreendido por inteiro". E a mensagem ao usuário passou a vir do
+      relatório do próprio kernel, que sabe mais — daí `não representada(s)` no
+      lugar de `não suportada(s)`.
+- [x] **Fonte única para o aviso de perda.** Com a leitura nativa, `lastLoadReport`
+      é zerado e o aviso vem só do `saveLoss()` do kernel. Era a pendência que o
+      MT-K2-11 deixou anotada.
+- [ ] **Ressalva honesta sobre os quatro degraus:** são `.dwg`, e o caminho DWG
+      **não foi tocado** por este ticket — segue pelo retrato do upstream. O
+      critério "continuam abrindo sem perda de cobertura" está satisfeito por
+      construção, não por nova medição; o E2E de DWG passa. Uma revalidação
+      contra o acervo real cabe quando K6 mexer nesse caminho.
+- [ ] **Próximo passo:** fase **KL** (layouts), começando pelo **MT-KL-01** —
+      enumerar os layouts do documento aberto, confirmando em navegador a API
+      `activeLayoutBtrId` do upstream, hoje conhecida só por inspeção do pacote.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

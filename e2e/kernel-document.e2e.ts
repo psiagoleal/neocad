@@ -53,7 +53,9 @@ test('o kernel recebe exatamente as entidades e camadas do arquivo', async ({ pa
 	// modelo próprio precisa reproduzir o arquivo, e não uma aproximação.
 	const mensagem = await esperarMensagemDoKernel(page);
 
-	await expect(mensagem).toHaveText('Kernel: 2 entidade(s) em 1 camada(s).');
+	await expect(mensagem).toHaveText(
+		'Kernel: 2 entidade(s) em 1 camada(s). arquivo compreendido por inteiro.'
+	);
 });
 
 test('entidade não modelada é reportada sem impedir a abertura', async ({ page }) => {
@@ -62,11 +64,11 @@ test('entidade não modelada é reportada sem impedir a abertura', async ({ page
 
 	const mensagem = await esperarMensagemDoKernel(page);
 
-	// A LINE chega ao kernel; a SOLID é contada como ainda não suportada. Um
+	// A LINE chega ao kernel; a SOLID é contada como ainda não representada. Um
 	// arquivo real não pode deixar de abrir por causa de uma entidade que o
 	// kernel ainda não modela.
 	await expect(mensagem).toContainText('1 entidade(s)');
-	await expect(mensagem).toContainText('não suportada(s)');
+	await expect(mensagem).toContainText('não representada(s)');
 
 	// O upstream continua desenhando o arquivo inteiro.
 	await expect(page.getByRole('button', { name: 'Fundo escuro' })).toBeVisible();

@@ -27,6 +27,7 @@
 	import type {
 		CadCommandCatalogItem,
 		CadDocumentPayload,
+		CadDxfOpenReport,
 		CadHistoryState,
 		CadLoadReport,
 		CadRecentDocument,
@@ -69,6 +70,15 @@
 	 * couberam no modelo. O MT-K2-12 troca essa fonte pela leitura nativa.
 	 */
 	let lastLoadReport: CadLoadReport | null = $state(null);
+
+	/**
+	 * Verdadeiro quando o kernel leu o arquivo por conta própria.
+	 *
+	 * Impede que a ativação do documento pelo upstream sobrescreva, com o
+	 * retrato extraído dele, o documento que a leitura nativa já montou — o
+	 * retrato sabe menos, e trocar um pelo outro seria regredir.
+	 */
+	let kernelReadNatively = $state(false);
 	const emptyHistory: CadHistoryState = {
 		canUndo: false,
 		canRedo: false,
@@ -97,7 +107,7 @@
 	 * no desenho.
 	 */
 	async function loadIntoKernel(): Promise<void> {
-		if (viewerController == null) {
+		if (viewerController == null || kernelReadNatively) {
 			return;
 		}
 
@@ -411,16 +421,105 @@
 		}
 	}
 
+	/** Indica se o arquivo é DXF, único formato que a leitura nativa cobre. */
+	function isDxfPayload(fileName: string): boolean {
+		return fileName.toLowerCase().endsWith('.dxf');
+	}
+
+	/**
+	 * Lê o DXF com o kernel, antes e independentemente do upstream.
+	 *
+	 * Devolve `null` quando a leitura falhou — e aí o caminho antigo, pelo
+	 * retrato do upstream, continua valendo.
+	 */
+	async function readDxfWithKernel(payload: CadDocumentPayload): Promise<CadDxfOpenReport | null> {
+		try {
+			kernelDocument ??= await CadDocument.create();
+			const report = kernelDocument.openDxf(payload.content);
+
+			kernelReadNatively = true;
+			// O aviso de perda passa a ter fonte única: o próprio kernel.
+			lastLoadReport = null;
+			refreshHistory();
+
+			pushNotification(
+				report.loss.isLossless ? 'info' : 'warning',
+				`Kernel: ${report.entityCount} entidade(s) em ${report.layerCount} camada(s)` +
+					(report.blockCount > 0 ? `, ${report.blockCount} bloco(s)` : '') +
+					`. ${report.summary}.`
+			);
+
+			for (const erro of report.errors) {
+				pushNotification('warning', `Leitura DXF: ${erro}.`);
+			}
+
+			return report;
+		} catch (error) {
+			kernelReadNatively = false;
+			pushNotification(
+				'warning',
+				error instanceof Error
+					? `Kernel não pôde ler o DXF: ${error.message}`
+					: 'Kernel não pôde ler o DXF.'
+			);
+
+			return null;
+		}
+	}
+
+	/**
+	 * Adota o documento que só o kernel conseguiu ler.
+	 *
+	 * O upstream falhou em desenhar, mas o desenho **existe**: as contagens são
+	 * reais e `Salvar` funciona. Deixar a aplicação no estado "nada aberto"
+	 * descartaria um documento que o kernel tem em mãos.
+	 */
+	function adoptKernelOnlyDocument(payload: CadDocumentPayload): void {
+		const state: CadViewerDocumentState = {
+			fileName: payload.fileName,
+			docTitle: payload.fileName,
+			mode: 'write',
+			source: payload.source,
+			path: payload.path
+		};
+
+		currentDocument = state;
+		hasVisitedViewerWorkspace = true;
+		activeWorkspace = 'viewer';
+		clearProgress();
+		void rememberDocument(state);
+	}
+
 	async function openCadPayload(payload: CadDocumentPayload): Promise<void> {
 		if (viewerController == null) {
 			throw new Error('Viewer CAD ainda não foi inicializado.');
 		}
 
+		kernelReadNatively = false;
+
+		// A leitura nativa acontece **antes** do upstream e não depende dele: é o
+		// que faz um arquivo que o parser de terceiro não abre continuar sendo um
+		// documento aqui.
+		const kernelReport = isDxfPayload(payload.fileName) ? await readDxfWithKernel(payload) : null;
+
 		const isSuccess = await viewerController.openDocument(payload, 'write');
 
-		if (!isSuccess) {
-			pushNotification('error', `Falha ao carregar ${payload.fileName}.`);
+		if (isSuccess) {
+			return;
 		}
+
+		if (kernelReport == null) {
+			pushNotification('error', `Falha ao carregar ${payload.fileName}.`);
+			return;
+		}
+
+		adoptKernelOnlyDocument(payload);
+		pushNotification(
+			'warning',
+			`O desenho foi lido pelo kernel, mas o renderizador não conseguiu exibi-lo. ` +
+				`As camadas, as contagens e o comando Salvar funcionam; o traçado na tela ` +
+				`depende do renderizador próprio, que ainda não chegou.`
+		);
 	}
 
 	async function openCadDrawing(): Promise<void> {

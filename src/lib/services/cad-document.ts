@@ -25,6 +25,7 @@ import type {
 	CadLayer,
 	CadLayerId,
 	CadLayerSnapshot,
+	CadDxfOpenReport,
 	CadLoadReport,
 	CadPaperSpaceLayout,
 	CadPoint,
@@ -223,6 +224,27 @@ export function toCadGeometry(raw: unknown, context = 'geometria'): CadGeometry 
 		default:
 			throw new CadKernelContractError(`${context} tem tipo desconhecido: ${kind}.`);
 	}
+}
+
+/** Converte o relatório de abertura de DXF vindo do kernel. */
+export function toCadDxfOpenReport(raw: unknown, context = 'abertura DXF'): CadDxfOpenReport {
+	const record = asRecord(raw, context);
+
+	return {
+		layerCount: asNumber(record.layerCount, `${context}.layerCount`),
+		entityCount: asNumber(record.entityCount, `${context}.entityCount`),
+		skippedCount: asNumber(record.skippedCount, `${context}.skippedCount`),
+		blockCount: asNumber(record.blockCount, `${context}.blockCount`),
+		blockEntityCount: asNumber(record.blockEntityCount, `${context}.blockEntityCount`),
+		createdLayers: asArray(record.createdLayers, `${context}.createdLayers`).map((name, index) =>
+			asString(name, `${context}.createdLayers[${index}]`)
+		),
+		errors: asArray(record.errors, `${context}.errors`).map((message, index) =>
+			asString(message, `${context}.errors[${index}]`)
+		),
+		loss: toCadSaveLoss(record.loss, `${context}.loss`),
+		summary: asString(record.summary, `${context}.summary`)
+	};
 }
 
 /** Converte o relatório de perda de gravação vindo do kernel. */
@@ -594,6 +616,18 @@ export class CadDocument {
 			skippedCount: asNumber(record.skippedCount, 'relatório.skippedCount'),
 			unsupportedCount: snapshot.unsupported.length
 		};
+	}
+
+	/**
+	 * Lê um DXF com o kernel, substituindo o documento.
+	 *
+	 * É a leitura **própria**, que não passa pelo upstream. Só o espaço-modelo
+	 * entra no documento; o que ficou de fora vem em
+	 * [`CadDxfOpenReport.loss`], para a interface poder dizer o que existe e
+	 * ainda não é exibido.
+	 */
+	openDxf(content: ArrayBuffer): CadDxfOpenReport {
+		return toCadDxfOpenReport(this.session.openDxf(new Uint8Array(content)));
 	}
 
 	/**
