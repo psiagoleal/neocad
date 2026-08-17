@@ -20,16 +20,23 @@ mostrando nada; 63% têm os dois espaços povoados e abrem sem carimbo nem
 viewports. Ferramenta que só lê espaço-modelo desenha, mas não emite documento.
 K3 (edição 2D) é adiada uma fase em favor disso, por decisão registrada no ADR 0005.
 
-## Ordem interna: o curto antes do certo
+## Ordem interna: o bloco A caiu
 
-O bloco A entrega **exibição pelo upstream**, que já sabe desenhar layout
-(`activeLayoutBtrId` tem leitura e escrita). O usuário vê suas pranchas sem
-esperar o modelo próprio. Os blocos B e C constroem a representação própria, e o
-D fecha a ida e volta em DXF.
+O plano original punha o bloco A primeiro, entregando **exibição pelo upstream**,
+que se supunha capaz de desenhar layout porque `activeLayoutBtrId` tem leitura e
+escrita. **O MT-KL-01 apurou que não funciona no caminho DXF:** o conversor do
+upstream acrescenta toda entidade ao espaço-modelo e nunca consulta os códigos
+`67`/`410`, então o registro de bloco de papel fica vazio e trocar o layout ativo
+mostraria uma folha em branco. O detalhamento está no handoff.
 
-Essa ordem tem um custo declarado: o bloco A produz código de fronteira que os
-blocos seguintes vão reescrever. É deliberado — a alternativa é o usuário
-esperar a fase inteira para ver a primeira prancha.
+Em consequência, **MT-KL-02 e MT-KL-03 ficam suspensos** e a fase começa pelo
+bloco B, construindo a representação própria. A exibição da prancha passa a
+depender do renderizador próprio (K5) — que é exatamente o risco que a seção
+seguinte já registrava.
+
+No caminho **DWG** o quadro é outro: a LibreDWG povoa `*Paper_Space`, então a
+troca de layout pode funcionar lá. Mas DWG é do upstream até K6, e DXF é o que
+lemos nativamente — a assimetria fica anotada, sem virar plano.
 
 ## O que KL **não** faz
 
@@ -243,7 +250,7 @@ esperar a fase inteira para ver a primeira prancha.
 ## Ordem de execução
 
 ```text
-A: 01 → 02 → 03                     (valor observável cedo, pelo upstream)
+A: 01 ✓ → 02, 03 SUSPENSOS          (o upstream não exibe layout em DXF)
 B: 04 → 05 → 06 → 07 → 08           (modelo próprio; independe de A)
 C: 09 → 10 → 11                     (09 também depende de MT-K2-04)
 D: 12 → 13 → 14
@@ -253,10 +260,11 @@ Os blocos A e B não dependem um do outro e podem andar em paralelo.
 
 ## Riscos conhecidos
 
-- **O upstream pode não exibir tudo.** `activeLayoutBtrId` é conhecido por
-  inspeção do pacote, não por execução — o MT-KL-01 existe em parte para
-  confirmar isso em navegador. Se a exibição falhar, o bloco A encolhe e o valor
-  observável passa a depender de K5, o que muda a ordem mas não a decisão.
+- ~~**O upstream pode não exibir tudo.**~~ **Confirmado no MT-KL-01, e o risco
+  virou fato:** o upstream não exibe layout no caminho DXF. O bloco A caiu e o
+  valor observável passou a depender de K5. A decisão da fase não muda — layout
+  segue sendo requisito —, mas a prancha na tela chega mais tarde do que o ADR
+  0005 previa.
 - **Congelamento por viewport alcança a `LayerTable`.** É a primeira vez que
   visibilidade de camada deixa de ser propriedade global do documento. Feito
   errado, contamina toda consulta de visibilidade do kernel.

@@ -737,26 +737,35 @@ o kernel próprio.
       `blockTable.modelSpace.objectId`, `blockTable.getIdAt(id)` e
       `record.newIterator().count` — este último substituiu a varredura manual,
       porque `hasNext()` não existe no iterador.
-- [ ] **⚠️ ACHADO QUE PÕE EM DÚVIDA O BLOCO A DA FASE KL.** Contra todas as
-      fixtures e contra o DWG de referência, o dicionário de layouts vem
-      **vazio** — só aparece o `Model` que sintetizamos. Escrevi à mão uma
-      fixture R2000 com três objetos `LAYOUT` (`e2e/fixtures/two-layouts.dxf`) e o
-      resultado foi pior: o upstream **abre** o arquivo, mas
-      **joga as cinco entidades no espaço-modelo**, ignorando os códigos `67` e
-      `410`, e não produz layout nenhum utilizável.
+- [x] **⚠️ O BLOCO A DA FASE KL NÃO SE SUSTENTA NO CAMINHO DXF.** Apurado por
+      leitura de código e por execução direta do parser, depois de uma primeira
+      rodada de sondas em navegador que me levou a duas conclusões erradas.
+      **Correção do que eu havia registrado:** o `410` **é** lido — a propriedade
+      chama-se `layoutTabName`, e eu havia procurado por `layoutName`; e o
+      dicionário de layouts **não** vem vazio — as entradas existem, e eram o meu
+      próprio filtro que as descartava por vir sem identificador de bloco.
 
-      O `AcDbDxfConverter.processObjects` do upstream **tem** tratamento de
-      `LAYOUT`, então a capacidade existe em princípio; o que não consegui foi
-      produzir um DXF que o `dxf-json` aceite e que popule o dicionário. Pode ser
-      defeito da minha fixture, e pode ser do parser — não separei as duas coisas.
+      O que está de fato estabelecido:
 
-      **O que isso significa para o plano:** o ADR 0005 apostou que "a camada de
-      desenho de terceiros já sabe exibir um layout", com base na existência de
-      `activeLayoutBtrId`. O getter e o setter existem, mas **não há layout
-      povoado para onde trocar**, e as entidades de papel não chegam separadas.
-      É exatamente o risco que o ticket da KL registrou: *"se a exibição falhar, o
-      bloco A encolhe e o valor observável passa a depender de K5"*. **Decisão de
-      ordem pendente com o usuário.**
+      1. O `dxf-json` lê os objetos `LAYOUT` (nome e ordem da aba) e lê `67` e
+         `410` em cada entidade. Verificado chamando o parser direto sobre
+         `e2e/fixtures/two-layouts.dxf`.
+      2. O `dxf-json` **não** entrega o identificador do registro de bloco do
+         layout — não existe `paperSpaceTableId` no objeto resultante.
+      3. O conversor DXF do `data-model` acrescenta **toda** entidade ao
+         `modelSpace`, e não consulta `isInPaperSpace` nem `layoutTabName` em
+         lugar nenhum de `lib/`. O único filtro é por `ownerBlockRecordSoftId`,
+         que entidade de seção `ENTITIES` não tem.
+
+      **Conclusão:** no caminho DXF, trocar o `activeLayoutBtrId` apontaria para
+      um registro de bloco de papel **vazio** — uma folha em branco. O bloco A não
+      entrega o valor que prometia.
+
+      **Assimetria que fica registrada:** no caminho **DWG** o quadro é outro. O
+      conversor da LibreDWG povoa `*Paper_Space` — foi medido em 1407 entidades no
+      degrau 2 —, então ali a troca de layout pode funcionar. Só que DXF é o que
+      lemos nativamente e DWG é do upstream até K6, de modo que hoje: em DXF temos
+      o dado e falta o renderizador; em DWG o upstream tem o dado e não o lemos.
 
 - [x] **Fixture `two-layouts.dxf` acrescentada, e a leitura própria a lê certo:**
       2 entidades no espaço-modelo e duas pranchas nomeadas (`Prancha A1`,
