@@ -211,6 +211,28 @@ export interface CadSaveLoss {
 }
 
 /**
+ * Um layout do documento, na forma que a interface consome.
+ *
+ * O espaço-modelo aparece como um item entre os layouts, e não como exceção: é
+ * assim que o AutoCAD apresenta as abas, e tratá-lo à parte espalharia um `if`
+ * por toda a interface.
+ */
+export interface CadLayout {
+	/** Nome da aba, como o desenho o traz. */
+	name: string;
+	/** Identificador do registro de bloco associado. */
+	blockId: string;
+	/** Ordem de exibição da aba. */
+	tabOrder: number;
+	/** Entidades que moram neste layout. */
+	entityCount: number;
+	/** Verdadeiro para o espaço-modelo. */
+	isModelSpace: boolean;
+	/** Viewports declaradas no layout — as janelas que compõem a prancha. */
+	viewportCount: number;
+}
+
+/**
  * Resultado da abertura de um DXF pela leitura nativa do kernel.
  *
  * Substitui, para DXF, o `CadLoadReport` do retrato extraído do upstream: aqui

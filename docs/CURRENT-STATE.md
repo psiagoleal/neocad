@@ -725,9 +725,47 @@ o kernel próprio.
       critério "continuam abrindo sem perda de cobertura" está satisfeito por
       construção, não por nova medição; o E2E de DWG passa. Uma revalidação
       contra o acervo real cabe quando K6 mexer nesse caminho.
-- [ ] **Próximo passo:** fase **KL** (layouts), começando pelo **MT-KL-01** —
-      enumerar os layouts do documento aberto, confirmando em navegador a API
-      `activeLayoutBtrId` do upstream, hoje conhecida só por inspeção do pacote.
+- [x] **MT-KL-01 concluído:** `buildLayoutList` em `neocad-viewer.ts` monta a
+      lista de layouts, e `listLayouts()` a alimenta do documento aberto. O
+      espaço-modelo entra como item entre os layouts, e é **sintetizado** quando o
+      dicionário não o traz — sem isso, um arquivo assim deixaria o usuário sem
+      aba nenhuma que mostrasse o desenho. Ordem determinística: modelo primeiro,
+      depois por `tabOrder` com o nome como desempate. 10 testes de unidade sobre
+      objetos sintéticos; **76 testes** no frontend.
+- [x] **A API do upstream foi confirmada em navegador**, que era o ponto do
+      ticket. Funcionam: `database.objects.layout.entries()`,
+      `blockTable.modelSpace.objectId`, `blockTable.getIdAt(id)` e
+      `record.newIterator().count` — este último substituiu a varredura manual,
+      porque `hasNext()` não existe no iterador.
+- [ ] **⚠️ ACHADO QUE PÕE EM DÚVIDA O BLOCO A DA FASE KL.** Contra todas as
+      fixtures e contra o DWG de referência, o dicionário de layouts vem
+      **vazio** — só aparece o `Model` que sintetizamos. Escrevi à mão uma
+      fixture R2000 com três objetos `LAYOUT` (`e2e/fixtures/two-layouts.dxf`) e o
+      resultado foi pior: o upstream **abre** o arquivo, mas
+      **joga as cinco entidades no espaço-modelo**, ignorando os códigos `67` e
+      `410`, e não produz layout nenhum utilizável.
+
+      O `AcDbDxfConverter.processObjects` do upstream **tem** tratamento de
+      `LAYOUT`, então a capacidade existe em princípio; o que não consegui foi
+      produzir um DXF que o `dxf-json` aceite e que popule o dicionário. Pode ser
+      defeito da minha fixture, e pode ser do parser — não separei as duas coisas.
+
+      **O que isso significa para o plano:** o ADR 0005 apostou que "a camada de
+      desenho de terceiros já sabe exibir um layout", com base na existência de
+      `activeLayoutBtrId`. O getter e o setter existem, mas **não há layout
+      povoado para onde trocar**, e as entidades de papel não chegam separadas.
+      É exatamente o risco que o ticket da KL registrou: *"se a exibição falhar, o
+      bloco A encolhe e o valor observável passa a depender de K5"*. **Decisão de
+      ordem pendente com o usuário.**
+
+- [x] **Fixture `two-layouts.dxf` acrescentada, e a leitura própria a lê certo:**
+      2 entidades no espaço-modelo e duas pranchas nomeadas (`Prancha A1`,
+      `Prancha A2`), relatório limpo, sobrevivendo à ida e volta. Entrou na lista
+      do `round_trip.rs` — **12 testes** lá, **419** no kernel.
+- [ ] **Nota de ambiente:** com o Chrome do usuário aberto, o `pnpm test:e2e` em
+      paralelo esgota memória e derruba as páginas (`Page crashed`) — 29 processos
+      Chrome e ~1,6 GB livres. Com `--workers=1` passa 10/10. Não é regressão; é
+      contenção local, e a CI roda em máquina limpa.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

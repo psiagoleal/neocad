@@ -15,6 +15,7 @@ import type {
 	CadCommandDescriptor,
 	CadDocumentPayload,
 	CadDocumentSnapshot,
+	CadLayout,
 	CadOpenMode,
 	CadViewerDocumentState,
 	CadViewerProgressState
@@ -36,6 +37,100 @@ type ViewerCallbacks = {
 	onMessage?: (message: { kind: 'success' | 'warning' | 'info' | 'error'; text: string }) => void;
 	onOpenRequested?: () => void | Promise<void>;
 };
+
+/** Nome com que o AutoCAD designa a aba do espaço-modelo. */
+const MODEL_SPACE_TAB = 'Model';
+
+/**
+ * O que a montagem da lista de layouts precisa saber sobre o documento.
+ *
+ * A indireção existe para a lógica ser exercitável sem navegador: quem a testa
+ * fornece objetos sintéticos no formato do upstream, e não um banco de dados
+ * inteiro.
+ */
+export type CadLayoutSource = {
+	/** Objetos `AcDbLayout` do dicionário de layouts. */
+	layouts: Iterable<unknown>;
+	/** Identificador do registro de bloco do espaço-modelo. */
+	modelSpaceBlockId: string;
+	/** Entidades de um registro de bloco, ou `null` se o registro não existir. */
+	entityCountOf: (blockId: string) => number | null;
+};
+
+function readString(value: unknown): string | null {
+	return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function readNumber(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Monta a lista de layouts do documento.
+ *
+ * # O espaço-modelo entra mesmo quando o dicionário não o traz
+ *
+ * Nem todo arquivo declara a aba `Model` no dicionário de layouts, e um desenho
+ * sem ela ainda tem espaço-modelo. Sintetizar o item garante que a interface
+ * sempre tenha para onde voltar — sem isso, abrir um arquivo assim deixaria o
+ * usuário sem aba nenhuma que mostrasse o desenho.
+ *
+ * # A ordem é a das abas, e é determinística
+ *
+ * O espaço-modelo vem primeiro, como no AutoCAD; os demais por `tabOrder`, com
+ * o nome como desempate para a lista não depender da ordem de iteração de um
+ * dicionário.
+ */
+export function buildLayoutList(source: CadLayoutSource): CadLayout[] {
+	const encontrados: CadLayout[] = [];
+	let temModelSpace = false;
+
+	for (const bruto of source.layouts) {
+		if (typeof bruto !== 'object' || bruto === null) {
+			continue;
+		}
+
+		const record = bruto as Record<string, unknown>;
+		const blockId = readString(record.blockTableRecordId);
+		const name = readString(record.layoutName);
+
+		if (blockId == null || name == null) {
+			continue;
+		}
+
+		const isModelSpace =
+			blockId === source.modelSpaceBlockId || name.toLowerCase() === MODEL_SPACE_TAB.toLowerCase();
+		temModelSpace = temModelSpace || isModelSpace;
+
+		encontrados.push({
+			name,
+			blockId,
+			tabOrder: readNumber(record.tabOrder) ?? 0,
+			entityCount: source.entityCountOf(blockId) ?? 0,
+			isModelSpace,
+			viewportCount: Array.isArray(record.viewportArray) ? record.viewportArray.length : 0
+		});
+	}
+
+	if (!temModelSpace) {
+		encontrados.push({
+			name: MODEL_SPACE_TAB,
+			blockId: source.modelSpaceBlockId,
+			tabOrder: 0,
+			entityCount: source.entityCountOf(source.modelSpaceBlockId) ?? 0,
+			isModelSpace: true,
+			viewportCount: 0
+		});
+	}
+
+	return encontrados.sort((um, outro) => {
+		if (um.isModelSpace !== outro.isModelSpace) {
+			return um.isModelSpace ? -1 : 1;
+		}
+
+		return um.tabOrder - outro.tabOrder || um.name.localeCompare(outro.name);
+	});
+}
 
 export class NeoCadViewer {
 	private cadModule: CadSimpleViewerModule | null = null;
@@ -217,6 +312,33 @@ export class NeoCadViewer {
 		const modelSpace = database.tables.blockTable.modelSpace;
 
 		return buildDocumentSnapshot(layerTable.newIterator(), modelSpace.newIterator());
+	}
+
+	/**
+	 * Lista os layouts do documento aberto, com o espaço-modelo entre eles.
+	 *
+	 * Devolve lista vazia quando não há documento ativo. A contagem de entidades
+	 * de cada layout vem do registro de bloco associado, que é como o formato —
+	 * e o ADR 0005 — modelam layout.
+	 */
+	listLayouts(): CadLayout[] {
+		const database = this.docManager?.curDocument?.database;
+
+		if (database == null) {
+			return [];
+		}
+
+		const blockTable = database.tables.blockTable;
+
+		return buildLayoutList({
+			layouts: database.objects.layout.entries(),
+			modelSpaceBlockId: blockTable.modelSpace.objectId,
+			entityCountOf: (blockId) => {
+				const record = blockTable.getIdAt(blockId);
+
+				return record == null ? null : record.newIterator().count;
+			}
+		});
 	}
 
 	/**

@@ -14,12 +14,13 @@ use neocad_io::{read_dxf, write_dxf, DxfContents, DxfReading, EntitySpace};
 use neocad_model::{Color, EntityColor, Geometry, LineWeight};
 
 /// Fixtures sintéticas que a suíte E2E também usa.
-const FIXTURES: [&str; 5] = [
+const FIXTURES: [&str; 6] = [
     "minimal.dxf",
     "with-unsupported.dxf",
     "legacy-polyline.dxf",
     "block-reference.dxf",
     "block-with-entities.dxf",
+    "two-layouts.dxf",
 ];
 
 /// Retrato comparável de uma leitura.
@@ -361,4 +362,20 @@ fn arquivo_gravado_por_nos_e_lido_sem_nenhuma_queixa() {
             leitura.report
         );
     }
+}
+
+#[test]
+fn a_fixture_de_layouts_atravessa_com_as_duas_pranchas() {
+    // Escrita à mão para exercitar o caminho de layout. O parser do upstream
+    // abre o arquivo mas joga as cinco entidades no espaço-modelo, ignorando os
+    // códigos `67` e `410`; a leitura própria separa corretamente.
+    let original = read_dxf(&fixture("two-layouts.dxf"));
+
+    assert_eq!(original.model_space_count(), 2);
+    assert_eq!(original.paper_space_layouts(), ["Prancha A1", "Prancha A2"]);
+
+    let relido = read_dxf(&regravar(&original));
+
+    assert_eq!(relido.model_space_count(), 2);
+    assert_eq!(relido.paper_space_layouts(), ["Prancha A1", "Prancha A2"]);
 }
