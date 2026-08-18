@@ -5,11 +5,10 @@
 //! \date 2026-08-07
 
 use core::fmt;
-use std::collections::BTreeMap;
 
-use crate::arena::Arena;
 use crate::id::EntityId;
-use crate::symbol_name::{normalize, validate, InvalidName};
+use crate::symbol_name::InvalidName;
+use crate::symbol_table::{SymbolError, SymbolRecord, SymbolTable};
 
 /// Nome da camada que todo documento CAD possui e que não pode ser removida.
 pub const DEFAULT_LAYER_NAME: &str = "0";
@@ -221,6 +220,29 @@ impl LayerRecord {
     }
 }
 
+/// Registro de camada novo, com os padrões de desenho.
+fn nova_camada(name: String) -> LayerRecord {
+    LayerRecord {
+        name,
+        color: Color::default(),
+        linetype: String::from("Continuous"),
+        line_weight: LineWeight::Default,
+        is_off: false,
+        is_frozen: false,
+        is_locked: false,
+    }
+}
+
+impl SymbolRecord for LayerRecord {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+}
+
 /// Falha ao operar sobre a tabela de camadas.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LayerError {
@@ -241,6 +263,21 @@ impl From<InvalidName> for LayerError {
         match error {
             InvalidName::Empty => Self::EmptyName,
             InvalidName::Forbidden(character) => Self::ForbiddenCharacter(character),
+        }
+    }
+}
+
+impl From<SymbolError> for LayerError {
+    /// Traduz o erro genérico da tabela para o vocabulário das camadas.
+    ///
+    /// É aqui que `Protected` volta a dizer **qual** registro é protegido: a
+    /// camada `0`. Uma mensagem genérica diria menos a quem lê.
+    fn from(error: SymbolError) -> Self {
+        match error {
+            SymbolError::Invalid(invalid) => invalid.into(),
+            SymbolError::Duplicate(name) => Self::DuplicateName(name),
+            SymbolError::Protected => Self::DefaultLayerIsProtected,
+            SymbolError::NotFound => Self::NotFound,
         }
     }
 }
@@ -311,40 +348,22 @@ impl core::error::Error for LayerError {}
 /// ```
 #[derive(Debug, Clone)]
 pub struct LayerTable {
-    records: Arena<LayerRecord>,
-    by_normalized_name: BTreeMap<String, LayerId>,
-    default_layer: LayerId,
+    symbols: SymbolTable<LayerRecord>,
 }
 
 impl LayerTable {
     /// Cria uma tabela contendo apenas a camada `0`.
     #[must_use]
     pub fn new() -> Self {
-        let mut records = Arena::new();
-        let default_layer = LayerId(records.insert(LayerRecord {
-            name: String::from(DEFAULT_LAYER_NAME),
-            color: Color::default(),
-            linetype: String::from("Continuous"),
-            line_weight: LineWeight::Default,
-            is_off: false,
-            is_frozen: false,
-            is_locked: false,
-        }));
-
-        let mut by_normalized_name = BTreeMap::new();
-        by_normalized_name.insert(normalize(DEFAULT_LAYER_NAME), default_layer);
-
         Self {
-            records,
-            by_normalized_name,
-            default_layer,
+            symbols: SymbolTable::with_protected(nova_camada(String::from(DEFAULT_LAYER_NAME))),
         }
     }
 
     /// Identificador da camada `0`, sempre presente.
     #[must_use]
     pub const fn default_layer(&self) -> LayerId {
-        self.default_layer
+        LayerId(self.symbols.protected())
     }
 
     /// Quantidade de camadas. Nunca é zero.
@@ -357,7 +376,7 @@ impl LayerTable {
         reason = "a tabela nunca é vazia: a camada 0 não pode ser removida"
     )]
     pub fn len(&self) -> usize {
-        self.records.len()
+        self.symbols.len()
     }
 
     /// Cria uma camada com o nome informado e valores padrão.
@@ -367,31 +386,16 @@ impl LayerTable {
     /// Falha se o nome for vazio, contiver caractere proibido pelos formatos CAD,
     /// ou colidir com uma camada existente ignorando caixa.
     pub fn create(&mut self, name: impl Into<String>) -> Result<LayerId, LayerError> {
-        let name = name.into();
-        let normalized = validate(&name)?;
-
-        if self.by_normalized_name.contains_key(&normalized) {
-            return Err(LayerError::DuplicateName(name));
-        }
-
-        let id = LayerId(self.records.insert(LayerRecord {
-            name,
-            color: Color::default(),
-            linetype: String::from("Continuous"),
-            line_weight: LineWeight::Default,
-            is_off: false,
-            is_frozen: false,
-            is_locked: false,
-        }));
-        self.by_normalized_name.insert(normalized, id);
-
-        Ok(id)
+        self.symbols
+            .create(name.into(), nova_camada)
+            .map(LayerId)
+            .map_err(LayerError::from)
     }
 
     /// Devolve a camada de `id`, ou `None` se o identificador estiver obsoleto.
     #[must_use]
     pub fn get(&self, id: LayerId) -> Option<&LayerRecord> {
-        self.records.get(id.0)
+        self.symbols.get(id.0)
     }
 
     /// Versão mutável de [`LayerTable::get`].
@@ -400,25 +404,25 @@ impl LayerTable {
     /// coerente, e por isso passa por [`LayerTable::rename`].
     #[must_use]
     pub fn get_mut(&mut self, id: LayerId) -> Option<&mut LayerRecord> {
-        self.records.get_mut(id.0)
+        self.symbols.get_mut(id.0)
     }
 
     /// Procura uma camada pelo nome, ignorando caixa.
     #[must_use]
     pub fn id_of(&self, name: &str) -> Option<LayerId> {
-        self.by_normalized_name.get(&normalize(name)).copied()
+        self.symbols.id_of(name).map(LayerId)
     }
 
     /// Procura uma camada pelo nome, ignorando caixa, devolvendo o registro.
     #[must_use]
     pub fn get_by_name(&self, name: &str) -> Option<&LayerRecord> {
-        self.get(self.id_of(name)?)
+        self.symbols.get_by_name(name)
     }
 
     /// Indica se `id` referencia uma camada viva.
     #[must_use]
     pub fn contains(&self, id: LayerId) -> bool {
-        self.records.contains(id.0)
+        self.symbols.contains(id.0)
     }
 
     /// Renomeia uma camada, preservando seu identificador.
@@ -429,28 +433,9 @@ impl LayerTable {
     /// nome novo for inválido ou colidir com outra camada. Renomear uma camada
     /// para o próprio nome, mudando apenas a caixa, é permitido.
     pub fn rename(&mut self, id: LayerId, name: impl Into<String>) -> Result<(), LayerError> {
-        if id == self.default_layer {
-            return Err(LayerError::DefaultLayerIsProtected);
-        }
-
-        let name = name.into();
-        let normalized = validate(&name)?;
-
-        match self.by_normalized_name.get(&normalized) {
-            Some(&existing) if existing != id => {
-                return Err(LayerError::DuplicateName(name));
-            }
-            _ => {}
-        }
-
-        let record = self.records.get_mut(id.0).ok_or(LayerError::NotFound)?;
-        let previous = normalize(&record.name);
-        record.name = name;
-
-        self.by_normalized_name.remove(&previous);
-        self.by_normalized_name.insert(normalized, id);
-
-        Ok(())
+        self.symbols
+            .rename(id.0, name.into())
+            .map_err(LayerError::from)
     }
 
     /// Remove uma camada e devolve o registro removido.
@@ -462,27 +447,19 @@ impl LayerTable {
     /// Não verifica se há entidades na camada: essa checagem depende da tabela de
     /// entidades e entra junto com o documento, em MT-K1-07.
     pub fn remove(&mut self, id: LayerId) -> Result<LayerRecord, LayerError> {
-        if id == self.default_layer {
-            return Err(LayerError::DefaultLayerIsProtected);
-        }
-
-        let record = self.records.remove(id.0).ok_or(LayerError::NotFound)?;
-        self.by_normalized_name.remove(&normalize(&record.name));
-
-        Ok(record)
+        self.symbols.remove(id.0).map_err(LayerError::from)
     }
 
     /// Itera sobre as camadas em ordem alfabética de nome.
     pub fn iter(&self) -> impl Iterator<Item = (LayerId, &LayerRecord)> {
-        self.by_normalized_name.values().filter_map(|&id| {
-            let record = self.records.get(id.0)?;
-            Some((id, record))
-        })
+        self.symbols
+            .iter()
+            .map(|(id, record)| (LayerId(id), record))
     }
 
     /// Itera sobre os nomes de exibição em ordem alfabética.
     pub fn names(&self) -> impl Iterator<Item = &str> {
-        self.iter().map(|(_, record)| record.name())
+        self.symbols.names()
     }
 }
 

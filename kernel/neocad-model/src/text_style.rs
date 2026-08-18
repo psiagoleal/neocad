@@ -5,11 +5,10 @@
 //! \date 2026-08-07
 
 use core::fmt;
-use std::collections::BTreeMap;
 
-use crate::arena::Arena;
 use crate::id::EntityId;
-use crate::symbol_name::{normalize, validate, InvalidName};
+use crate::symbol_name::InvalidName;
+use crate::symbol_table::{SymbolError, SymbolRecord, SymbolTable};
 
 /// Nome do estilo de texto que todo documento possui e que não pode ser removido.
 pub const STANDARD_TEXT_STYLE_NAME: &str = "Standard";
@@ -112,6 +111,27 @@ impl TextStyleRecord {
     }
 }
 
+/// Estilo de texto novo, com a fonte e as proporções padrão.
+fn novo_estilo(name: String) -> TextStyleRecord {
+    TextStyleRecord {
+        name,
+        font_file: String::from(DEFAULT_FONT_FILE),
+        fixed_height: 0.0,
+        width_factor: 1.0,
+        oblique_angle: 0.0,
+    }
+}
+
+impl SymbolRecord for TextStyleRecord {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+}
+
 /// Falha ao operar sobre a tabela de estilos de texto.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TextStyleError {
@@ -132,6 +152,18 @@ impl From<InvalidName> for TextStyleError {
         match error {
             InvalidName::Empty => Self::EmptyName,
             InvalidName::Forbidden(character) => Self::ForbiddenCharacter(character),
+        }
+    }
+}
+
+impl From<SymbolError> for TextStyleError {
+    /// Traduz o erro genérico da tabela para o vocabulário dos estilos.
+    fn from(error: SymbolError) -> Self {
+        match error {
+            SymbolError::Invalid(invalid) => invalid.into(),
+            SymbolError::Duplicate(name) => Self::DuplicateName(name),
+            SymbolError::Protected => Self::StandardStyleIsProtected,
+            SymbolError::NotFound => Self::NotFound,
         }
     }
 }
@@ -181,38 +213,24 @@ impl core::error::Error for TextStyleError {}
 /// ```
 #[derive(Debug, Clone)]
 pub struct TextStyleTable {
-    records: Arena<TextStyleRecord>,
-    by_normalized_name: BTreeMap<String, TextStyleId>,
-    standard: TextStyleId,
+    symbols: SymbolTable<TextStyleRecord>,
 }
 
 impl TextStyleTable {
     /// Cria uma tabela contendo apenas o estilo `Standard`.
     #[must_use]
     pub fn new() -> Self {
-        let mut records = Arena::new();
-        let standard = TextStyleId(records.insert(TextStyleRecord {
-            name: String::from(STANDARD_TEXT_STYLE_NAME),
-            font_file: String::from(DEFAULT_FONT_FILE),
-            fixed_height: 0.0,
-            width_factor: 1.0,
-            oblique_angle: 0.0,
-        }));
-
-        let mut by_normalized_name = BTreeMap::new();
-        by_normalized_name.insert(normalize(STANDARD_TEXT_STYLE_NAME), standard);
-
         Self {
-            records,
-            by_normalized_name,
-            standard,
+            symbols: SymbolTable::with_protected(novo_estilo(String::from(
+                STANDARD_TEXT_STYLE_NAME,
+            ))),
         }
     }
 
     /// Identificador do estilo `Standard`, sempre presente.
     #[must_use]
     pub const fn standard(&self) -> TextStyleId {
-        self.standard
+        TextStyleId(self.symbols.protected())
     }
 
     /// Quantidade de estilos. Nunca é zero.
@@ -222,7 +240,7 @@ impl TextStyleTable {
         reason = "a tabela nunca é vazia: o estilo Standard não pode ser removido"
     )]
     pub fn len(&self) -> usize {
-        self.records.len()
+        self.symbols.len()
     }
 
     /// Cria um estilo com o nome informado e valores padrão.
@@ -232,23 +250,10 @@ impl TextStyleTable {
     /// Falha se o nome for inválido ou colidir com um estilo existente,
     /// ignorando caixa.
     pub fn create(&mut self, name: impl Into<String>) -> Result<TextStyleId, TextStyleError> {
-        let name = name.into();
-        let normalized = validate(&name)?;
-
-        if self.by_normalized_name.contains_key(&normalized) {
-            return Err(TextStyleError::DuplicateName(name));
-        }
-
-        let id = TextStyleId(self.records.insert(TextStyleRecord {
-            name,
-            font_file: String::from(DEFAULT_FONT_FILE),
-            fixed_height: 0.0,
-            width_factor: 1.0,
-            oblique_angle: 0.0,
-        }));
-        self.by_normalized_name.insert(normalized, id);
-
-        Ok(id)
+        self.symbols
+            .create(name.into(), novo_estilo)
+            .map(TextStyleId)
+            .map_err(TextStyleError::from)
     }
 
     /// Resolve um identificador para o registro correspondente.
@@ -257,7 +262,7 @@ impl TextStyleTable {
     /// removido depois de a referência ter sido obtida.
     #[must_use]
     pub fn get(&self, id: TextStyleId) -> Option<&TextStyleRecord> {
-        self.records.get(id.0)
+        self.symbols.get(id.0)
     }
 
     /// Versão mutável de [`TextStyleTable::get`].
@@ -266,25 +271,25 @@ impl TextStyleTable {
     /// [`TextStyleTable::rename`], que mantém o índice coerente.
     #[must_use]
     pub fn get_mut(&mut self, id: TextStyleId) -> Option<&mut TextStyleRecord> {
-        self.records.get_mut(id.0)
+        self.symbols.get_mut(id.0)
     }
 
     /// Procura um estilo pelo nome, ignorando caixa.
     #[must_use]
     pub fn id_of(&self, name: &str) -> Option<TextStyleId> {
-        self.by_normalized_name.get(&normalize(name)).copied()
+        self.symbols.id_of(name).map(TextStyleId)
     }
 
     /// Procura um estilo pelo nome, ignorando caixa, devolvendo o registro.
     #[must_use]
     pub fn get_by_name(&self, name: &str) -> Option<&TextStyleRecord> {
-        self.get(self.id_of(name)?)
+        self.symbols.get_by_name(name)
     }
 
     /// Indica se `id` referencia um estilo vivo.
     #[must_use]
     pub fn contains(&self, id: TextStyleId) -> bool {
-        self.records.contains(id.0)
+        self.symbols.contains(id.0)
     }
 
     /// Renomeia um estilo, preservando seu identificador.
@@ -298,27 +303,9 @@ impl TextStyleTable {
         id: TextStyleId,
         name: impl Into<String>,
     ) -> Result<(), TextStyleError> {
-        if id == self.standard {
-            return Err(TextStyleError::StandardStyleIsProtected);
-        }
-
-        let name = name.into();
-        let normalized = validate(&name)?;
-
-        if let Some(&existing) = self.by_normalized_name.get(&normalized) {
-            if existing != id {
-                return Err(TextStyleError::DuplicateName(name));
-            }
-        }
-
-        let record = self.records.get_mut(id.0).ok_or(TextStyleError::NotFound)?;
-        let previous = normalize(&record.name);
-        record.name = name;
-
-        self.by_normalized_name.remove(&previous);
-        self.by_normalized_name.insert(normalized, id);
-
-        Ok(())
+        self.symbols
+            .rename(id.0, name.into())
+            .map_err(TextStyleError::from)
     }
 
     /// Remove um estilo e devolve o registro removido.
@@ -330,27 +317,19 @@ impl TextStyleTable {
     /// Não verifica se há textos usando o estilo: essa checagem depende da
     /// tabela de entidades e entra com o documento, em MT-K1-07.
     pub fn remove(&mut self, id: TextStyleId) -> Result<TextStyleRecord, TextStyleError> {
-        if id == self.standard {
-            return Err(TextStyleError::StandardStyleIsProtected);
-        }
-
-        let record = self.records.remove(id.0).ok_or(TextStyleError::NotFound)?;
-        self.by_normalized_name.remove(&normalize(&record.name));
-
-        Ok(record)
+        self.symbols.remove(id.0).map_err(TextStyleError::from)
     }
 
     /// Itera sobre os estilos em ordem alfabética de nome.
     pub fn iter(&self) -> impl Iterator<Item = (TextStyleId, &TextStyleRecord)> {
-        self.by_normalized_name.values().filter_map(|&id| {
-            let record = self.records.get(id.0)?;
-            Some((id, record))
-        })
+        self.symbols
+            .iter()
+            .map(|(id, record)| (TextStyleId(id), record))
     }
 
     /// Itera sobre os nomes de exibição em ordem alfabética.
     pub fn names(&self) -> impl Iterator<Item = &str> {
-        self.iter().map(|(_, record)| record.name())
+        self.symbols.names()
     }
 }
 

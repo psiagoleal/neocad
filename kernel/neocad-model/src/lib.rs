@@ -38,6 +38,8 @@ pub use text_style::{
     TextStyleError, TextStyleId, TextStyleRecord, TextStyleTable, STANDARD_TEXT_STYLE_NAME,
 };
 
+pub(crate) mod symbol_table;
+
 /// Regras de nome comuns às tabelas de símbolos.
 ///
 /// Camadas, blocos e estilos de texto são, nos formatos CAD, o mesmo conceito —
@@ -70,7 +72,8 @@ pub(crate) mod symbol_name {
     /// Prefixo que os formatos DXF e DWG reservam aos nomes do próprio sistema.
     #[allow(
         dead_code,
-        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador só a verá em uso quando ela chegar, e antecipar o consumidor seria escrever a fase inteira num ticket só"
+        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador \
+         só a verá em uso quando ela chegar"
     )]
     pub(crate) const RESERVED_PREFIX: char = '*';
 
@@ -86,7 +89,8 @@ pub(crate) mod symbol_name {
     /// compilador que garante isso (ADR 0005).
     #[allow(
         dead_code,
-        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador só a verá em uso quando ela chegar, e antecipar o consumidor seria escrever a fase inteira num ticket só"
+        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador \
+         só a verá em uso quando ela chegar"
     )]
     pub(crate) fn validate_reserved(name: &str) -> Result<String, InvalidName> {
         let trimmed = name.trim();

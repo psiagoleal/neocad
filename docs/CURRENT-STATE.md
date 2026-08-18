@@ -790,6 +790,24 @@ o kernel próprio.
       testes; o `#[allow(dead_code, reason = ...)]` diz que o consumidor é a
       `LayoutTable` do MT-KL-06. Antecipá-lo seria escrever a fase inteira num
       ticket só.
+- [x] **MT-KL-05 concluído:** `SymbolTable<T>` em
+      `neocad-model/src/symbol_table.rs` passou a ser a máquina única de índice
+      por nome; `LayerTable`, `BlockTable` e `TextStyleTable` a envolvem. **−73
+      linhas** líquidas, e as três tabelas deixaram de ter três cópias da mesma
+      regra — três oportunidades de divergirem, que era o motivo da dívida.
+- [x] **O critério severo foi cumprido: nenhum teste existente mudou.** 164
+      testes e 13 doctests da crate do modelo passam sem uma linha alterada de
+      asserção. A única edição dentro de módulo de teste foi o `use
+    crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
+      do módulo e passou para o topo. **427 testes** no kernel.
+- [x] **A tabela genérica guarda a mecânica, não a política.** Qual registro é
+      protegido, o que cada erro significa e o que cabe num registro continuam de
+      cada tabela: `SymbolError::Protected` é traduzido por um `From` para
+      `DefaultLayerIsProtected`, `ModelSpaceIsProtected` ou
+      `StandardStyleIsProtected`. Uma mensagem genérica diria menos a quem lê.
+- [x] **O `SymbolRecord` pede o mínimo:** ler e escrever o nome. Cor, ponto-base
+      e altura de texto não sobem para a genérica, e por isso ela não vira o
+      lugar onde tudo acaba caindo.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

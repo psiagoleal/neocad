@@ -5,13 +5,12 @@
 //! \date 2026-08-07
 
 use core::fmt;
-use std::collections::BTreeMap;
 
 use neocad_geometry::Point2;
 
-use crate::arena::Arena;
 use crate::id::EntityId;
-use crate::symbol_name::{normalize, validate, validate_reserved, InvalidName, RESERVED_PREFIX};
+use crate::symbol_name::{InvalidName, RESERVED_PREFIX};
+use crate::symbol_table::{SymbolError, SymbolRecord, SymbolTable};
 
 /// Nome interno do bloco que representa o espaço-modelo.
 ///
@@ -138,6 +137,25 @@ impl BlockRecord {
     }
 }
 
+/// Registro de bloco novo, vazio e com origem no ponto zero.
+fn novo_bloco(name: String) -> BlockRecord {
+    BlockRecord {
+        name,
+        origin: Point2::ORIGIN,
+        entities: Vec::new(),
+    }
+}
+
+impl SymbolRecord for BlockRecord {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+}
+
 /// Falha ao operar sobre a tabela de blocos.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockError {
@@ -160,6 +178,18 @@ impl From<InvalidName> for BlockError {
         match error {
             InvalidName::Empty => Self::EmptyName,
             InvalidName::Forbidden(character) => Self::ForbiddenCharacter(character),
+        }
+    }
+}
+
+impl From<SymbolError> for BlockError {
+    /// Traduz o erro genérico da tabela para o vocabulário dos blocos.
+    fn from(error: SymbolError) -> Self {
+        match error {
+            SymbolError::Invalid(invalid) => invalid.into(),
+            SymbolError::Duplicate(name) => Self::DuplicateName(name),
+            SymbolError::Protected => Self::ModelSpaceIsProtected,
+            SymbolError::NotFound => Self::NotFound,
         }
     }
 }
@@ -238,32 +268,15 @@ impl core::error::Error for BlockError {}
 /// ```
 #[derive(Debug, Clone)]
 pub struct BlockTable {
-    records: Arena<BlockRecord>,
-    by_normalized_name: BTreeMap<String, BlockId>,
-    model_space: BlockId,
+    symbols: SymbolTable<BlockRecord>,
 }
 
 impl BlockTable {
     /// Cria uma tabela contendo apenas o espaço-modelo, vazio.
     #[must_use]
     pub fn new() -> Self {
-        // O espaço-modelo é inserido direto, e não por `create_reserved`, porque
-        // a tabela ainda não existe para receber um método. É o único bloco
-        // reservado criado assim; todos os outros passam pela via interna.
-        let mut records = Arena::new();
-        let model_space = BlockId(records.insert(BlockRecord {
-            name: String::from(MODEL_SPACE_NAME),
-            origin: Point2::ORIGIN,
-            entities: Vec::new(),
-        }));
-
-        let mut by_normalized_name = BTreeMap::new();
-        by_normalized_name.insert(normalize(MODEL_SPACE_NAME), model_space);
-
         Self {
-            records,
-            by_normalized_name,
-            model_space,
+            symbols: SymbolTable::with_protected(novo_bloco(String::from(MODEL_SPACE_NAME))),
         }
     }
 
@@ -287,7 +300,8 @@ impl BlockTable {
     /// o restante contiver caractere proibido, ou se colidir com bloco existente.
     #[allow(
         dead_code,
-        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador só a verá em uso quando ela chegar, e antecipar o consumidor seria escrever a fase inteira num ticket só"
+        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador \
+         só a verá em uso quando ela chegar"
     )]
     pub(crate) fn create_reserved(&mut self, name: &str) -> Result<BlockId, BlockError> {
         debug_assert!(
@@ -295,26 +309,16 @@ impl BlockTable {
             "create_reserved é para nome reservado; use create para os demais"
         );
 
-        let normalized = validate_reserved(name)?;
-
-        if self.by_normalized_name.contains_key(&normalized) {
-            return Err(BlockError::DuplicateName(name.to_owned()));
-        }
-
-        let id = BlockId(self.records.insert(BlockRecord {
-            name: name.trim().to_owned(),
-            origin: Point2::ORIGIN,
-            entities: Vec::new(),
-        }));
-        self.by_normalized_name.insert(normalized, id);
-
-        Ok(id)
+        self.symbols
+            .create_reserved(name.to_owned(), novo_bloco)
+            .map(BlockId)
+            .map_err(BlockError::from)
     }
 
     /// Identificador do espaço-modelo, sempre presente.
     #[must_use]
     pub const fn model_space(&self) -> BlockId {
-        self.model_space
+        BlockId(self.symbols.protected())
     }
 
     /// Quantidade de blocos. Nunca é zero.
@@ -324,7 +328,7 @@ impl BlockTable {
         reason = "a tabela nunca é vazia: o espaço-modelo não pode ser removido"
     )]
     pub fn len(&self) -> usize {
-        self.records.len()
+        self.symbols.len()
     }
 
     /// Cria um bloco vazio com o nome informado.
@@ -334,27 +338,16 @@ impl BlockTable {
     /// Falha se o nome for inválido — incluindo nomes com asterisco, reservados
     /// ao formato — ou se colidir com um bloco existente, ignorando caixa.
     pub fn create(&mut self, name: impl Into<String>) -> Result<BlockId, BlockError> {
-        let name = name.into();
-        let normalized = validate(&name)?;
-
-        if self.by_normalized_name.contains_key(&normalized) {
-            return Err(BlockError::DuplicateName(name));
-        }
-
-        let id = BlockId(self.records.insert(BlockRecord {
-            name,
-            origin: Point2::ORIGIN,
-            entities: Vec::new(),
-        }));
-        self.by_normalized_name.insert(normalized, id);
-
-        Ok(id)
+        self.symbols
+            .create(name.into(), novo_bloco)
+            .map(BlockId)
+            .map_err(BlockError::from)
     }
 
     /// Devolve o bloco de `id`, ou `None` se o identificador estiver obsoleto.
     #[must_use]
     pub fn get(&self, id: BlockId) -> Option<&BlockRecord> {
-        self.records.get(id.0)
+        self.symbols.get(id.0)
     }
 
     /// Versão mutável de [`BlockTable::get`].
@@ -363,19 +356,19 @@ impl BlockTable {
     /// que mantém o índice coerente.
     #[must_use]
     pub fn get_mut(&mut self, id: BlockId) -> Option<&mut BlockRecord> {
-        self.records.get_mut(id.0)
+        self.symbols.get_mut(id.0)
     }
 
     /// Atalho para o registro do espaço-modelo.
     #[must_use]
     pub fn model_space_record(&self) -> &BlockRecord {
-        self.get(self.model_space)
+        self.get(self.model_space())
             .expect("o espaço-modelo é indestrutível")
     }
 
     /// Atalho mutável para o registro do espaço-modelo.
     pub fn model_space_record_mut(&mut self) -> &mut BlockRecord {
-        let model_space = self.model_space;
+        let model_space = self.model_space();
 
         self.get_mut(model_space)
             .expect("o espaço-modelo é indestrutível")
@@ -384,19 +377,19 @@ impl BlockTable {
     /// Procura um bloco pelo nome, ignorando caixa.
     #[must_use]
     pub fn id_of(&self, name: &str) -> Option<BlockId> {
-        self.by_normalized_name.get(&normalize(name)).copied()
+        self.symbols.id_of(name).map(BlockId)
     }
 
     /// Procura um bloco pelo nome, ignorando caixa, devolvendo o registro.
     #[must_use]
     pub fn get_by_name(&self, name: &str) -> Option<&BlockRecord> {
-        self.get(self.id_of(name)?)
+        self.symbols.get_by_name(name)
     }
 
     /// Indica se `id` referencia um bloco vivo.
     #[must_use]
     pub fn contains(&self, id: BlockId) -> bool {
-        self.records.contains(id.0)
+        self.symbols.contains(id.0)
     }
 
     /// Procura o bloco que contém a entidade.
@@ -417,27 +410,9 @@ impl BlockTable {
     /// Falha se o bloco for o espaço-modelo, se o identificador estiver
     /// obsoleto, ou se o nome novo for inválido ou colidir com outro bloco.
     pub fn rename(&mut self, id: BlockId, name: impl Into<String>) -> Result<(), BlockError> {
-        if id == self.model_space {
-            return Err(BlockError::ModelSpaceIsProtected);
-        }
-
-        let name = name.into();
-        let normalized = validate(&name)?;
-
-        if let Some(&existing) = self.by_normalized_name.get(&normalized) {
-            if existing != id {
-                return Err(BlockError::DuplicateName(name));
-            }
-        }
-
-        let record = self.records.get_mut(id.0).ok_or(BlockError::NotFound)?;
-        let previous = normalize(&record.name);
-        record.name = name;
-
-        self.by_normalized_name.remove(&previous);
-        self.by_normalized_name.insert(normalized, id);
-
-        Ok(())
+        self.symbols
+            .rename(id.0, name.into())
+            .map_err(BlockError::from)
     }
 
     /// Remove um bloco e devolve o registro removido, com suas entidades.
@@ -452,27 +427,19 @@ impl BlockTable {
     /// O registro devolvido carrega a lista justamente para que o chamador possa
     /// fazê-lo.
     pub fn remove(&mut self, id: BlockId) -> Result<BlockRecord, BlockError> {
-        if id == self.model_space {
-            return Err(BlockError::ModelSpaceIsProtected);
-        }
-
-        let record = self.records.remove(id.0).ok_or(BlockError::NotFound)?;
-        self.by_normalized_name.remove(&normalize(&record.name));
-
-        Ok(record)
+        self.symbols.remove(id.0).map_err(BlockError::from)
     }
 
     /// Itera sobre os blocos em ordem alfabética de nome.
     pub fn iter(&self) -> impl Iterator<Item = (BlockId, &BlockRecord)> {
-        self.by_normalized_name.values().filter_map(|&id| {
-            let record = self.records.get(id.0)?;
-            Some((id, record))
-        })
+        self.symbols
+            .iter()
+            .map(|(id, record)| (BlockId(id), record))
     }
 
     /// Itera sobre os nomes de exibição em ordem alfabética.
     pub fn names(&self) -> impl Iterator<Item = &str> {
-        self.iter().map(|(_, record)| record.name())
+        self.symbols.names()
     }
 }
 
@@ -485,6 +452,7 @@ impl Default for BlockTable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arena::Arena;
 
     #[test]
     fn via_reservada_cria_bloco_de_espaco_papel() {
@@ -569,7 +537,6 @@ mod tests {
             .push_entity(entidade));
         assert_eq!(blocks.get(papel).map(BlockRecord::entity_count), Some(1));
     }
-    use crate::arena::Arena;
 
     /// Produz identificadores de entidade válidos para exercitar a associação.
     fn entity_ids(count: usize) -> Vec<EntityId> {
