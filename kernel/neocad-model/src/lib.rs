@@ -67,6 +67,44 @@ pub(crate) mod symbol_name {
         name.trim().to_uppercase()
     }
 
+    /// Prefixo que os formatos DXF e DWG reservam aos nomes do próprio sistema.
+    #[allow(
+        dead_code,
+        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador só a verá em uso quando ela chegar, e antecipar o consumidor seria escrever a fase inteira num ticket só"
+    )]
+    pub(crate) const RESERVED_PREFIX: char = '*';
+
+    /// Valida um nome **reservado**, que começa por asterisco.
+    ///
+    /// É a via pela qual a própria crate cria `*Model_Space` e os blocos de
+    /// espaço-papel. O asterisco inicial é dispensado da lista de proibidos; o
+    /// resto do nome segue as mesmas regras de qualquer símbolo, para que um
+    /// nome reservado não possa carregar barra ou dois-pontos só por ser
+    /// reservado.
+    ///
+    /// Não é `pub`: fora da crate, nome com asterisco continua recusado, e é o
+    /// compilador que garante isso (ADR 0005).
+    #[allow(
+        dead_code,
+        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador só a verá em uso quando ela chegar, e antecipar o consumidor seria escrever a fase inteira num ticket só"
+    )]
+    pub(crate) fn validate_reserved(name: &str) -> Result<String, InvalidName> {
+        let trimmed = name.trim();
+        let Some(rest) = trimmed.strip_prefix(RESERVED_PREFIX) else {
+            return Err(InvalidName::Forbidden(RESERVED_PREFIX));
+        };
+
+        if rest.is_empty() {
+            return Err(InvalidName::Empty);
+        }
+
+        if let Some(character) = rest.chars().find(|c| FORBIDDEN_CHARS.contains(c)) {
+            return Err(InvalidName::Forbidden(character));
+        }
+
+        Ok(normalize(trimmed))
+    }
+
     /// Valida um nome e devolve sua forma normalizada.
     pub(crate) fn validate(name: &str) -> Result<String, InvalidName> {
         let trimmed = name.trim();

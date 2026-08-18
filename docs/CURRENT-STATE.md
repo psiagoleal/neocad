@@ -775,6 +775,21 @@ o kernel próprio.
       paralelo esgota memória e derruba as páginas (`Page crashed`) — 29 processos
       Chrome e ~1,6 GB livres. Com `--workers=1` passa 10/10. Não é regressão; é
       contenção local, e a CI roda em máquina limpa.
+- [x] **MT-KL-04 concluído — bloco B aberto.** `BlockTable::create_reserved` é a
+      via `pub(crate)` que cria bloco de nome iniciado por asterisco. A via
+      pública continua recusando, e um doctest `compile_fail,E0624` prova que a
+      restrição é **do compilador**, não da documentação — mesmo padrão do
+      MT-K1-10. 164 testes na crate do modelo; **427** no kernel.
+- [x] **Ser reservado dispensa o asterisco, e só ele.** `validate_reserved` exige
+      o prefixo, recusa nome que seja só o asterisco, e aplica ao restante as
+      mesmas regras de qualquer símbolo — um `*Paper/Space` continua sendo nome
+      que o formato não aceita. Duplicidade também continua valendo, então
+      recriar o `*Model_Space` falha.
+- [x] **Anotação de código morto com prazo declarado.** `create_reserved`,
+      `validate_reserved` e `RESERVED_PREFIX` ainda não têm consumidor fora dos
+      testes; o `#[allow(dead_code, reason = ...)]` diz que o consumidor é a
+      `LayoutTable` do MT-KL-06. Antecipá-lo seria escrever a fase inteira num
+      ticket só.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

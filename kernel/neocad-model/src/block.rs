@@ -11,7 +11,7 @@ use neocad_geometry::Point2;
 
 use crate::arena::Arena;
 use crate::id::EntityId;
-use crate::symbol_name::{normalize, validate, InvalidName};
+use crate::symbol_name::{normalize, validate, validate_reserved, InvalidName, RESERVED_PREFIX};
 
 /// Nome interno do bloco que representa o espaço-modelo.
 ///
@@ -199,8 +199,22 @@ impl core::error::Error for BlockError {}
 /// # Nomes reservados
 ///
 /// Nomes iniciados por asterisco pertencem ao formato e são recusados na
-/// criação, o que impede colisão com `*Model_Space` e com os blocos anônimos
-/// gerados por hachuras e cotas.
+/// criação pública, o que impede colisão com `*Model_Space` e com os blocos
+/// anônimos gerados por hachuras e cotas.
+///
+/// Os blocos de espaço-papel (`*Paper_Space`, `*Paper_Space0`) também têm nome
+/// reservado e **precisam existir** — sem eles não há prancha (ADR 0005). Quem
+/// os cria é a própria crate, por uma via `pub(crate)`. A restrição é do
+/// **compilador**, e não da documentação:
+///
+/// ```compile_fail,E0624
+/// use neocad_model::BlockTable;
+///
+/// let mut blocks = BlockTable::new();
+///
+/// // `create_reserved` é privado à crate: não há caminho a partir de fora.
+/// blocks.create_reserved("*Paper_Space");
+/// ```
 ///
 /// # Exemplo
 ///
@@ -233,9 +247,10 @@ impl BlockTable {
     /// Cria uma tabela contendo apenas o espaço-modelo, vazio.
     #[must_use]
     pub fn new() -> Self {
+        // O espaço-modelo é inserido direto, e não por `create_reserved`, porque
+        // a tabela ainda não existe para receber um método. É o único bloco
+        // reservado criado assim; todos os outros passam pela via interna.
         let mut records = Arena::new();
-        // O espaço-modelo contorna a validação de nome de propósito: o nome dele
-        // é reservado justamente para que ninguém mais possa criá-lo.
         let model_space = BlockId(records.insert(BlockRecord {
             name: String::from(MODEL_SPACE_NAME),
             origin: Point2::ORIGIN,
@@ -250,6 +265,50 @@ impl BlockTable {
             by_normalized_name,
             model_space,
         }
+    }
+
+    /// Cria um bloco de nome **reservado**, iniciado por asterisco.
+    ///
+    /// # Por que existe, e por que não é pública
+    ///
+    /// Os formatos CAD reservam o prefixo `*` para os blocos do próprio sistema:
+    /// `*Model_Space`, `*Paper_Space`, `*Paper_Space0`. Esses nomes precisam
+    /// existir — sem eles não há espaço-papel, e sem espaço-papel não há prancha
+    /// (ADR 0005) —, mas nenhum código fora desta crate pode criá-los, sob pena
+    /// de o espaço de nomes do formato virar terra de ninguém.
+    ///
+    /// A restrição é do **compilador**: `pub(crate)`. A via pública
+    /// [`BlockTable::create`] continua recusando o asterisco, e há doctest
+    /// `compile_fail` provando que a tentativa de contornar não compila.
+    ///
+    /// # Errors
+    ///
+    /// Falha se o nome não começar por asterisco, se nada houver depois dele, se
+    /// o restante contiver caractere proibido, ou se colidir com bloco existente.
+    #[allow(
+        dead_code,
+        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador só a verá em uso quando ela chegar, e antecipar o consumidor seria escrever a fase inteira num ticket só"
+    )]
+    pub(crate) fn create_reserved(&mut self, name: &str) -> Result<BlockId, BlockError> {
+        debug_assert!(
+            name.trim().starts_with(RESERVED_PREFIX),
+            "create_reserved é para nome reservado; use create para os demais"
+        );
+
+        let normalized = validate_reserved(name)?;
+
+        if self.by_normalized_name.contains_key(&normalized) {
+            return Err(BlockError::DuplicateName(name.to_owned()));
+        }
+
+        let id = BlockId(self.records.insert(BlockRecord {
+            name: name.trim().to_owned(),
+            origin: Point2::ORIGIN,
+            entities: Vec::new(),
+        }));
+        self.by_normalized_name.insert(normalized, id);
+
+        Ok(id)
     }
 
     /// Identificador do espaço-modelo, sempre presente.
@@ -426,6 +485,90 @@ impl Default for BlockTable {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn via_reservada_cria_bloco_de_espaco_papel() {
+        let mut blocks = BlockTable::new();
+
+        let papel = blocks
+            .create_reserved("*Paper_Space")
+            .expect("nome reservado válido");
+
+        assert_eq!(
+            blocks.get(papel).map(BlockRecord::name),
+            Some("*Paper_Space")
+        );
+        assert_eq!(blocks.len(), 2);
+    }
+
+    #[test]
+    fn via_publica_recusa_o_mesmo_nome() {
+        // O par com o teste acima é o que dá sentido aos dois: o nome é criável
+        // por dentro e recusado por fora.
+        let mut blocks = BlockTable::new();
+
+        assert_eq!(
+            blocks.create("*Paper_Space"),
+            Err(BlockError::ForbiddenCharacter('*'))
+        );
+        assert_eq!(blocks.len(), 1);
+    }
+
+    #[test]
+    fn via_reservada_encontra_o_bloco_pelo_nome_ignorando_caixa() {
+        let mut blocks = BlockTable::new();
+        let papel = blocks.create_reserved("*Paper_Space").expect("válido");
+
+        assert_eq!(blocks.id_of("*PAPER_SPACE"), Some(papel));
+    }
+
+    #[test]
+    fn via_reservada_recusa_nome_duplicado() {
+        let mut blocks = BlockTable::new();
+        blocks.create_reserved("*Paper_Space").expect("válido");
+
+        assert_eq!(
+            blocks.create_reserved("*paper_space"),
+            Err(BlockError::DuplicateName(String::from("*paper_space")))
+        );
+    }
+
+    #[test]
+    fn via_reservada_recusa_recriar_o_espaco_modelo() {
+        let mut blocks = BlockTable::new();
+
+        assert!(matches!(
+            blocks.create_reserved(MODEL_SPACE_NAME),
+            Err(BlockError::DuplicateName(_))
+        ));
+    }
+
+    #[test]
+    fn via_reservada_nao_dispensa_o_resto_das_regras() {
+        // Ser reservado dispensa o asterisco, e só ele. Um nome reservado com
+        // barra continua sendo um nome que o formato não aceita.
+        let mut blocks = BlockTable::new();
+
+        assert_eq!(
+            blocks.create_reserved("*Paper/Space"),
+            Err(BlockError::ForbiddenCharacter('/'))
+        );
+        assert_eq!(blocks.create_reserved("*"), Err(BlockError::EmptyName));
+    }
+
+    #[test]
+    fn bloco_reservado_se_comporta_como_qualquer_outro() {
+        // A prancha precisa receber entidades como o espaço-modelo recebe.
+        let mut blocks = BlockTable::new();
+        let papel = blocks.create_reserved("*Paper_Space").expect("válido");
+        let entidade = EntityId::from_bits(1).expect("identificador válido");
+
+        assert!(blocks
+            .get_mut(papel)
+            .expect("recém-criado")
+            .push_entity(entidade));
+        assert_eq!(blocks.get(papel).map(BlockRecord::entity_count), Some(1));
+    }
     use crate::arena::Arena;
 
     /// Produz identificadores de entidade válidos para exercitar a associação.
