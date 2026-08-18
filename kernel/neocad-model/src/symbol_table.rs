@@ -112,11 +112,6 @@ impl<T: SymbolRecord> SymbolTable<T> {
     }
 
     /// Cria um registro de nome **reservado**, iniciado por asterisco.
-    #[allow(
-        dead_code,
-        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador \
-         só a verá em uso quando ela chegar"
-    )]
     pub(crate) fn create_reserved(
         &mut self,
         name: String,

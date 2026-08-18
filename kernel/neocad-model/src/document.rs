@@ -14,6 +14,7 @@ use crate::change::{Change, ChangeError};
 use crate::entity::Entity;
 use crate::id::EntityId;
 use crate::layer::{LayerError, LayerId, LayerRecord, LayerTable};
+use crate::layout::{LayoutError, LayoutId, LayoutRecord, LayoutTable, PAPER_SPACE_PREFIX};
 use crate::text_style::{TextStyleError, TextStyleTable};
 use neocad_geometry::Point2;
 
@@ -39,6 +40,8 @@ pub enum DocumentError {
     Block(BlockError),
     /// Falha originada na tabela de estilos de texto.
     TextStyle(TextStyleError),
+    /// Falha originada na tabela de layouts.
+    Layout(LayoutError),
     /// Falha ao restaurar uma entidade em um identificador já conhecido.
     Restore(RestoreError),
 }
@@ -80,6 +83,12 @@ impl From<TextStyleError> for DocumentError {
     }
 }
 
+impl From<LayoutError> for DocumentError {
+    fn from(error: LayoutError) -> Self {
+        Self::Layout(error)
+    }
+}
+
 impl fmt::Display for DocumentError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -96,6 +105,7 @@ impl fmt::Display for DocumentError {
             Self::Layer(error) => write!(formatter, "{error}"),
             Self::Block(error) => write!(formatter, "{error}"),
             Self::TextStyle(error) => write!(formatter, "{error}"),
+            Self::Layout(error) => write!(formatter, "{error}"),
             Self::Restore(error) => write!(formatter, "{error}"),
         }
     }
@@ -162,6 +172,7 @@ pub struct Document {
     layers: LayerTable,
     blocks: BlockTable,
     text_styles: TextStyleTable,
+    layouts: LayoutTable,
 }
 
 impl Document {
@@ -171,11 +182,15 @@ impl Document {
     /// camada `0`, o bloco `*Model_Space` e o estilo `Standard` existem.
     #[must_use]
     pub fn new() -> Self {
+        let blocks = BlockTable::new();
+        let layouts = LayoutTable::new(blocks.model_space());
+
         Self {
             entities: Arena::new(),
             layers: LayerTable::new(),
-            blocks: BlockTable::new(),
+            blocks,
             text_styles: TextStyleTable::new(),
+            layouts,
         }
     }
 
@@ -320,6 +335,89 @@ impl Document {
         for &entity in record.entities() {
             self.entities.remove(entity);
         }
+
+        Ok(record)
+    }
+
+    // -- Layouts ------------------------------------------------------------
+
+    /// Tabela de layouts, para leitura.
+    #[must_use]
+    pub const fn layouts(&self) -> &LayoutTable {
+        &self.layouts
+    }
+
+    /// Cria um layout de espaço-papel, com o seu bloco.
+    ///
+    /// # As duas coisas nascem juntas
+    ///
+    /// Um layout sem bloco não tem onde guardar entidade, e um bloco
+    /// `*Paper_Space*` sem layout é conteúdo que a interface não sabe mostrar.
+    /// Criar os dois numa operação só é o que impede o documento de existir em
+    /// um estado que o formato não admite — e é por isso que a criação mora aqui,
+    /// no documento, e não na tabela de layouts.
+    ///
+    /// O nome do bloco é gerado na convenção dos formatos CAD: o primeiro papel
+    /// é `*Paper_Space`, e os seguintes recebem sufixo numérico.
+    ///
+    /// # Errors
+    ///
+    /// Falha se o nome da aba for inválido ou já estiver ocupado.
+    pub fn create_layout(&mut self, name: impl Into<String>) -> Result<LayoutId, DocumentError> {
+        let name = name.into();
+        let block = self.blocks.create_reserved(&self.next_paper_space_name())?;
+
+        match self.layouts.create(name, block) {
+            Ok(id) => Ok(id),
+            Err(error) => {
+                // O bloco não pode sobreviver ao layout que não nasceu: seria
+                // um `*Paper_Space` órfão, que nada no documento alcança.
+                let _ = self.blocks.remove(block);
+
+                Err(error.into())
+            }
+        }
+    }
+
+    /// Próximo nome livre de bloco de espaço-papel.
+    fn next_paper_space_name(&self) -> String {
+        if self.blocks.id_of(PAPER_SPACE_PREFIX).is_none() {
+            return String::from(PAPER_SPACE_PREFIX);
+        }
+
+        (0u32..)
+            .map(|indice| format!("{PAPER_SPACE_PREFIX}{indice}"))
+            .find(|nome| self.blocks.id_of(nome).is_none())
+            .unwrap_or_else(|| String::from(PAPER_SPACE_PREFIX))
+    }
+
+    /// Renomeia a aba de um layout.
+    ///
+    /// # Errors
+    ///
+    /// Falha se for a aba do espaço-modelo, se o nome for inválido ou se já
+    /// estiver ocupado.
+    pub fn rename_layout(
+        &mut self,
+        layout: LayoutId,
+        name: impl Into<String>,
+    ) -> Result<(), DocumentError> {
+        Ok(self.layouts.rename(layout, name)?)
+    }
+
+    /// Remove um layout, **e junto o bloco e as entidades dele**.
+    ///
+    /// Deixar o bloco para trás produziria entidades inalcançáveis: ninguém as
+    /// desenha, ninguém as apaga, e elas continuam pesando no arquivo. É a mesma
+    /// regra que [`Document::remove_block`] já aplica.
+    ///
+    /// # Errors
+    ///
+    /// Falha se for a aba do espaço-modelo ou se o identificador estiver
+    /// obsoleto.
+    pub fn remove_layout(&mut self, layout: LayoutId) -> Result<LayoutRecord, DocumentError> {
+        let record = self.layouts.remove(layout)?;
+        self.remove_block(record.block())?;
 
         Ok(record)
     }
@@ -883,12 +981,215 @@ impl PartialEq for Document {
             && self.layers.iter().eq(other.layers.iter())
             && self.blocks.iter().eq(other.blocks.iter())
             && self.text_styles.iter().eq(other.text_styles.iter())
+            && self.layouts.iter().eq(other.layouts.iter())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::{PageSetup, PlotUnits, MODEL_LAYOUT_NAME};
+    #[test]
+    fn documento_novo_tem_apenas_a_aba_do_espaco_modelo() {
+        let document = Document::new();
+        let layouts = document.layouts();
+
+        assert_eq!(layouts.len(), 1);
+        assert_eq!(
+            layouts.get(layouts.model_layout()).map(LayoutRecord::name),
+            Some(MODEL_LAYOUT_NAME)
+        );
+    }
+
+    #[test]
+    fn a_aba_do_espaco_modelo_aponta_para_o_bloco_do_espaco_modelo() {
+        // É o vínculo do ADR 0005: o espaço vem do bloco dono, não de um campo.
+        let document = Document::new();
+        let layouts = document.layouts();
+
+        assert_eq!(
+            layouts.get(layouts.model_layout()).map(LayoutRecord::block),
+            Some(document.model_space())
+        );
+    }
+
+    #[test]
+    fn criar_layout_cria_o_bloco_de_papel_junto() {
+        let mut document = Document::new();
+
+        let prancha = document.create_layout("Prancha A1").expect("nome válido");
+
+        let bloco = document
+            .layouts()
+            .get(prancha)
+            .map(LayoutRecord::block)
+            .expect("layout recém-criado");
+        assert_eq!(
+            document.blocks().get(bloco).map(BlockRecord::name),
+            Some("*Paper_Space")
+        );
+    }
+
+    #[test]
+    fn cada_layout_novo_ganha_o_proximo_nome_de_bloco() {
+        let mut document = Document::new();
+
+        document.create_layout("Primeira").expect("nome válido");
+        document.create_layout("Segunda").expect("nome válido");
+        document.create_layout("Terceira").expect("nome válido");
+
+        let nomes: Vec<&str> = document.blocks().names().collect();
+        assert!(nomes.contains(&"*Paper_Space"));
+        assert!(nomes.contains(&"*Paper_Space0"));
+        assert!(nomes.contains(&"*Paper_Space1"));
+    }
+
+    #[test]
+    fn nome_de_aba_duplicado_nao_deixa_bloco_orfao() {
+        // Se o layout não nasce, o bloco não pode sobreviver: seria um
+        // `*Paper_Space` que nada no documento alcança.
+        let mut document = Document::new();
+        document.create_layout("Prancha").expect("nome válido");
+        let blocos_antes = document.blocks().len();
+
+        assert!(document.create_layout("prancha").is_err());
+        assert_eq!(document.blocks().len(), blocos_antes);
+    }
+
+    #[test]
+    fn remover_layout_leva_junto_o_bloco_e_as_entidades() {
+        let mut document = Document::new();
+        let zero = document.layers().default_layer();
+        let prancha = document.create_layout("Prancha").expect("nome válido");
+        let bloco = document
+            .layouts()
+            .get(prancha)
+            .map(LayoutRecord::block)
+            .expect("recém-criado");
+
+        let mut editor = document.edit();
+        editor
+            .insert_entity(line(zero, 0.0), bloco)
+            .expect("bloco e camada existem");
+        let _ = editor.finish();
+        assert_eq!(document.entity_count(), 1);
+
+        document.remove_layout(prancha).expect("aba comum");
+
+        assert_eq!(document.entity_count(), 0);
+        assert!(document.blocks().get(bloco).is_none());
+        assert!(document.layouts().get(prancha).is_none());
+    }
+
+    #[test]
+    fn a_aba_do_espaco_modelo_nao_pode_ser_removida() {
+        let mut document = Document::new();
+        let modelo = document.layouts().model_layout();
+
+        assert_eq!(
+            document.remove_layout(modelo),
+            Err(DocumentError::Layout(LayoutError::ModelLayoutIsProtected))
+        );
+        assert!(document.blocks().contains(document.model_space()));
+    }
+
+    #[test]
+    fn a_aba_do_espaco_modelo_nao_pode_ser_renomeada() {
+        let mut document = Document::new();
+        let modelo = document.layouts().model_layout();
+
+        assert_eq!(
+            document.rename_layout(modelo, "Outra"),
+            Err(DocumentError::Layout(LayoutError::ModelLayoutIsProtected))
+        );
+    }
+
+    #[test]
+    fn a_ordem_das_abas_e_determinista_e_nao_a_de_criacao() {
+        let mut document = Document::new();
+        document.create_layout("Zebra").expect("nome válido");
+        document.create_layout("Alfa").expect("nome válido");
+
+        // `in_tab_order` segue a barra de abas: modelo primeiro, depois a ordem
+        // de criação. `iter` segue o alfabeto. As duas são estáveis.
+        let abas: Vec<&str> = document
+            .layouts()
+            .in_tab_order()
+            .iter()
+            .map(|(_, record)| record.name())
+            .collect();
+        assert_eq!(abas, [MODEL_LAYOUT_NAME, "Zebra", "Alfa"]);
+
+        let alfabetica: Vec<&str> = document.layouts().names().collect();
+        assert_eq!(alfabetica, ["Alfa", MODEL_LAYOUT_NAME, "Zebra"]);
+    }
+
+    #[test]
+    fn a_ordem_das_abas_nao_depende_da_ordem_de_iteracao() {
+        // Duas tabelas de mesmo conteúdo, montadas na mesma sequência, produzem
+        // a mesma barra — é dessa estabilidade que a escrita tira determinismo.
+        let mut uma = Document::new();
+        uma.create_layout("Alfa").expect("nome válido");
+        uma.create_layout("Zebra").expect("nome válido");
+
+        let mut outra = Document::new();
+        outra.create_layout("Alfa").expect("nome válido");
+        outra.create_layout("Zebra").expect("nome válido");
+
+        let abas = |document: &Document| -> Vec<String> {
+            document
+                .layouts()
+                .in_tab_order()
+                .iter()
+                .map(|(_, record)| record.name().to_owned())
+                .collect()
+        };
+        assert_eq!(abas(&uma), abas(&outra));
+    }
+
+    #[test]
+    fn o_layout_e_encontrado_pelo_bloco() {
+        let mut document = Document::new();
+        let prancha = document.create_layout("Prancha").expect("nome válido");
+        let bloco = document
+            .layouts()
+            .get(prancha)
+            .map(LayoutRecord::block)
+            .expect("recém-criado");
+
+        assert_eq!(document.layouts().of_block(bloco), Some(prancha));
+        assert_eq!(
+            document.layouts().of_block(document.model_space()),
+            Some(document.layouts().model_layout())
+        );
+    }
+
+    #[test]
+    fn configuracao_de_pagina_padrao_e_a4_em_milimetros() {
+        let document = Document::new();
+        let pagina = document
+            .layouts()
+            .get(document.layouts().model_layout())
+            .map(LayoutRecord::page_setup)
+            .expect("aba do modelo");
+
+        assert_eq!(pagina.paper_width, 210.0);
+        assert_eq!(pagina.paper_height, 297.0);
+        assert_eq!(pagina.units, PlotUnits::Millimeters);
+        assert_eq!(pagina.scale(), Some(1.0));
+    }
+
+    #[test]
+    fn escala_com_denominador_zero_nao_vira_infinito() {
+        // Arquivo defeituoso não pode espalhar o defeito para dentro do desenho.
+        let pagina = PageSetup {
+            scale_denominator: 0.0,
+            ..PageSetup::default()
+        };
+
+        assert_eq!(pagina.scale(), None);
+    }
+
     use crate::block::MODEL_SPACE_NAME;
     use crate::entity::{Circle, Geometry, Line};
     use crate::layer::DEFAULT_LAYER_NAME;

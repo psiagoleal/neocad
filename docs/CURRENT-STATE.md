@@ -798,7 +798,7 @@ o kernel próprio.
 - [x] **O critério severo foi cumprido: nenhum teste existente mudou.** 164
       testes e 13 doctests da crate do modelo passam sem uma linha alterada de
       asserção. A única edição dentro de módulo de teste foi o `use
-    crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
+  crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       do módulo e passou para o topo. **427 testes** no kernel.
 - [x] **A tabela genérica guarda a mecânica, não a política.** Qual registro é
       protegido, o que cada erro significa e o que cabe num registro continuam de
@@ -808,6 +808,30 @@ o kernel próprio.
 - [x] **O `SymbolRecord` pede o mínimo:** ler e escrever o nome. Cor, ponto-base
       e altura de texto não sobem para a genérica, e por isso ela não vira o
       lugar onde tudo acaba caindo.
+- [x] **MT-KL-06 concluído:** `LayoutTable` é a quarta tabela de símbolos, com
+      nome da aba, bloco associado, ordem e configuração de página. A aba `Model`
+      existe em toda tabela e aponta para o `*Model_Space` — é a primeira aba, e
+      não um modo à parte, como no AutoCAD. 177 testes na crate; **440** no
+      kernel.
+- [x] **Layout e bloco nascem e morrem juntos.** `Document::create_layout` cria
+      os dois numa operação: layout sem bloco não tem onde guardar entidade, e
+      `*Paper_Space` sem layout é conteúdo que a interface não sabe mostrar. Se o
+      nome da aba colidir, o bloco recém-criado é desfeito — senão ficaria um
+      bloco órfão que nada no documento alcança. E `remove_layout` leva junto o
+      bloco **e as entidades dele**, pela mesma razão que `remove_block` já
+      levava: entidade inalcançável não é desenhada, não é apagada, e pesa no
+      arquivo.
+- [x] **Duas ordens, ambas estáveis.** `iter()` é alfabética, herdada da tabela de
+      símbolos; `in_tab_order()` segue a barra de abas, ordenando por `tab_order`
+      com o nome como desempate. É da segunda que a escrita do arquivo vai tirar
+      o determinismo.
+- [x] **Escala de plotagem é razão, não número.** `1:100` é como o projetista a
+      nomeia e como o carimbo a mostra; guardá-la já dividida perderia a
+      distinção entre `1:3` e o decimal que o aproxima. `scale()` devolve `None`
+      para denominador zero, em vez de deixar um infinito entrar no desenho.
+- [x] **O `allow(dead_code)` do MT-KL-04 foi retirado.** A via reservada tem
+      consumidor real agora — é a criação de layout —, e o prazo declarado
+      naquele ticket venceu como previsto.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

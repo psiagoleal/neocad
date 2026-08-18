@@ -298,11 +298,6 @@ impl BlockTable {
     ///
     /// Falha se o nome não começar por asterisco, se nada houver depois dele, se
     /// o restante contiver caractere proibido, ou se colidir com bloco existente.
-    #[allow(
-        dead_code,
-        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador \
-         só a verá em uso quando ela chegar"
-    )]
     pub(crate) fn create_reserved(&mut self, name: &str) -> Result<BlockId, BlockError> {
         debug_assert!(
             name.trim().starts_with(RESERVED_PREFIX),

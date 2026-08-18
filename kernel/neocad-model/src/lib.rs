@@ -23,6 +23,7 @@ mod document;
 mod entity;
 mod id;
 mod layer;
+mod layout;
 mod text_style;
 
 pub use arena::{Arena, RestoreError};
@@ -33,6 +34,10 @@ pub use entity::{Arc, Circle, Entity, EntityColor, Geometry, Line, Polyline, Tex
 pub use id::EntityId;
 pub use layer::{
     Color, LayerError, LayerId, LayerRecord, LayerTable, LineWeight, DEFAULT_LAYER_NAME,
+};
+pub use layout::{
+    LayoutError, LayoutId, LayoutRecord, LayoutTable, PageSetup, PlotMargins, PlotRotation,
+    PlotUnits, MODEL_LAYOUT_NAME,
 };
 pub use text_style::{
     TextStyleError, TextStyleId, TextStyleRecord, TextStyleTable, STANDARD_TEXT_STYLE_NAME,
@@ -70,11 +75,6 @@ pub(crate) mod symbol_name {
     }
 
     /// Prefixo que os formatos DXF e DWG reservam aos nomes do próprio sistema.
-    #[allow(
-        dead_code,
-        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador \
-         só a verá em uso quando ela chegar"
-    )]
     pub(crate) const RESERVED_PREFIX: char = '*';
 
     /// Valida um nome **reservado**, que começa por asterisco.
@@ -87,11 +87,6 @@ pub(crate) mod symbol_name {
     ///
     /// Não é `pub`: fora da crate, nome com asterisco continua recusado, e é o
     /// compilador que garante isso (ADR 0005).
-    #[allow(
-        dead_code,
-        reason = "a via reservada existe para a `LayoutTable` do MT-KL-06; o compilador \
-         só a verá em uso quando ela chegar"
-    )]
     pub(crate) fn validate_reserved(name: &str) -> Result<String, InvalidName> {
         let trimmed = name.trim();
         let Some(rest) = trimmed.strip_prefix(RESERVED_PREFIX) else {
