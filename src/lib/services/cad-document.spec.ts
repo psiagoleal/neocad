@@ -622,3 +622,44 @@ describe('relatório de perda de gravação', () => {
 		);
 	});
 });
+
+describe('geometria de viewport', () => {
+	const bruta = {
+		kind: 'viewport',
+		center: { x: 200, y: 150 },
+		width: 100,
+		height: 50,
+		viewCenter: { x: 10, y: 20 },
+		viewHeight: 25,
+		twist: 0,
+		scale: 2,
+		isOn: true
+	};
+
+	it('converte a janela vinda do kernel', () => {
+		expect(toCadGeometry(bruta)).toEqual({
+			kind: 'viewport',
+			center: { x: 200, y: 150 },
+			width: 100,
+			height: 50,
+			viewCenter: { x: 10, y: 20 },
+			viewHeight: 25,
+			twist: 0,
+			scale: 2,
+			isOn: true
+		});
+	});
+
+	it('aceita escala nula, que é o que o kernel manda quando ela não existe', () => {
+		// Altura de vista inválida não vira infinito nem zero silencioso.
+		const semEscala = toCadGeometry({ ...bruta, scale: null });
+
+		expect(semEscala.kind).toBe('viewport');
+		expect(semEscala).toMatchObject({ scale: null });
+	});
+
+	it('falha alto quando a forma do kernel não bate', () => {
+		expect(() => toCadGeometry({ ...bruta, isOn: 'sim' })).toThrow(CadKernelContractError);
+		expect(() => toCadGeometry({ ...bruta, viewCenter: null })).toThrow(CadKernelContractError);
+	});
+});

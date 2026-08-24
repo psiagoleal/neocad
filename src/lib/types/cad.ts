@@ -110,7 +110,22 @@ export type CadGeometry =
 	| { kind: 'circle'; center: CadPoint; radius: number }
 	| { kind: 'arc'; center: CadPoint; radius: number; startAngle: number; endAngle: number }
 	| { kind: 'polyline'; vertices: CadPoint[]; closed: boolean }
-	| { kind: 'text'; position: CadPoint; content: string; height: number; rotation: number };
+	| { kind: 'text'; position: CadPoint; content: string; height: number; rotation: number }
+	| {
+			kind: 'viewport';
+			/** Centro da janela, no espaço-papel. */
+			center: CadPoint;
+			width: number;
+			height: number;
+			/** Ponto do modelo que aparece no centro da janela. */
+			viewCenter: CadPoint;
+			viewHeight: number;
+			/** Giro do conteúdo na folha, em radianos. */
+			twist: number;
+			/** Escala da janela — derivada no kernel, nunca recalculada aqui. */
+			scale: number | null;
+			isOn: boolean;
+	  };
 
 /** Entidade de desenho. */
 export interface CadEntity {

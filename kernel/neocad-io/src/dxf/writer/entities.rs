@@ -150,6 +150,15 @@ fn write_block(
 ///
 /// `space` é `None` dentro de definição de bloco: ali a entidade pertence ao
 /// bloco, e marcá-la como de espaço-papel a mandaria para dois donos.
+///
+/// # Limitação declarada da escrita de `VIEWPORT`
+///
+/// O recorte por entidade ([`neocad_model::ViewportClip::Boundary`]) **não é
+/// gravado**: o código `340` exige o handle da entidade que delimita, e a escrita
+/// distribui handles ao percorrer, sem manter o mapa de entidade para handle.
+/// Uma janela recortada regravada hoje voltaria como janela retangular. Nada no
+/// modelo produz esse recorte ainda — ele só aparece com a leitura do MT-KL-11 —,
+/// e fechá-lo é trabalho do MT-KL-12, que completa a escrita de layout.
 fn write_entity(
     saida: &mut Saida,
     entidade: &Entity,
@@ -163,6 +172,7 @@ fn write_entity(
         Geometry::Arc(_) => "ARC",
         Geometry::Polyline(_) => "LWPOLYLINE",
         Geometry::Text(_) => "TEXT",
+        Geometry::Viewport(_) => "VIEWPORT",
     };
 
     saida.par(0, tipo);
@@ -231,6 +241,19 @@ fn write_entity(
             // O segundo marcador é o que o formato pede para `TEXT`, e a sua
             // ausência faz leitor estrito tratar a entidade como incompleta.
             saida.par(100, "AcDbText");
+        }
+        Geometry::Viewport(viewport) => {
+            saida.par(100, "AcDbViewport");
+            escrever_ponto(saida, 10, viewport.center);
+            saida.real(40, viewport.width);
+            saida.real(41, viewport.height);
+            // O código `68` é o que liga e desliga a janela: zero é desligada,
+            // positivo é a ordem de empilhamento. Não há sinalizador separado.
+            saida.inteiro(68, i64::from(viewport.is_on));
+            saida.real(12, viewport.view_center.x);
+            saida.real(22, viewport.view_center.y);
+            saida.real(45, viewport.view_height);
+            saida.real(51, viewport.twist.to_degrees());
         }
     }
 }

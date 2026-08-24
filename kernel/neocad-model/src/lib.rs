@@ -25,6 +25,7 @@ mod id;
 mod layer;
 mod layout;
 mod text_style;
+mod viewport;
 
 pub use arena::{Arena, RestoreError};
 pub use block::{BlockError, BlockId, BlockRecord, BlockTable, MODEL_SPACE_NAME};
@@ -42,6 +43,7 @@ pub use layout::{
 pub use text_style::{
     TextStyleError, TextStyleId, TextStyleRecord, TextStyleTable, STANDARD_TEXT_STYLE_NAME,
 };
+pub use viewport::{Viewport, ViewportClip};
 
 pub(crate) mod symbol_table;
 

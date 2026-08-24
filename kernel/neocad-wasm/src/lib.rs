@@ -24,7 +24,7 @@ use neocad_geometry::{Aabb, Point2};
 use neocad_io::{read_dxf, write_dxf, BlockDefinition, DxfContents, EntitySpace, ReadEntity};
 use neocad_model::{
     Arc, Circle, Color, Document, Entity, EntityId, Geometry, LayerId, LayerRecord, Line, Polyline,
-    Text,
+    Text, Viewport, ViewportClip,
 };
 use neocad_transaction::CommandStack;
 use serde::{Deserialize, Serialize};
@@ -176,6 +176,30 @@ pub enum GeometryView {
         /// Rotação, em radianos.
         rotation: f64,
     },
+    /// Janela de espaço-papel que mostra uma vista do espaço-modelo.
+    Viewport {
+        /// Centro da janela, no papel.
+        center: PointView,
+        /// Largura da janela no papel.
+        width: f64,
+        /// Altura da janela no papel.
+        height: f64,
+        /// Ponto do modelo que aparece no centro da janela.
+        view_center: PointView,
+        /// Altura da vista, em unidades do modelo.
+        view_height: f64,
+        /// Giro do conteúdo na folha, em radianos.
+        twist: f64,
+        /// Escala da janela, quando existe.
+        ///
+        /// Derivada, e não guardada: é a razão entre a altura da janela e a da
+        /// vista. Atravessa a ponte pronta porque quem desenha o carimbo precisa
+        /// dela, e recalcular do outro lado convidaria as duas contas a
+        /// divergirem.
+        scale: Option<f64>,
+        /// Janela desligada não mostra nada, mas ocupa lugar na folha.
+        is_on: bool,
+    },
 }
 
 impl From<&Geometry> for GeometryView {
@@ -204,6 +228,16 @@ impl From<&Geometry> for GeometryView {
                 content: text.content.clone(),
                 height: text.height,
                 rotation: text.rotation,
+            },
+            Geometry::Viewport(viewport) => Self::Viewport {
+                center: viewport.center.into(),
+                width: viewport.width,
+                height: viewport.height,
+                view_center: viewport.view_center.into(),
+                view_height: viewport.view_height,
+                twist: viewport.twist,
+                scale: viewport.scale(),
+                is_on: viewport.is_on,
             },
         }
     }
@@ -262,6 +296,28 @@ impl From<GeometryView> for Geometry {
                 content,
                 height,
                 rotation,
+            }),
+            // A escala que atravessa a ponte é derivada, e por isso é descartada
+            // na volta: recebê-la de fora e guardá-la abriria a porta para uma
+            // janela cuja escala declarada não bate com a desenhada.
+            GeometryView::Viewport {
+                center,
+                width,
+                height,
+                view_center,
+                view_height,
+                twist,
+                scale: _,
+                is_on,
+            } => Self::Viewport(Viewport {
+                center: center.into(),
+                width,
+                height,
+                view_center: view_center.into(),
+                view_height,
+                twist,
+                clip: ViewportClip::Window,
+                is_on,
             }),
         }
     }

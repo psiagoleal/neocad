@@ -9,6 +9,7 @@ use core::f64::consts::{FRAC_PI_2, TAU};
 use neocad_geometry::{point_on_circle, Aabb, Point2};
 
 use crate::layer::{Color, LayerId};
+use crate::viewport::Viewport;
 
 /// Razão entre a largura de avanço de um caractere e a altura do texto.
 ///
@@ -93,6 +94,12 @@ pub enum Geometry {
     Polyline(Polyline),
     /// Texto.
     Text(Text),
+    /// Janela de espaço-papel que mostra uma vista do espaço-modelo.
+    ///
+    /// Diferente das demais, não é uma forma que se desenha: é uma moldura que
+    /// mostra outra coisa. Está aqui porque o formato a trata como entidade do
+    /// espaço-papel, e porque a folha precisa saber onde ela fica.
+    Viewport(Viewport),
 }
 
 /// Cor de uma entidade.
@@ -171,6 +178,7 @@ impl Geometry {
             Self::Polyline(polyline) => Aabb::from_points(polyline.vertices.iter().copied())
                 .unwrap_or_else(|| Aabb::from_point(Point2::ORIGIN)),
             Self::Text(text) => text_bounding_box(text),
+            Self::Viewport(viewport) => viewport.bounding_box(),
         }
     }
 }

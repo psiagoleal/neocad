@@ -221,6 +221,21 @@ export function toCadGeometry(raw: unknown, context = 'geometria'): CadGeometry 
 				height: asNumber(record.height, `${context}.height`),
 				rotation: asNumber(record.rotation, `${context}.rotation`)
 			};
+		case 'viewport':
+			return {
+				kind: 'viewport',
+				center: toCadPoint(record.center, `${context}.center`),
+				width: asNumber(record.width, `${context}.width`),
+				height: asNumber(record.height, `${context}.height`),
+				viewCenter: toCadPoint(record.viewCenter, `${context}.viewCenter`),
+				viewHeight: asNumber(record.viewHeight, `${context}.viewHeight`),
+				twist: asNumber(record.twist, `${context}.twist`),
+				// A escala é derivada no kernel e chega pronta. Vem nula quando a
+				// altura da vista é inválida — recalculá-la aqui faria as duas
+				// contas divergirem, que é o defeito que o kernel evita.
+				scale: record.scale == null ? null : asNumber(record.scale, `${context}.scale`),
+				isOn: asBoolean(record.isOn, `${context}.isOn`)
+			};
 		default:
 			throw new CadKernelContractError(`${context} tem tipo desconhecido: ${kind}.`);
 	}

@@ -798,7 +798,7 @@ o kernel próprio.
 - [x] **O critério severo foi cumprido: nenhum teste existente mudou.** 164
       testes e 13 doctests da crate do modelo passam sem uma linha alterada de
       asserção. A única edição dentro de módulo de teste foi o `use
-  crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
+crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       do módulo e passou para o topo. **427 testes** no kernel.
 - [x] **A tabela genérica guarda a mecânica, não a política.** Qual registro é
       protegido, o que cada erro significa e o que cabe num registro continuam de
@@ -832,6 +832,35 @@ o kernel próprio.
 - [x] **O `allow(dead_code)` do MT-KL-04 foi retirado.** A via reservada tem
       consumidor real agora — é a criação de layout —, e o prazo declarado
       naquele ticket venceu como previsto.
+- [x] **MT-KL-07 concluído:** `Viewport` em `neocad-model/src/viewport.rs`, com
+      janela no papel, vista no modelo, giro e recorte. 191 testes na crate;
+      **454** no kernel; 79 no frontend. `.wasm` em **268,9 KB** (era 260,5).
+- [x] **A escala da janela é derivada, não guardada.** É a razão entre a altura
+      da janela no papel e a da vista no modelo. Um campo próprio seria segunda
+      fonte de verdade, e prancha com escala declarada diferente da desenhada é
+      pior que prancha sem escala — o erro só aparece quando alguém mede no
+      papel impresso. Atravessa a ponte já calculada, e é **descartada na volta**
+      pelo mesmo motivo.
+- [x] **A convenção de giro está fixada por teste.** `twist` é o ângulo, em
+      radianos e anti-horário, com que o conteúdo aparece girado na folha. Há
+      teste de ida e volta com quatro ângulos e teste de **sinal** — sinal
+      trocado gira a prancha para o lado errado, e o defeito passa despercebido
+      até alguém plotar. O mapeamento do código `51` do DXF é do MT-KL-11.
+- [x] **Acrescentar variante ao `Geometry` não é mudança local.** Quebrou os
+      `match` exaustivos em `neocad-io` (escrita) e `neocad-wasm` (ponte), que
+      por sua vez alcança os contratos TypeScript. Foi o custo honesto da
+      mudança, não escopo esticado: deixar a ponte incapaz de representar a
+      variante seria plantar uma armadilha para o MT-KL-11.
+- [ ] **Limitação declarada da escrita de `VIEWPORT`:** o recorte por entidade
+      não é gravado, porque o código `340` exige o handle da entidade que
+      delimita e a escrita distribui handles ao percorrer, sem manter o mapa de
+      entidade para handle. Uma janela recortada regravada hoje voltaria
+      retangular. Nada no modelo produz esse recorte ainda; fechá-lo é trabalho
+      do **MT-KL-12**.
+- [x] **Desvio de escopo anotado:** o ticket declarava
+      `neocad-model/src/geometry/viewport.rs`, mas não existe diretório
+      `geometry/` — criar um para um único arquivo partiria as geometrias em duas
+      convenções. Ficou em `src/viewport.rs`, plano como `layer.rs` e `layout.rs`.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma
