@@ -890,8 +890,38 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       (código `340`) nem as camadas congeladas por janela (código `331`) são
       gravados, pelo mesmo motivo — os dois exigem o handle de algo que a escrita
       distribui ao percorrer, sem manter o mapa. Fechar ambos é do **MT-KL-12**.
-- [ ] **Próximo passo:** **MT-KL-09** — ler as entidades por espaço, escolhendo o
-      bloco de destino pelo `410` e, na falta dele, pelo `67`. Abre o bloco C.
+- [x] **MT-KL-09 concluído — bloco C aberto, e a leitura finalmente monta um
+      `Document`.** Era o que estava bloqueado desde o MT-K2-06: as entidades de
+      papel não tinham bloco onde morar. Com o MT-KL-04 e o MT-KL-06 no lugar,
+      `build_document` escolhe o bloco de destino de cada entidade — modelo para
+      `*Model_Space`, papel para o bloco da aba. 164 testes na crate de I/O;
+      **476** no kernel. `.wasm` em **281,3 KB**.
+- [x] **A resolução `410`/`67` já existia desde o MT-K2-04; o que faltava era o
+      destino.** O ticket dizia "escolher o bloco de destino", e é isso que
+      passou a existir. Aba citada e não declarada é **criada**, porque a seção
+      `OBJECTS` ainda não é consumida (MT-KL-10) e, até lá, é a citação que revela
+      a aba — criar é a única alternativa a perder a entidade.
+- [x] **Aba de nome impossível não custa o desenho.** Nome com barra é recusado
+      pelo modelo; o conteúdo vai para a aba padrão e o nome recusado é relatado
+      em `relocated_layouts`. Perder desenho por causa do nome da aba seria
+      trocar um problema pequeno por um grande.
+- [x] **`Layout1` é a aba de quem só tem o `67`.** O sinalizador diz que a
+      entidade está no papel, e não em qual: o DXF antigo tem um só espaço-papel
+      e não nomeia aba. `Layout1` é como o AutoCAD a chama, e usar outro nome
+      faria a mesma prancha aparecer com nomes diferentes conforme a versão do
+      arquivo de origem.
+- [x] **O espaço-papel saiu da lista de perdas.** Até aqui as entidades de papel
+      eram lidas e não tinham onde morar, então `saveLoss` as anunciava como
+      perda. Agora entram em abas de verdade e são gravadas: o relatório continua
+      **nomeando** as abas, porque a interface precisa dizer que o desenho está
+      no papel, mas isso virou informação em vez de aviso de destruição. O que
+      resta como perda é o que o modelo não representa e o caminho dos xrefs.
+- [x] **A fachada WebAssembly deixou de duplicar a montagem.** `try_open_dxf`
+      montava meio documento por conta própria — só o espaço-modelo. Agora chama
+      `build_document`, e a lógica mora na crate que conhece a leitura.
+- [ ] **Próximo passo:** **MT-KL-10** — ler os objetos `LAYOUT` da seção
+      `OBJECTS`, com nome de aba, ordem e configuração de página. É o que
+      transforma "aba criada por citação" em "aba declarada pelo arquivo".
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

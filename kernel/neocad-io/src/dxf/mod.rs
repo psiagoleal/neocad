@@ -14,6 +14,7 @@
 //! arquivos cuja seção `BLOCKS` contenha bloco com entidades.
 
 mod blocks;
+mod build;
 mod entities;
 mod pairs;
 mod report;
@@ -22,6 +23,7 @@ mod tables;
 mod writer;
 
 pub use blocks::{read_blocks, BlockDefinition, BlocksReading};
+pub use build::{build_document, DocumentBuild, DEFAULT_PAPER_LAYOUT};
 pub use entities::{
     read_entities, EntitiesReading, EntitySpace, ReadEntity, RejectedEntity, DEFAULT_PAPER_SPACE,
 };

@@ -21,7 +21,10 @@
 //! opaco de qualquer modo.
 
 use neocad_geometry::{Aabb, Point2};
-use neocad_io::{read_dxf, write_dxf, BlockDefinition, DxfContents, EntitySpace, ReadEntity};
+use neocad_io::{
+    build_document, read_dxf, write_dxf, BlockDefinition, DocumentBuild, DxfContents, EntitySpace,
+    ReadEntity,
+};
 use neocad_model::{
     Arc, Circle, Color, Document, Entity, EntityId, Geometry, LayerId, LayerRecord, Line, Polyline,
     Text, Viewport, ViewportClip,
@@ -890,114 +893,32 @@ impl CadSession {
 
     fn try_open_dxf(&mut self, bytes: &[u8]) -> Result<DxfOpenReport, String> {
         let leitura = read_dxf(bytes);
+        let montagem = build_document(&leitura).map_err(|error| error.to_string())?;
 
-        let mut document = Document::new();
-
-        // As camadas vêm da leitura já resolvidas, inclusive as que o arquivo
-        // citava sem definir. A camada `0` existe em todo documento e é apenas
-        // redefinida.
-        for (_, registro) in leitura.layers.iter() {
-            let id = match document.layers().id_of(registro.name()) {
-                Some(existente) => existente,
-                None => document
-                    .create_layer(registro.name())
-                    .map_err(|error| error.to_string())?,
-            };
-
-            document
-                .edit()
-                .set_layer_record(id, registro.clone())
-                .map_err(|error| error.to_string())?;
-        }
-
-        let mut entity_count = 0;
-        let mut skipped_count = 0;
-
-        {
-            let mut editor = document.edit();
-
-            for lida in leitura
-                .entities
-                .iter()
-                .filter(|lida| lida.space == EntitySpace::Model)
-            {
-                let nome = leitura
-                    .layers
-                    .get(lida.entity.layer)
-                    .map(|camada| camada.name().to_owned());
-
-                let Some(layer) = nome.and_then(|nome| editor.document().layers().id_of(&nome))
-                else {
-                    skipped_count += 1;
-                    continue;
-                };
-
-                let mut entidade = lida.entity.clone();
-                entidade.layer = layer;
-
-                editor
-                    .insert_in_model_space(entidade)
-                    .map_err(|error| error.to_string())?;
-                entity_count += 1;
-            }
-
-            let _ = editor.finish();
-        }
-
-        let mut block_entity_count = 0;
-
-        for bloco in &leitura.blocks {
-            if bloco.name.starts_with('*') {
-                // Os blocos de espaço não são blocos do desenho: seu conteúdo já
-                // veio pela seção de entidades.
-                continue;
-            }
-
-            let id = document
-                .create_block(bloco.name.as_str())
-                .map_err(|error| error.to_string())?;
-            document
-                .set_block_origin(id, bloco.base_point)
-                .map_err(|error| error.to_string())?;
-
-            let mut editor = document.edit();
-
-            for entidade in &bloco.entities {
-                let nome = leitura
-                    .layers
-                    .get(entidade.layer)
-                    .map(|camada| camada.name().to_owned());
-
-                let Some(layer) = nome.and_then(|nome| editor.document().layers().id_of(&nome))
-                else {
-                    skipped_count += 1;
-                    continue;
-                };
-
-                let mut copia = entidade.clone();
-                copia.layer = layer;
-
-                editor
-                    .insert_entity(copia, id)
-                    .map_err(|error| error.to_string())?;
-                block_entity_count += 1;
-            }
-
-            let _ = editor.finish();
-        }
-
-        let loss = loss_view(&leitura);
+        let loss = loss_view(&leitura, &montagem);
+        let skipped_count = montagem.skipped_count;
+        let document = montagem.document;
         let summary = leitura.report.to_string();
+        let entity_count = document.entities_in_block(document.model_space()).count();
+        let block_count = document
+            .blocks()
+            .len()
+            .saturating_sub(document.layouts().len());
+        let block_entity_count = document
+            .blocks()
+            .iter()
+            .filter(|(id, _)| document.layouts().of_block(*id).is_none())
+            .map(|(_, registro)| registro.entity_count())
+            .sum();
 
         self.loss = loss.clone();
-        self.document = document;
         self.stack = CommandStack::new();
 
-        Ok(DxfOpenReport {
-            layer_count: self.document.layers().len(),
+        let report = DxfOpenReport {
+            layer_count: document.layers().len(),
             entity_count,
             skipped_count,
-            block_count: self.document.blocks().len().saturating_sub(1),
+            block_count,
             block_entity_count,
             created_layers: leitura.report.created_layers.clone(),
             errors: leitura
@@ -1008,7 +929,11 @@ impl CadSession {
                 .collect(),
             loss,
             summary,
-        })
+        };
+
+        self.document = document;
+
+        Ok(report)
     }
 
     fn try_to_dxf(&self) -> Vec<u8> {
@@ -1066,8 +991,14 @@ impl Default for CadSession {
     }
 }
 
-/// Monta o relatório de perda a partir de uma leitura.
-fn loss_view(leitura: &neocad_io::DxfReading) -> SaveLossView {
+/// Monta o relatório de perda a partir de uma leitura e da montagem.
+///
+/// # O espaço-papel saiu da lista de perdas
+///
+/// Até o MT-KL-09 as entidades de papel eram lidas e não tinham onde morar, e
+/// por isso figuravam aqui. Agora entram no documento, em abas de verdade — o
+/// que resta é informar **quais** abas existem, e não avisar que se perdem.
+fn loss_view(leitura: &neocad_io::DxfReading, montagem: &DocumentBuild) -> SaveLossView {
     let unsupported: Vec<UnsupportedView> = leitura
         .report
         .unsupported_by_frequency()
@@ -1078,15 +1009,17 @@ fn loss_view(leitura: &neocad_io::DxfReading) -> SaveLossView {
         })
         .collect();
 
-    let paper_space: Vec<PaperSpaceView> = leitura
-        .paper_space_layouts()
-        .into_iter()
-        .map(|name| PaperSpaceView {
-            name: name.to_owned(),
-            entity_count: leitura
-                .entities
-                .iter()
-                .filter(|lida| matches!(&lida.space, EntitySpace::Paper(aba) if aba == name))
+    let paper_space: Vec<PaperSpaceView> = montagem
+        .document
+        .layouts()
+        .in_tab_order()
+        .iter()
+        .filter(|(id, _)| *id != montagem.document.layouts().model_layout())
+        .map(|(_, registro)| PaperSpaceView {
+            name: registro.name().to_owned(),
+            entity_count: montagem
+                .document
+                .entities_in_block(registro.block())
                 .count(),
         })
         .collect();
@@ -1101,7 +1034,10 @@ fn loss_view(leitura: &neocad_io::DxfReading) -> SaveLossView {
         paper_space,
         paper_space_count,
         xref_count,
-        is_lossless: unsupported_count == 0 && paper_space_count == 0 && xref_count == 0,
+        // O papel não conta mais como perda: ele entra no documento e é gravado.
+        // O que ainda se perde é o que o modelo não representa e o caminho das
+        // referências externas.
+        is_lossless: unsupported_count == 0 && xref_count == 0,
     }
 }
 
@@ -1237,9 +1173,12 @@ mod tests {
     }
 
     #[test]
-    fn desenho_montado_no_papel_e_relatado_e_nao_confundido_com_vazio() {
-        // O caso dos 8% do acervo: sem este relatório a interface diria
-        // "0 entidade(s)" sem explicar que a prancha existe.
+    fn desenho_montado_no_papel_entra_na_aba_e_deixa_de_ser_perda() {
+        // O caso dos 8% do acervo. Até o MT-KL-09 a prancha era lida e não tinha
+        // onde morar, então figurava como perda; agora entra numa aba de verdade
+        // e o documento a grava. O relatório continua nomeando a aba, porque a
+        // interface precisa dizer que o desenho está no papel — mas dizer isso é
+        // informação, e não mais aviso de destruição.
         let arquivo = b"  0\nSECTION\n  2\nENTITIES\n\
                         0\nLINE\n  8\n0\n 67\n1\n410\nPrancha A1\n\
                         10\n0.0\n 20\n0.0\n 11\n1.0\n 21\n1.0\n\
@@ -1251,7 +1190,7 @@ mod tests {
         assert_eq!(relatorio.entity_count, 0);
         assert_eq!(relatorio.loss.paper_space_count, 1);
         assert_eq!(relatorio.loss.paper_space[0].name, "Prancha A1");
-        assert!(!relatorio.loss.is_lossless);
+        assert!(relatorio.loss.is_lossless);
     }
 
     #[test]

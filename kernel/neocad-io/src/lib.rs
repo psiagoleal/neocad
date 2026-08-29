@@ -22,9 +22,9 @@
 mod dxf;
 
 pub use dxf::{
-    formatar_real, pairs, read_blocks, read_dxf, read_entities, read_layer_table, sections,
-    write_dxf, BlockDefinition, BlocksReading, DxfContents, DxfPair, DxfPairError, DxfPairs,
-    DxfReading, DxfReport, DxfSectionError, DxfValue, EntitiesReading, EntitySpace,
-    LayerTableReading, ReadEntity, RejectedEntity, RejectedLayer, Section, SectionKind, Sections,
-    ACAD_VERSION, DEFAULT_PAPER_SPACE,
+    build_document, formatar_real, pairs, read_blocks, read_dxf, read_entities, read_layer_table,
+    sections, write_dxf, BlockDefinition, BlocksReading, DocumentBuild, DxfContents, DxfPair,
+    DxfPairError, DxfPairs, DxfReading, DxfReport, DxfSectionError, DxfValue, EntitiesReading,
+    EntitySpace, LayerTableReading, ReadEntity, RejectedEntity, RejectedLayer, Section,
+    SectionKind, Sections, ACAD_VERSION, DEFAULT_PAPER_LAYOUT, DEFAULT_PAPER_SPACE,
 };
