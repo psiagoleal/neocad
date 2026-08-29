@@ -861,6 +861,37 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       `neocad-model/src/geometry/viewport.rs`, mas não existe diretório
       `geometry/` — criar um para um único arquivo partiria as geometrias em duas
       convenções. Ficou em `src/viewport.rs`, plano como `layer.rs` e `layout.rs`.
+- [x] **MT-KL-08 concluído — bloco B fechado.** Cada janela carrega o conjunto de
+      camadas congeladas **nela**. É o recurso que faz a mesma camada aparecer
+      numa prancha e não em outra; sem ele, planta e detalhe da mesma folha
+      mostrariam exatamente o mesmo conteúdo. 201 testes na crate do modelo;
+      **464** no kernel; 80 no frontend. `.wasm` em **274,4 KB**.
+- [x] **É a primeira vez que visibilidade de camada deixa de ser global.**
+      `Viewport::shows_layer` combina as duas, e a ordem importa: janela
+      desligada não mostra nada; camada apagada ou congelada **no documento** não
+      aparece em janela nenhuma; o congelamento por janela decide o resto. O
+      método pede o registro além do identificador justamente porque a resposta
+      não está inteira nem só na camada, nem só na janela.
+- [x] **Remover camada limpa o congelamento em todas as janelas.** Congelar
+      **não** é usar: a camada pode ser removida com o congelamento ainda
+      apontando para ela. Como identificadores são reaproveitados, a referência
+      pendurada faria uma camada nova herdar o congelamento de uma morta — a
+      prancha esconderia conteúdo que ninguém mandou esconder, e o motivo estaria
+      invisível na interface. A varredura é linear nas entidades, e vale: remover
+      camada é raro, e um índice reverso teria de ser mantido coerente em toda
+      edição de janela.
+- [x] **Congelar não torna a camada indestrutível.** Teste próprio garante que a
+      remoção passa — senão bastaria congelar para travar uma camada sem que
+      ninguém entendesse por quê.
+- [x] **O conjunto é ordenado, e não lista.** A mesma camada não se congela duas
+      vezes, e a ordem estável é o que vai permitir gravar o arquivo de forma
+      determinística.
+- [ ] **Duas limitações de escrita, agora irmãs:** nem o recorte por entidade
+      (código `340`) nem as camadas congeladas por janela (código `331`) são
+      gravados, pelo mesmo motivo — os dois exigem o handle de algo que a escrita
+      distribui ao percorrer, sem manter o mapa. Fechar ambos é do **MT-KL-12**.
+- [ ] **Próximo passo:** **MT-KL-09** — ler as entidades por espaço, escolhendo o
+      bloco de destino pelo `410` e, na falta dele, pelo `67`. Abre o bloco C.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

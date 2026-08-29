@@ -633,7 +633,8 @@ describe('geometria de viewport', () => {
 		viewHeight: 25,
 		twist: 0,
 		scale: 2,
-		isOn: true
+		isOn: true,
+		frozenLayers: ['7', '9']
 	};
 
 	it('converte a janela vinda do kernel', () => {
@@ -646,8 +647,15 @@ describe('geometria de viewport', () => {
 			viewHeight: 25,
 			twist: 0,
 			scale: 2,
-			isOn: true
+			isOn: true,
+			frozenLayers: ['7', '9']
 		});
+	});
+
+	it('traz as camadas congeladas, que é como a interface explica uma ausência', () => {
+		const janela = toCadGeometry(bruta);
+
+		expect(janela).toMatchObject({ frozenLayers: ['7', '9'] });
 	});
 
 	it('aceita escala nula, que é o que o kernel manda quando ela não existe', () => {

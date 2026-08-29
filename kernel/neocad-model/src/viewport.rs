@@ -4,9 +4,12 @@
 //! \author Iago Leal
 //! \date 2026-08-21
 
+use std::collections::BTreeSet;
+
 use neocad_geometry::{Aabb, Point2};
 
 use crate::id::EntityId;
+use crate::layer::{LayerId, LayerRecord};
 
 /// O que delimita o que a janela mostra.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,7 +43,17 @@ pub enum ViewportClip {
 /// `51`, e mapear um no outro é trabalho da leitura (MT-KL-11), onde há teste
 /// para fixar o sinal — sinal trocado aqui gira a prancha para o lado errado, e
 /// o erro passa despercebido até alguém plotar.
-#[derive(Debug, Clone, Copy, PartialEq)]
+///
+/// # Congelamento por janela
+///
+/// Cada janela carrega o conjunto de camadas congeladas **nela**. É o recurso
+/// que faz a mesma camada aparecer numa prancha e não em outra — sem ele, uma
+/// planta e um detalhe da mesma folha mostrariam exatamente o mesmo conteúdo, e
+/// o desenho de engenharia depende justamente do contrário.
+///
+/// É a primeira vez no kernel que a visibilidade de uma camada deixa de ser
+/// propriedade global do documento: ela passa a depender de **onde** se olha.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Viewport {
     /// Centro da janela, em coordenadas do espaço-papel.
     pub center: Point2,
@@ -58,9 +71,52 @@ pub struct Viewport {
     pub clip: ViewportClip,
     /// Janela desligada não mostra nada, mas continua existindo na folha.
     pub is_on: bool,
+    /// Camadas congeladas nesta janela.
+    ///
+    /// Conjunto ordenado, e não lista: a mesma camada não se congela duas vezes,
+    /// e a ordem estável é o que permite gravar o arquivo de forma determinística
+    /// (ADR 0004).
+    pub frozen_layers: BTreeSet<LayerId>,
 }
 
 impl Viewport {
+    /// Congela uma camada nesta janela. Devolve `false` se já estava congelada.
+    pub fn freeze_layer(&mut self, layer: LayerId) -> bool {
+        self.frozen_layers.insert(layer)
+    }
+
+    /// Descongela uma camada nesta janela. Devolve `false` se não estava.
+    pub fn thaw_layer(&mut self, layer: LayerId) -> bool {
+        self.frozen_layers.remove(&layer)
+    }
+
+    /// Indica se a camada está congelada **nesta** janela.
+    #[must_use]
+    pub fn is_layer_frozen(&self, layer: LayerId) -> bool {
+        self.frozen_layers.contains(&layer)
+    }
+
+    /// Remove uma camada do conjunto de congeladas, se estiver lá.
+    ///
+    /// Chamado quando a camada deixa de existir no documento. Referência
+    /// pendurada aqui não é detalhe: ela sobrevive à recriação de uma camada com
+    /// o mesmo nome, e aí a prancha esconde conteúdo que ninguém mandou esconder.
+    pub(crate) fn forget_layer(&mut self, layer: LayerId) -> bool {
+        self.frozen_layers.remove(&layer)
+    }
+
+    /// Indica se a janela mostra o conteúdo de uma camada.
+    ///
+    /// Combina as duas visibilidades, e a ordem importa: uma janela desligada não
+    /// mostra nada, uma camada apagada ou congelada no documento não aparece em
+    /// janela nenhuma, e o congelamento por janela decide o resto. É por isso que
+    /// o método pede o registro além do identificador — a resposta não está
+    /// inteira nem só na camada, nem só na janela.
+    #[must_use]
+    pub fn shows_layer(&self, layer: LayerId, record: &LayerRecord) -> bool {
+        self.is_on && record.is_visible() && !self.is_layer_frozen(layer)
+    }
+
     /// Escala da janela: unidades de papel por unidade de modelo.
     ///
     /// `None` quando a altura da vista é zero ou não é finita — arquivo
@@ -162,6 +218,116 @@ impl Viewport {
 mod tests {
     use super::*;
 
+    /// Camada de exemplo, com estado global controlável.
+    fn camada(off: bool, congelada: bool) -> LayerRecord {
+        let mut tabela = crate::layer::LayerTable::new();
+        let id = tabela.create("Fiação").expect("nome válido");
+        let registro = tabela.get_mut(id).expect("recém-criada");
+        registro.set_off(off);
+        registro.set_frozen(congelada);
+
+        registro.clone()
+    }
+
+    fn identificador(bits: u64) -> LayerId {
+        LayerId::from_bits(bits).expect("identificador válido")
+    }
+
+    #[test]
+    fn congelar_e_descongelar_camada_na_janela() {
+        let mut janela = janela();
+        let camada = identificador(1);
+
+        assert!(!janela.is_layer_frozen(camada));
+        assert!(janela.freeze_layer(camada));
+        assert!(janela.is_layer_frozen(camada));
+
+        // Congelar de novo não é erro, mas também não é mudança.
+        assert!(!janela.freeze_layer(camada));
+
+        assert!(janela.thaw_layer(camada));
+        assert!(!janela.is_layer_frozen(camada));
+        assert!(!janela.thaw_layer(camada));
+    }
+
+    #[test]
+    fn a_visibilidade_efetiva_depende_da_janela() {
+        // É o ponto do MT-KL-08: a mesma camada aparece numa prancha e não em
+        // outra. Sem isso, planta e detalhe da mesma folha mostrariam o mesmo.
+        let visivel = camada(false, false);
+        let camada_id = identificador(1);
+
+        let mostra = janela();
+        let mut esconde = janela();
+        esconde.freeze_layer(camada_id);
+
+        assert!(mostra.shows_layer(camada_id, &visivel));
+        assert!(!esconde.shows_layer(camada_id, &visivel));
+    }
+
+    #[test]
+    fn o_estado_global_da_camada_vence_em_qualquer_janela() {
+        // Camada apagada ou congelada no documento não aparece em janela
+        // nenhuma, esteja ela congelada ali ou não.
+        let camada_id = identificador(1);
+        let janela = janela();
+
+        assert!(!janela.shows_layer(camada_id, &camada(true, false)));
+        assert!(!janela.shows_layer(camada_id, &camada(false, true)));
+    }
+
+    #[test]
+    fn janela_desligada_nao_mostra_camada_alguma() {
+        let desligada = Viewport {
+            is_on: false,
+            ..janela()
+        };
+
+        assert!(!desligada.shows_layer(identificador(1), &camada(false, false)));
+    }
+
+    #[test]
+    fn o_congelamento_e_por_janela_e_nao_por_documento() {
+        let camada_id = identificador(1);
+        let outra_id = identificador(2);
+        let registro = camada(false, false);
+
+        let mut planta = janela();
+        planta.freeze_layer(outra_id);
+
+        let mut detalhe = janela();
+        detalhe.freeze_layer(camada_id);
+
+        assert!(planta.shows_layer(camada_id, &registro));
+        assert!(!detalhe.shows_layer(camada_id, &registro));
+    }
+
+    #[test]
+    fn o_conjunto_de_congeladas_e_ordenado_e_sem_repeticao() {
+        // A ordem estável é o que permite gravar o arquivo de forma
+        // determinística; o conjunto é o que impede congelar duas vezes.
+        let mut janela = janela();
+
+        for bits in [3, 1, 2, 1] {
+            janela.freeze_layer(identificador(bits));
+        }
+
+        let ordenadas: Vec<u64> = janela.frozen_layers.iter().map(|id| id.to_bits()).collect();
+        assert_eq!(ordenadas.len(), 3);
+        assert!(ordenadas.windows(2).all(|par| par[0] < par[1]));
+    }
+
+    #[test]
+    fn esquecer_camada_limpa_o_congelamento() {
+        let mut janela = janela();
+        let camada_id = identificador(1);
+        janela.freeze_layer(camada_id);
+
+        assert!(janela.forget_layer(camada_id));
+        assert!(!janela.is_layer_frozen(camada_id));
+        assert!(!janela.forget_layer(camada_id));
+    }
+
     /// Janela de 100×50 no papel, centrada em (200, 150), mostrando o modelo em
     /// torno de (10, 20) com 25 unidades de altura — escala 2.
     fn janela() -> Viewport {
@@ -174,6 +340,7 @@ mod tests {
             twist: 0.0,
             clip: ViewportClip::Window,
             is_on: true,
+            frozen_layers: BTreeSet::new(),
         }
     }
 

@@ -125,6 +125,14 @@ export type CadGeometry =
 			/** Escala da janela — derivada no kernel, nunca recalculada aqui. */
 			scale: number | null;
 			isOn: boolean;
+			/**
+			 * Camadas congeladas nesta janela.
+			 *
+			 * Existe para a interface poder dizer **por que** algo não aparece nesta
+			 * prancha. Só sai do kernel: identificador de camada vale apenas dentro
+			 * do documento que o emitiu.
+			 */
+			frozenLayers: CadLayerId[];
 	  };
 
 /** Entidade de desenho. */

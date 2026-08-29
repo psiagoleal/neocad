@@ -199,6 +199,13 @@ pub enum GeometryView {
         scale: Option<f64>,
         /// Janela desligada não mostra nada, mas ocupa lugar na folha.
         is_on: bool,
+        /// Camadas congeladas nesta janela, em texto decimal.
+        ///
+        /// Sai do kernel para que a interface possa dizer **por que** algo não
+        /// aparece nesta prancha. Não volta: identificador de camada só faz
+        /// sentido dentro do documento que o emitiu, e aceitá-lo de fora
+        /// congelaria camada errada.
+        frozen_layers: Vec<String>,
     },
 }
 
@@ -238,6 +245,12 @@ impl From<&Geometry> for GeometryView {
                 twist: viewport.twist,
                 scale: viewport.scale(),
                 is_on: viewport.is_on,
+                frozen_layers: viewport
+                    .frozen_layers
+                    .iter()
+                    .copied()
+                    .map(encode_layer)
+                    .collect(),
             },
         }
     }
@@ -309,6 +322,7 @@ impl From<GeometryView> for Geometry {
                 twist,
                 scale: _,
                 is_on,
+                frozen_layers: _,
             } => Self::Viewport(Viewport {
                 center: center.into(),
                 width,
@@ -318,6 +332,9 @@ impl From<GeometryView> for Geometry {
                 twist,
                 clip: ViewportClip::Window,
                 is_on,
+                // O congelamento não volta pela ponte: identificador de camada só
+                // vale dentro do documento que o emitiu.
+                frozen_layers: std::collections::BTreeSet::new(),
             }),
         }
     }

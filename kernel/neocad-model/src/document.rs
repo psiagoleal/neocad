@@ -11,7 +11,7 @@ use neocad_geometry::Aabb;
 use crate::arena::{Arena, RestoreError};
 use crate::block::{BlockError, BlockId, BlockRecord, BlockTable};
 use crate::change::{Change, ChangeError};
-use crate::entity::Entity;
+use crate::entity::{Entity, Geometry};
 use crate::id::EntityId;
 use crate::layer::{LayerError, LayerId, LayerRecord, LayerTable};
 use crate::layout::{LayoutError, LayoutId, LayoutRecord, LayoutTable, PAPER_SPACE_PREFIX};
@@ -270,7 +270,32 @@ impl Document {
             });
         }
 
-        Ok(self.layers.remove(layer)?)
+        let record = self.layers.remove(layer)?;
+        self.forget_layer_in_viewports(layer);
+
+        Ok(record)
+    }
+
+    /// Apaga a camada do conjunto de congeladas de toda janela.
+    ///
+    /// # Por que a varredura existe
+    ///
+    /// Congelar uma camada numa janela **não** é usá-la: a camada pode ser
+    /// removida com o congelamento ainda apontando para ela. A referência
+    /// sobreviveria à remoção e, como identificadores são reaproveitados, uma
+    /// camada nova poderia herdar o congelamento de uma morta — a prancha
+    /// esconderia conteúdo que ninguém mandou esconder, e o motivo estaria
+    /// invisível na interface.
+    ///
+    /// A varredura é linear no número de entidades. Vale a pena: remover camada
+    /// é operação rara, e a alternativa seria um índice reverso a manter
+    /// coerente em toda edição de janela.
+    fn forget_layer_in_viewports(&mut self, layer: LayerId) {
+        for (_, entity) in self.entities.iter_mut() {
+            if let Geometry::Viewport(viewport) = &mut entity.geometry {
+                viewport.forget_layer(layer);
+            }
+        }
     }
 
     // -- Blocos -------------------------------------------------------------
@@ -988,6 +1013,117 @@ impl PartialEq for Document {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Janela mínima para exercitar o congelamento.
+    fn viewport() -> Geometry {
+        Geometry::Viewport(neocad_model_viewport())
+    }
+
+    fn neocad_model_viewport() -> crate::viewport::Viewport {
+        crate::viewport::Viewport {
+            center: Point2::new(100.0, 100.0),
+            width: 100.0,
+            height: 50.0,
+            view_center: Point2::ORIGIN,
+            view_height: 25.0,
+            twist: 0.0,
+            clip: crate::viewport::ViewportClip::Window,
+            is_on: true,
+            frozen_layers: std::collections::BTreeSet::new(),
+        }
+    }
+
+    /// Congela `alvo` em todas as janelas do documento.
+    fn congelar_em_todas(document: &mut Document, alvo: LayerId) {
+        let ids: Vec<EntityId> = document.entities().map(|(id, _)| id).collect();
+
+        for id in ids {
+            let mut entidade = document.entity(id).expect("entidade viva").clone();
+
+            if let Geometry::Viewport(janela) = &mut entidade.geometry {
+                janela.freeze_layer(alvo);
+                document
+                    .edit()
+                    .replace_entity(id, entidade)
+                    .expect("entidade viva");
+            }
+        }
+    }
+
+    #[test]
+    fn remover_camada_limpa_o_congelamento_em_todas_as_janelas() {
+        // O critério de aceite do MT-KL-08. Referência pendurada aqui é entidade
+        // fantasma na prancha: identificadores são reaproveitados, e uma camada
+        // nova herdaria o congelamento de uma morta.
+        let mut document = Document::new();
+        let zero = document.layers().default_layer();
+        let alvo = document.create_layer("Cotas").expect("nome válido");
+
+        let mut editor = document.edit();
+        for _ in 0..3 {
+            editor
+                .insert_in_model_space(Entity::new(zero, viewport()))
+                .expect("camada existe");
+        }
+        let _ = editor.finish();
+
+        congelar_em_todas(&mut document, alvo);
+        assert_eq!(contagem_de_congelamentos(&document, alvo), 3);
+
+        document.remove_layer(alvo).expect("camada sem entidades");
+
+        assert_eq!(contagem_de_congelamentos(&document, alvo), 0);
+    }
+
+    fn contagem_de_congelamentos(document: &Document, alvo: LayerId) -> usize {
+        document
+            .entities()
+            .filter(|(_, entidade)| match &entidade.geometry {
+                Geometry::Viewport(janela) => janela.is_layer_frozen(alvo),
+                _ => false,
+            })
+            .count()
+    }
+
+    #[test]
+    fn congelar_camada_nao_impede_de_remove_la() {
+        // Congelar não é usar: a camada continua sem entidades, e a remoção
+        // precisa passar — senão bastaria congelar para tornar uma camada
+        // indestrutível sem que ninguém entendesse por quê.
+        let mut document = Document::new();
+        let zero = document.layers().default_layer();
+        let alvo = document.create_layer("Cotas").expect("nome válido");
+
+        let mut editor = document.edit();
+        editor
+            .insert_in_model_space(Entity::new(zero, viewport()))
+            .expect("camada existe");
+        let _ = editor.finish();
+        congelar_em_todas(&mut document, alvo);
+
+        assert!(document.remove_layer(alvo).is_ok());
+    }
+
+    #[test]
+    fn a_limpeza_nao_toca_o_congelamento_das_outras_camadas() {
+        let mut document = Document::new();
+        let zero = document.layers().default_layer();
+        let removida = document.create_layer("Cotas").expect("nome válido");
+        let mantida = document.create_layer("Eixos").expect("nome válido");
+
+        let mut editor = document.edit();
+        editor
+            .insert_in_model_space(Entity::new(zero, viewport()))
+            .expect("camada existe");
+        let _ = editor.finish();
+        congelar_em_todas(&mut document, removida);
+        congelar_em_todas(&mut document, mantida);
+
+        document.remove_layer(removida).expect("sem entidades");
+
+        assert_eq!(contagem_de_congelamentos(&document, removida), 0);
+        assert_eq!(contagem_de_congelamentos(&document, mantida), 1);
+    }
+
     use crate::layout::{PageSetup, PlotUnits, MODEL_LAYOUT_NAME};
     #[test]
     fn documento_novo_tem_apenas_a_aba_do_espaco_modelo() {

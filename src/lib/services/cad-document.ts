@@ -234,7 +234,10 @@ export function toCadGeometry(raw: unknown, context = 'geometria'): CadGeometry 
 				// altura da vista é inválida — recalculá-la aqui faria as duas
 				// contas divergirem, que é o defeito que o kernel evita.
 				scale: record.scale == null ? null : asNumber(record.scale, `${context}.scale`),
-				isOn: asBoolean(record.isOn, `${context}.isOn`)
+				isOn: asBoolean(record.isOn, `${context}.isOn`),
+				frozenLayers: asArray(record.frozenLayers, `${context}.frozenLayers`).map(
+					(id, index) => asString(id, `${context}.frozenLayers[${index}]`) as CadLayerId
+				)
 			};
 		default:
 			throw new CadKernelContractError(`${context} tem tipo desconhecido: ${kind}.`);
