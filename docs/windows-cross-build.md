@@ -7,6 +7,23 @@ Este documento descreve os fluxos Windows x64 do NeoCAD a partir de Linux/WSL us
 1. uma versão **portable** próxima de um `.zip` extraível;
 2. um **instalador simples** com NSIS, evitando admin sempre que possível.
 
+## Onde o release é compilado
+
+**O release oficial não é mais cross-build.** Desde a 0.2.0 ele sai do workflow
+`.github/workflows/release.yml`, que compila o Windows em runner
+`windows-latest` com o alvo `x86_64-pc-windows-msvc` nativo.
+
+A razão é que os obstáculos do cross-build — `cargo-xwin`, `llvm-rc`, os termos
+do SDK da Microsoft e a impossibilidade de gerar MSI — são todos consequência de
+compilar **a partir de Linux**, e nenhum deles existe num runner Windows. De
+quebra vem o `.pdb`, sem o qual um travamento no Windows é um endereço
+hexadecimal sem nome, e abre-se o caminho para assinatura Authenticode.
+
+O que este documento descreve segue valendo para **builds locais**: quando se
+quer um `.exe` sem esperar a CI. Para isso há dois caminhos, e o mais simples é
+o `make dist-test-windows`, que usa MinGW e não pede SDK nem privilégio
+administrativo.
+
 ## Estratégia atual
 
 O repositório mantém duas saídas principais para Windows x64:

@@ -5,6 +5,15 @@
 # (Fixed WebView2 Runtime) com a versão no nome do artefato, e publicação de
 # release no GitHub via `gh`.
 #
+# ATENÇÃO: o caminho oficial de release passou a ser
+# `.github/workflows/release.yml`, disparado ao empurrar uma tag `v*`. Ele
+# compila o Windows em runner Windows, com MSVC nativo, e empacota Linux e
+# Windows juntos.
+#
+# Este script continua útil para dois casos: criar a tag (`tag`) e produzir um
+# artefato Windows sem depender da CI (`build`). O `build` exige `cargo-xwin` e
+# `llvm-rc` no host — que é justamente a dependência que o workflow eliminou.
+#
 # A versão é sempre derivada de package.json (fonte única), garantindo que tag,
 # nome do .zip e título do release fiquem alinhados.
 #

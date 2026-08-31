@@ -1,0 +1,218 @@
+# Caminho relativo: .github/workflows/release.yml
+#
+# Empacotamento de release do NeoCAD para Linux e Windows.
+#
+# # Por que o Windows é compilado em runner Windows
+#
+# O alvo de release é `x86_64-pc-windows-msvc`, que é o único que o Tauri
+# empacota de verdade: NSIS, MSI, `webviewInstallMode` e assinatura são todos
+# definidos sobre ele. Compilá-lo a partir de Linux exigiria `cargo-xwin` e
+# `llvm-rc`, mais o SDK da Microsoft e seus termos de redistribuição — e ainda
+# assim MSI não sairia, conforme `docs/windows-cross-build.md`.
+#
+# Num runner Windows nada disso é necessário, e vem de graça o `.pdb`, sem o
+# qual um travamento no Windows é um endereço hexadecimal sem nome.
+#
+# O caminho MinGW não desaparece: continua sendo o `make dist-test`, que é o
+# build local rápido para conferir uma mudança sem esperar a CI.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag a empacotar (ex.: v0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # O frontend é compilado uma vez e reaproveitado pelos dois empacotamentos.
+  # `tauri::generate_context!` exige que `frontendDist` exista antes do build
+  # nativo, e compilá-lo duas vezes só criaria a chance de as duas saídas
+  # divergirem.
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Toolchain WebAssembly
+        run: |
+          rustup target add wasm32-unknown-unknown
+          curl -sSfL https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+          wasm-pack --version
+
+      - name: Build do frontend
+        run: pnpm build
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: frontend-build
+          path: build/
+          retention-days: 7
+
+  empacotar:
+    name: Empacotar (${{ matrix.plataforma }})
+    needs: frontend
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Sem `fail-fast`: uma plataforma quebrada não deve impedir a outra de
+      # produzir o seu artefato, senão um problema de toolchain no Windows
+      # esconde um build Linux perfeitamente bom.
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            plataforma: linux-x64
+          - os: windows-latest
+            plataforma: windows-x64
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: frontend-build
+          path: build/
+
+      - name: Dependências de sistema do Tauri
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            build-essential \
+            curl wget file libssl-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # `pnpm build` já rodou no job anterior e o resultado veio pelo artefato.
+      # `--no-bundle` não é usado aqui: é justamente o empacotamento que se quer.
+      - name: Empacotar
+        run: pnpm tauri build --config src-tauri/tauri.conf.json
+
+      - name: Reunir artefatos (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -euo pipefail
+          destino="dist/NeoCAD-${{ matrix.plataforma }}"
+          mkdir -p "$destino"
+          cp src-tauri/target/release/neocad "$destino/"
+          find src-tauri/target/release/bundle/deb -name '*.deb' -exec cp {} "$destino/" \;
+          find src-tauri/target/release/bundle/appimage -name '*.AppImage' -exec cp {} "$destino/" \; || true
+          cp LICENSE THIRD-PARTY-LICENSES.md "$destino/"
+          ls -la "$destino"
+
+      - name: Reunir artefatos (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $destino = "dist/NeoCAD-${{ matrix.plataforma }}"
+          New-Item -ItemType Directory -Force -Path $destino | Out-Null
+          Copy-Item src-tauri/target/release/neocad.exe $destino
+          # O `.pdb` é o que transforma um travamento em pilha legível. Vai
+          # junto, e não some no empacotamento.
+          Copy-Item src-tauri/target/release/neocad.pdb $destino -ErrorAction SilentlyContinue
+          Get-ChildItem -Path src-tauri/target/release/bundle -Recurse -Include *.exe, *.msi |
+            Where-Object { $_.Name -ne 'neocad.exe' } |
+            ForEach-Object { Copy-Item $_.FullName $destino }
+          Copy-Item LICENSE, THIRD-PARTY-LICENSES.md $destino
+          Get-ChildItem $destino
+
+      - name: Compactar
+        shell: bash
+        run: |
+          set -euo pipefail
+          versao="$(node -p "require('./package.json').version")"
+          cd dist
+          zip -r "NeoCAD_v${versao}_${{ matrix.plataforma }}.zip" "NeoCAD-${{ matrix.plataforma }}"
+          ls -la ./*.zip
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: pacote-${{ matrix.plataforma }}
+          path: dist/*.zip
+          retention-days: 14
+
+  publicar:
+    name: Publicar release
+    needs: empacotar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: pacote-*
+          path: pacotes/
+          merge-multiple: true
+
+      # A release nasce como **rascunho**, de propósito: publicar é decisão de
+      # quem revisa os binários, não efeito colateral de empurrar uma tag. Quem
+      # aprova roda `gh release edit <tag> --draft=false --latest`.
+      - name: Criar ou atualizar a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag || github.ref_name }}"
+          ls -la pacotes/
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" pacotes/*.zip --clobber
+            echo "Artefatos atualizados na release $tag."
+          else
+            gh release create "$tag" pacotes/*.zip \
+              --draft \
+              --title "NeoCAD $tag" \
+              --generate-notes
+            echo "Release $tag criada como rascunho."
+          fi
