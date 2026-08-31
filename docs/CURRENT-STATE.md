@@ -991,10 +991,24 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       asterisco e **são conteúdo de verdade** — hachura e cota vivem neles. O
       filtro exclui os blocos de espaço nominalmente, e não pelo prefixo, senão
       perderia desenho.
-- [ ] **Próximo passo:** ponto de funcionalidade completa. A pedido do usuário,
-      gerar os dois builds (Linux nativo e Windows x64) e atualizar a release.
-      **Antes disso, decidir com ele o que fazer com a branch:** a `feat/kernel-cad-k1`
-      acumula K1, K2 e KL e nunca foi mesclada na `master`.
+- [x] **PR #1 mesclado na `master` e versão 0.2.0 publicada em rascunho.** Os 41
+      commits de K1, K2 e KL entraram de uma vez, com a CI verde nos oito jobs —
+      incluindo o E2E, que em máquina limpa passa em paralelo. O título do PR foi
+      corrigido: dizia só "K1" e cobria três fases.
+- [x] **Release `v0.2.0` criada como rascunho**, com os dois artefatos: Linux x64
+      (binário mais `.deb`) e Windows x64. **Falta a sua publicação.**
+- [ ] **⚠️ O binário Windows saiu pela toolchain MinGW, não pela MSVC.** O
+      caminho oficial (`scripts/release.sh build`) exige `llvm-rc`, ausente nesta
+      máquina, e instalá-lo pede sudo com senha. O `.exe` é funcional e
+      autossuficiente, mas não passou pelo empacotamento habitual — daí o
+      rascunho e o sufixo `-mingw` no nome do arquivo. Publicar exige decidir se
+      esse binário serve ou se o Windows deve ser regerado noutra máquina.
+- [ ] **A pipeline de release só conhece Windows.** `scripts/release.sh` monta e
+      publica apenas o `.zip` portátil do Windows; o artefato Linux foi anexado à
+      mão. Se os dois passarem a ser regra, vale um ticket para a pipeline
+      cobri-los.
+- [ ] **Próximo passo:** publicar a release depois de você conferir os binários,
+      e então **K3** — geometria 2D e operações de edição, que a fase KL adiou.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma
