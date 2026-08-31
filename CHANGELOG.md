@@ -19,6 +19,8 @@ Maintenance rules:
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-31
+
 ### Added
 
 - K2 broken down into 12 micro-tickets in `docs/tickets/k2-dxf-nativo.md`, sequenced in four blocks — format foundation, reading, writing, and arrival at the product — with the ticket that reads a block containing entities (MT-K2-05) named as the one justifying the phase, and the silent loss of unmodelled entities on save recorded as a known risk to be handled before `Salvar` can overwrite an original.
