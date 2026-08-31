@@ -1,4 +1,4 @@
-.PHONY: help install check lint format test build kernel-wasm kernel-wasm-dev workers-sync workers-check licenses-check licenses-list cargo-check kernel-fmt kernel-clippy kernel-test kernel-cargo-check kernel-check tauri-dev tauri-debug tauri-debug-nobundle tauri-build e2e-install e2e cmake-configure cmake-smoke cmake-linux-bundle cmake-windows-x64-portable cmake-windows-x64-portable-fixed-runtime cmake-windows-x64-nsis cmake-windows-x64-nsis-fixed-runtime release-version release-package release-build release-tag release-publish release dist-test dist-test-linux dist-test-windows dist-test-deps clean
+.PHONY: help install check lint format test build kernel-wasm kernel-wasm-dev workers-sync workers-check licenses-check licenses-list cargo-check kernel-fmt kernel-clippy kernel-test kernel-cargo-check kernel-check tauri-dev tauri-debug tauri-debug-nobundle tauri-build e2e-install e2e cmake-configure cmake-smoke cmake-linux-bundle cmake-windows-x64-portable cmake-windows-x64-portable-fixed-runtime cmake-windows-x64-nsis cmake-windows-x64-nsis-fixed-runtime release-version release-tag release-run release-watch release-assets release-publish dist-test dist-test-linux dist-test-windows dist-test-deps clean
 
 help:
 	@echo "Comandos disponíveis:"
@@ -35,12 +35,13 @@ help:
 	@echo "  make dist-test-linux                   - apenas o build de teste Linux"
 	@echo "  make dist-test-windows                 - apenas o build de teste Windows (cross MinGW)"
 	@echo "  make dist-test-deps                    - diagnostica pré-requisitos dos builds de teste"
+	@echo "  Release (empacota na CI; ver .github/workflows/release.yml):"
 	@echo "  make release-version                   - imprime a versão atual (package.json)"
-	@echo "  make release-package                   - copia o .zip portátil para *_v<versão>.zip"
-	@echo "  make release-build                     - build portátil fixed-runtime + artefato versionado"
-	@echo "  make release-tag                       - cria a tag v<versão> e faz push para origin"
-	@echo "  make release-publish                   - cria/atualiza release no GitHub com o asset versionado"
-	@echo "  make release                           - pipeline completo: tag -> build -> publish"
+	@echo "  make release-tag                       - cria a tag v<versão>, faz push e dispara a pipeline"
+	@echo "  make release-run                       - reempacota uma tag já existente (TAG=v0.2.0)"
+	@echo "  make release-watch                     - acompanha a última execução da pipeline"
+	@echo "  make release-assets                    - lista os artefatos da release da versão atual"
+	@echo "  make release-publish                   - tira a release do rascunho (revise os binários antes)"
 	@echo "  make clean                             - remove artefatos web e CMake"
 
 install:
@@ -152,23 +153,36 @@ dist-test-windows:
 dist-test-deps:
 	@./scripts/build-test.sh deps
 
+# O empacotamento saiu daqui: quem compila Linux e Windows é
+# `.github/workflows/release.yml`, e o Windows sai de runner Windows com MSVC
+# nativo. O que resta na máquina local é disparar, acompanhar e aprovar.
 release-version:
 	@./scripts/release.sh version
 
-release-package:
-	@./scripts/release.sh package
-
-release-build:
-	./scripts/release.sh build
-
+# Empurrar a tag é o gatilho da pipeline; não há mais build local a fazer.
 release-tag:
 	./scripts/release.sh tag
 
-release-publish:
-	./scripts/release.sh publish
+# Reempacota uma tag que já existe, sem criar tag nova. Útil quando a mudança
+# foi na própria pipeline, e não no produto.
+release-run:
+	@tag="$${TAG:-v$$(./scripts/release.sh version)}"; \
+	echo "Disparando a pipeline de release para $$tag"; \
+	gh workflow run release.yml -f tag="$$tag"
 
-release:
-	./scripts/release.sh all
+release-watch:
+	@gh run watch "$$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
+
+release-assets:
+	@tag="$${TAG:-v$$(./scripts/release.sh version)}"; \
+	gh release view "$$tag" --json isDraft,assets \
+	  -q '"rascunho=\(.isDraft)", (.assets[] | "\(.name)  \(.size/1048576 | floor) MB")'
+
+# A pipeline cria a release como rascunho de propósito. Publicar é um ato
+# deliberado de quem conferiu os binários, e por isso mora aqui e não lá.
+release-publish:
+	@tag="$${TAG:-v$$(./scripts/release.sh version)}"; \
+	gh release edit "$$tag" --draft=false --latest
 
 clean:
 	rm -rf build .svelte-kit

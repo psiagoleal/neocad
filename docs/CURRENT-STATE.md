@@ -1014,13 +1014,25 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       `.dwg`/`.dxf`, e o `.pdb`). O artefato MinGW foi removido e a nota de
       release, corrigida. **Falta a sua publicação:**
       `gh release edit v0.2.0 --draft=false --latest`.
-- [ ] **`scripts/release.sh` e `make release-*` ficaram parcialmente
-      redundantes.** O `tag` segue útil; o `build`/`publish` só valem para
-      produzir um Windows sem a CI, e exigem `cargo-xwin` e `llvm-rc` no host —
-      justamente a dependência que a workflow eliminou. Estão marcados como tal
-      no cabeçalho do script, não removidos: **decida se depreciamos de vez.**
-- [ ] **Próximo passo:** publicar a release depois de você conferir os binários,
-      e então **K3** — geometria 2D e operações de edição, que a fase KL adiou.
+- [x] **Alvos `make release-*` substituídos pela pipeline.** Saíram
+      `release-package`, `release-build` e o `release` completo — não há mais
+      empacotamento na máquina do desenvolvedor. Restaram disparar
+      (`release-tag`, `release-run TAG=v0.2.0`), acompanhar (`release-watch`,
+      `release-assets`) e aprovar (`release-publish`, que só tira do rascunho).
+      Publicar continua do lado local de propósito: a workflow para no rascunho,
+      e o ato deliberado de quem conferiu os binários é justamente o que não
+      deve ser automatizado. Em `scripts/release.sh` sobrevivem `version` e
+      `tag`; `package`, `build` e `publish` não são mais referenciados por
+      ninguém — **candidatos a remoção quando você quiser.**
+- [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
+      2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
+      experiência de uso, e sem algo palpável não há por que publicar. A ordem
+      passa a ser **K3 → UI/UX → refazer os builds e atualizar a `v0.2.0`**. Os
+      artefatos atuais servem para conferência, não para divulgação.
+- [ ] **Próximo passo:** **K3** — geometria 2D e operações de edição, que a fase
+      KL adiou. Depois dele, uma fase de UI/UX conduzida como trabalho de
+      design, tendo a interface do AutoCAD como referência e as boas práticas de
+      software de engenharia como critério.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma
