@@ -995,18 +995,30 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       commits de K1, K2 e KL entraram de uma vez, com a CI verde nos oito jobs —
       incluindo o E2E, que em máquina limpa passa em paralelo. O título do PR foi
       corrigido: dizia só "K1" e cobria três fases.
-- [x] **Release `v0.2.0` criada como rascunho**, com os dois artefatos: Linux x64
-      (binário mais `.deb`) e Windows x64. **Falta a sua publicação.**
-- [ ] **⚠️ O binário Windows saiu pela toolchain MinGW, não pela MSVC.** O
-      caminho oficial (`scripts/release.sh build`) exige `llvm-rc`, ausente nesta
-      máquina, e instalá-lo pede sudo com senha. O `.exe` é funcional e
-      autossuficiente, mas não passou pelo empacotamento habitual — daí o
-      rascunho e o sufixo `-mingw` no nome do arquivo. Publicar exige decidir se
-      esse binário serve ou se o Windows deve ser regerado noutra máquina.
-- [ ] **A pipeline de release só conhece Windows.** `scripts/release.sh` monta e
-      publica apenas o `.zip` portátil do Windows; o artefato Linux foi anexado à
-      mão. Se os dois passarem a ser regra, vale um ticket para a pipeline
-      cobri-los.
+- [x] **Pipeline de release cobre Linux e Windows** (`.github/workflows/release.yml`),
+      disparada ao empurrar uma tag `v*` ou à mão contra uma tag já existente. O
+      frontend é compilado uma vez e reaproveitado; o empacotamento é uma matriz
+      sem `fail-fast`, para que toolchain quebrada numa plataforma não esconda um
+      build bom na outra; a release nasce rascunho, porque publicar é decisão de
+      quem revisa os binários.
+- [x] **Windows agora é MSVC nativo, compilado em runner Windows.** A escolha se
+      resume a _onde_ compilar: `cargo-xwin`, `llvm-rc`, os termos do SDK da
+      Microsoft e a impossibilidade de gerar MSI são todos consequência de
+      cross-compilar a partir de Linux, e nenhum existe num runner Windows. De
+      quebra vem o `.pdb`, sem o qual um travamento no Windows é um endereço
+      hexadecimal sem nome. O MinGW continua sendo o `make dist-test`, build
+      local rápido.
+- [x] **Release `v0.2.0` rearmada com os dois artefatos da mesma execução:**
+      `NeoCAD_v0.2.0_linux-x64.zip` (binário, `.deb`, AppImage) e
+      `NeoCAD_v0.2.0_windows-x64.zip` (`.exe`, instalador NSIS com as associações
+      `.dwg`/`.dxf`, e o `.pdb`). O artefato MinGW foi removido e a nota de
+      release, corrigida. **Falta a sua publicação:**
+      `gh release edit v0.2.0 --draft=false --latest`.
+- [ ] **`scripts/release.sh` e `make release-*` ficaram parcialmente
+      redundantes.** O `tag` segue útil; o `build`/`publish` só valem para
+      produzir um Windows sem a CI, e exigem `cargo-xwin` e `llvm-rc` no host —
+      justamente a dependência que a workflow eliminou. Estão marcados como tal
+      no cabeçalho do script, não removidos: **decida se depreciamos de vez.**
 - [ ] **Próximo passo:** publicar a release depois de você conferir os binários,
       e então **K3** — geometria 2D e operações de edição, que a fase KL adiou.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
