@@ -45,6 +45,14 @@ pub struct DxfReport {
     pub skipped_sections: BTreeMap<String, usize>,
     /// Falhas locais do percurso de seções, que não impediram a leitura.
     pub section_errors: Vec<DxfSectionError>,
+    /// Janelas cujo recorte por entidade não pôde ser resolvido.
+    ///
+    /// A janela é lida com recorte retangular, o que faz a prancha mostrar
+    /// **mais** do que deveria. Contar é o que impede a diferença de passar em
+    /// silêncio até alguém plotar.
+    pub clipped_viewports: usize,
+    /// Camadas congeladas cujo handle não resolveu para camada nenhuma.
+    pub unresolved_frozen_layers: usize,
     /// Abas cujo vínculo com o bloco não resolveu.
     ///
     /// O layout continua sendo entregue: perder a prancha porque o ponteiro está

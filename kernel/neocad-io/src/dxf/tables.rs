@@ -277,6 +277,20 @@ fn aplicar(leitura: &mut LayerTableReading, camada: CamadaCrua) {
 /// divergirem.
 #[must_use]
 pub fn read_block_record_names(section: &Section) -> BTreeMap<String, String> {
+    read_table_handles(section, TABELA_DE_BLOCOS)
+}
+
+/// Mapeia handle para nome de camada.
+///
+/// Serve ao código `331` de uma janela, que aponta para as camadas congeladas
+/// nela — e aponta por handle, não por nome.
+#[must_use]
+pub fn read_layer_handles(section: &Section) -> BTreeMap<String, String> {
+    read_table_handles(section, TABELA_DE_CAMADAS)
+}
+
+/// Mapeia handle para nome dentro de uma tabela de símbolos.
+fn read_table_handles(section: &Section, tabela: &str) -> BTreeMap<String, String> {
     let mut nomes = BTreeMap::new();
 
     if section.kind != SectionKind::Tables {
@@ -292,9 +306,8 @@ pub fn read_block_record_names(section: &Section) -> BTreeMap<String, String> {
             guardar(&mut nomes, handle.take(), nome.take());
 
             match marcador(par) {
-                Some("TABLE") => na_tabela = false,
-                Some(TABELA_DE_BLOCOS) => na_tabela = true,
-                Some("ENDTAB") => na_tabela = false,
+                Some("TABLE" | "ENDTAB") => na_tabela = false,
+                Some(nome) if nome == tabela => na_tabela = true,
                 _ => {}
             }
 
@@ -304,7 +317,7 @@ pub fn read_block_record_names(section: &Section) -> BTreeMap<String, String> {
         if !na_tabela {
             // O `2` que nomeia a tabela vem depois do `0/TABLE`, e é ele que
             // liga o percurso.
-            if par.code == 2 && marcador(par) == Some(TABELA_DE_BLOCOS) {
+            if par.code == 2 && marcador(par) == Some(tabela) {
                 na_tabela = true;
             }
 

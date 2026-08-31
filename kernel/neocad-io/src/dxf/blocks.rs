@@ -199,7 +199,7 @@ fn concluir(bloco: BlocoEmCurso, layers: &mut LayerTable, leitura: &mut BlocksRe
         (flags & XREF != 0).then(|| texto(&bloco.cabecalho, 1).unwrap_or_default().to_owned());
 
     let mut entidades = EntitiesReading::vazia();
-    ler_registros(&bloco.corpo, layers, &mut entidades);
+    ler_registros(&bloco.corpo, layers, &BTreeMap::new(), &mut entidades);
 
     let definicao = BlockDefinition {
         name: texto(&bloco.cabecalho, 2).unwrap_or_default().to_owned(),

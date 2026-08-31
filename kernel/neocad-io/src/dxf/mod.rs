@@ -32,7 +32,9 @@ pub use objects::{read_layouts, LayoutDefinition, LayoutsReading};
 pub use pairs::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
 pub use report::DxfReport;
 pub use sections::{sections, DxfSectionError, Section, SectionKind, Sections};
-pub use tables::{read_block_record_names, read_layer_table, LayerTableReading, RejectedLayer};
+pub use tables::{
+    read_block_record_names, read_layer_handles, read_layer_table, LayerTableReading, RejectedLayer,
+};
 pub use writer::{formatar_real, write_dxf, DxfContents, ACAD_VERSION};
 
 use neocad_model::LayerTable;
@@ -148,6 +150,9 @@ pub fn read_dxf(input: &[u8]) -> DxfReading {
 
     // Os registros de bloco vêm antes dos layouts: é o handle deles que faz o
     // código `330` de um layout virar um bloco.
+    let layer_handles = primeira_tables
+        .map(|indice| read_layer_handles(&colhidas[indice]))
+        .unwrap_or_default();
     let block_names = primeira_tables
         .map(|indice| read_block_record_names(&colhidas[indice]))
         .unwrap_or_default();
@@ -164,11 +169,13 @@ pub fn read_dxf(input: &[u8]) -> DxfReading {
             // aparecer em vez de acontecer.
             SectionKind::Tables if primeira_tables == Some(indice) => {}
             SectionKind::Entities => {
-                let leitura = read_entities(secao, &mut layers);
+                let leitura = read_entities(secao, &mut layers, &layer_handles);
 
                 entities.extend(leitura.entities);
                 report.created_layers.extend(leitura.created_layers);
                 report.rejected_entities.extend(leitura.rejected);
+                report.clipped_viewports += leitura.clipped_viewports;
+                report.unresolved_frozen_layers += leitura.unresolved_frozen_layers;
 
                 for (tipo, quantidade) in leitura.unsupported {
                     report.contar_nao_representado(tipo, quantidade);

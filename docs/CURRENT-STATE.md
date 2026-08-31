@@ -946,10 +946,33 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       numerador e denominador separados, e é assim que ficam guardados: `1:100`,
       e não `0,01`. Dividir na leitura perderia a distinção entre `1:3` e o
       decimal que o aproxima.
-- [ ] **Próximo passo:** **MT-KL-11** — ler as entidades `VIEWPORT`, incluindo as
-      camadas congeladas (código `331`) e o mapeamento do giro (código `51`) para
-      a convenção fixada no MT-KL-07. Atenção ao viewport de identificador `1`,
-      que é a própria folha e não uma janela.
+- [x] **MT-KL-11 concluído — bloco C fechado.** A leitura monta a janela do
+      MT-KL-07: medidas no papel, vista no modelo, giro e camadas congeladas.
+      187 testes na crate de I/O; **499** no kernel. `.wasm` em **293,4 KB**.
+- [x] **O viewport de identificador `1` é a folha, e não vira janela.** Todo
+      espaço-papel tem um; transformá-lo em entidade criaria uma moldura fantasma
+      do tamanho da prancha em cima de tudo. É **compreendido e deliberadamente
+      não modelado**, que é diferente de "não suportado" — por isso não entra na
+      contagem de perdas.
+- [x] **O giro só precisou de conversão de unidade.** O código `51` traz graus e
+      o modelo guarda radianos, na mesma orientação anti-horária fixada no
+      MT-KL-07. O teste de sinal que escrevi lá é o que transformou isso em
+      verificação em vez de suposição.
+- [x] **As camadas congeladas exigiram o mapa de handle da tabela de camadas**,
+      pelo mesmo motivo que os layouts exigiram o dos blocos: o `331` aponta por
+      handle. `read_table_handles` passou a servir às duas — a função do MT-KL-10
+      foi generalizada em vez de copiada.
+- [x] **Duas ausências ficam contadas, não caladas.** Recorte por entidade
+      (código `340`) não resolve sem mapa de handle para entidade, então a janela
+      sai retangular e `clipped_viewports` conta — prancha com recorte perdido
+      mostra **mais** do que deveria. Handle de camada congelada que não resolve
+      entra em `unresolved_frozen_layers`.
+- [x] **Janela sem código `68` é tratada como ligada.** Mostrar algo que o
+      usuário pode desligar é melhor do que esconder algo que ele não encontra.
+- [ ] **Próximo passo:** **MT-KL-12** — escrever layouts, viewports e entidades
+      de papel, fechando a ida e volta. É onde as duas limitações irmãs da
+      escrita (`340` e `331`) se resolvem juntas, com o mapa de handle que a
+      gravação hoje não mantém.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma

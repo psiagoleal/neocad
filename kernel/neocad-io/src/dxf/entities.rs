@@ -4,11 +4,12 @@
 //! \author Iago Leal
 //! \date 2026-08-12
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use neocad_geometry::Point2;
 use neocad_model::{
-    Arc, Circle, Color, Entity, EntityColor, Geometry, LayerError, LayerTable, Line, Polyline, Text,
+    Arc, Circle, Color, Entity, EntityColor, Geometry, LayerError, LayerTable, Line, Polyline,
+    Text, Viewport, ViewportClip,
 };
 
 use super::pairs::DxfPair;
@@ -66,6 +67,15 @@ pub struct EntitiesReading {
     pub created_layers: Vec<String>,
     /// Entidades que não puderam ser criadas.
     pub rejected: Vec<RejectedEntity>,
+    /// Janelas cujo recorte por entidade não pôde ser resolvido.
+    ///
+    /// O código `340` aponta para a entidade que delimita a vista, por handle, e
+    /// a leitura não mantém mapa de handle para entidade. A janela é lida com
+    /// recorte retangular, e a contagem existe para a diferença **aparecer** —
+    /// uma prancha com recorte perdido mostra mais do que deveria.
+    pub clipped_viewports: usize,
+    /// Camadas congeladas cujo handle não resolveu para camada nenhuma.
+    pub unresolved_frozen_layers: usize,
 }
 
 impl EntitiesReading {
@@ -77,6 +87,8 @@ impl EntitiesReading {
             unsupported: BTreeMap::new(),
             created_layers: Vec::new(),
             rejected: Vec::new(),
+            clipped_viewports: 0,
+            unresolved_frozen_layers: 0,
         }
     }
 
@@ -123,20 +135,24 @@ impl EntitiesReading {
 ///                 0\nENDSEC\n  0\nEOF\n";
 /// let secao = sections(arquivo).next().expect("há seção")?;
 /// let mut camadas = LayerTable::new();
-/// let leitura = read_entities(&secao, &mut camadas);
+/// let leitura = read_entities(&secao, &mut camadas, &Default::default());
 ///
 /// assert_eq!(leitura.model_space_count(), 1);
 /// assert_eq!(leitura.entities[0].space, EntitySpace::Model);
 /// # Ok::<(), neocad_io::DxfSectionError>(())
 /// ```
-pub fn read_entities(section: &Section, layers: &mut LayerTable) -> EntitiesReading {
+pub fn read_entities(
+    section: &Section,
+    layers: &mut LayerTable,
+    layer_handles: &BTreeMap<String, String>,
+) -> EntitiesReading {
     let mut leitura = EntitiesReading::vazia();
 
     if section.kind != SectionKind::Entities {
         return leitura;
     }
 
-    ler_registros(&section.pairs, layers, &mut leitura);
+    ler_registros(&section.pairs, layers, layer_handles, &mut leitura);
     leitura
 }
 
@@ -147,6 +163,7 @@ pub fn read_entities(section: &Section, layers: &mut LayerTable) -> EntitiesRead
 pub(super) fn ler_registros(
     pares: &[DxfPair],
     layers: &mut LayerTable,
+    layer_handles: &BTreeMap<String, String>,
     leitura: &mut EntitiesReading,
 ) {
     let mut tipo = String::new();
@@ -159,7 +176,14 @@ pub(super) fn ler_registros(
             continue;
         }
 
-        fechar(&tipo, &atual, &mut polilinha, layers, leitura);
+        fechar(
+            &tipo,
+            &atual,
+            &mut polilinha,
+            layers,
+            layer_handles,
+            leitura,
+        );
         tipo = par
             .value
             .as_text()
@@ -169,7 +193,14 @@ pub(super) fn ler_registros(
         atual.clear();
     }
 
-    fechar(&tipo, &atual, &mut polilinha, layers, leitura);
+    fechar(
+        &tipo,
+        &atual,
+        &mut polilinha,
+        layers,
+        layer_handles,
+        leitura,
+    );
 
     // Polilinha antiga sem `SEQEND` não é motivo para perder os vértices já
     // lidos: o arquivo está torto, o desenho não precisa sumir junto.
@@ -198,6 +229,7 @@ fn fechar(
     pares: &[DxfPair],
     polilinha: &mut Option<PolilinhaEmCurso>,
     layers: &mut LayerTable,
+    layer_handles: &BTreeMap<String, String>,
     leitura: &mut EntitiesReading,
 ) {
     if tipo.is_empty() {
@@ -239,6 +271,33 @@ fn fechar(
                 concluir_polilinha(anterior, layers, leitura);
             }
         }
+    }
+
+    if tipo == "VIEWPORT" {
+        // O viewport de identificador `1` é a **folha**, e não uma janela: todo
+        // espaço-papel tem um, e transformá-lo em entidade criaria uma moldura
+        // fantasma do tamanho da prancha em cima de tudo. É compreendido e
+        // deliberadamente não modelado — diferente de "não suportado".
+        if inteiro(pares, 69) == Some(1) {
+            return;
+        }
+
+        let Some(janela) = janela(pares, layers, layer_handles, leitura) else {
+            *leitura.unsupported.entry(tipo.to_owned()).or_insert(0) += 1;
+            return;
+        };
+
+        registrar(
+            &nome_da_camada(pares),
+            cor(pares),
+            espaco(pares),
+            Geometry::Viewport(janela),
+            tipo,
+            layers,
+            leitura,
+        );
+
+        return;
     }
 
     let Some(geometry) = geometria(tipo, pares) else {
@@ -315,6 +374,75 @@ fn registrar(
             geometry,
         },
     });
+}
+
+/// Monta a janela de um registro `VIEWPORT`.
+///
+/// `None` quando falta o que define a janela — sem centro, largura, altura ou
+/// altura de vista não há como situá-la no papel, e inventar um retângulo seria
+/// desenhar o que o arquivo não diz.
+///
+/// # O giro
+///
+/// O código `51` traz o ângulo em **graus**, e o modelo guarda radianos na
+/// convenção fixada no MT-KL-07: anti-horário, medido sobre o conteúdo como ele
+/// aparece na folha. É a mesma orientação, então a conversão é só de unidade —
+/// e é o teste de sinal do modelo que impede isso de virar suposição.
+fn janela(
+    pares: &[DxfPair],
+    layers: &LayerTable,
+    layer_handles: &BTreeMap<String, String>,
+    leitura: &mut EntitiesReading,
+) -> Option<Viewport> {
+    let center = ponto(pares, 10, 20)?;
+    let width = real(pares, 40)?;
+    let height = real(pares, 41)?;
+    let view_center = ponto(pares, 12, 22)?;
+    let view_height = real(pares, 45)?;
+
+    if real(pares, 340).is_some() || texto(pares, 340).is_some() {
+        leitura.clipped_viewports += 1;
+    }
+
+    let mut frozen_layers = BTreeSet::new();
+
+    for handle in todos_os_textos(pares, 331) {
+        match layer_handles
+            .get(handle.trim())
+            .and_then(|nome| layers.id_of(nome))
+        {
+            Some(id) => {
+                frozen_layers.insert(id);
+            }
+            None => leitura.unresolved_frozen_layers += 1,
+        }
+    }
+
+    Some(Viewport {
+        center,
+        width,
+        height,
+        view_center,
+        view_height,
+        twist: real(pares, 51).unwrap_or_default().to_radians(),
+        // O recorte por entidade não resolve sem mapa de handle para entidade;
+        // a contagem acima é o que impede a diferença de passar em silêncio.
+        clip: ViewportClip::Window,
+        // Código `68` zero é janela desligada. Ausente, a janela é tratada como
+        // ligada: mostrar algo que o usuário pode desligar é melhor do que
+        // esconder algo que ele não encontra.
+        is_on: inteiro(pares, 68) != Some(0),
+        frozen_layers,
+    })
+}
+
+/// Todos os valores textuais de um código, na ordem em que aparecem.
+fn todos_os_textos(pares: &[DxfPair], code: u16) -> Vec<&str> {
+    pares
+        .iter()
+        .filter(|par| par.code == code)
+        .filter_map(|par| par.value.as_text())
+        .collect()
 }
 
 /// Traduz um registro para a geometria correspondente do modelo.
@@ -465,6 +593,180 @@ fn pontos(pares: &[DxfPair]) -> Vec<Point2> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Um registro `VIEWPORT` com os códigos que a janela usa.
+    fn viewport<'a>(extras: &[(u16, &'a str)]) -> Vec<(u16, &'a str)> {
+        let mut pares = vec![
+            (0, "VIEWPORT"),
+            (8, "0"),
+            (67, "1"),
+            (410, "Prancha"),
+            (10, "200.0"),
+            (20, "150.0"),
+            (40, "100.0"),
+            (41, "50.0"),
+            (68, "1"),
+            (69, "2"),
+            (12, "10.0"),
+            (22, "20.0"),
+            (45, "25.0"),
+        ];
+        pares.extend_from_slice(extras);
+
+        pares
+    }
+
+    fn janela_lida(leitura: &EntitiesReading) -> &neocad_model::Viewport {
+        match &leitura.entities[0].entity.geometry {
+            Geometry::Viewport(janela) => janela,
+            outra => panic!("esperava janela, veio {outra:?}"),
+        }
+    }
+
+    #[test]
+    fn le_a_janela_com_medidas_e_escala() {
+        let (leitura, _) = ler(&viewport(&[]));
+        let janela = janela_lida(&leitura);
+
+        assert_eq!(janela.center, Point2::new(200.0, 150.0));
+        assert_eq!(janela.width, 100.0);
+        assert_eq!(janela.height, 50.0);
+        assert_eq!(janela.view_center, Point2::new(10.0, 20.0));
+        assert_eq!(janela.view_height, 25.0);
+        // A escala é derivada: 50 de janela sobre 25 de vista.
+        assert_eq!(janela.scale(), Some(2.0));
+        assert!(janela.is_on);
+    }
+
+    #[test]
+    fn a_janela_fica_no_espaco_papel_da_aba() {
+        let (leitura, _) = ler(&viewport(&[]));
+
+        assert_eq!(
+            leitura.entities[0].space,
+            EntitySpace::Paper(String::from("Prancha"))
+        );
+    }
+
+    #[test]
+    fn o_giro_vem_em_graus_e_e_guardado_em_radianos() {
+        // O código `51` grava graus; a convenção do modelo é radianos
+        // anti-horários, fixada no MT-KL-07.
+        let (leitura, _) = ler(&viewport(&[(51, "90.0")]));
+
+        let diferenca = (janela_lida(&leitura).twist - core::f64::consts::FRAC_PI_2).abs();
+        assert!(
+            diferenca < 1e-12,
+            "giro lido: {}",
+            janela_lida(&leitura).twist
+        );
+    }
+
+    #[test]
+    fn o_codigo_68_zero_desliga_a_janela() {
+        let mut pares = viewport(&[]);
+        let posicao = pares.iter().position(|(c, _)| *c == 68).expect("há 68");
+        pares[posicao] = (68, "0");
+
+        let (leitura, _) = ler(&pares);
+
+        assert!(!janela_lida(&leitura).is_on);
+    }
+
+    #[test]
+    fn janela_sem_o_codigo_68_e_tratada_como_ligada() {
+        // Mostrar algo que o usuário pode desligar é melhor do que esconder algo
+        // que ele não encontra.
+        let pares: Vec<(u16, &str)> = viewport(&[])
+            .into_iter()
+            .filter(|(codigo, _)| *codigo != 68)
+            .collect();
+
+        let (leitura, _) = ler(&pares);
+
+        assert!(janela_lida(&leitura).is_on);
+    }
+
+    #[test]
+    fn o_viewport_de_identificador_1_e_a_folha_e_nao_vira_janela() {
+        // O critério de aceite. Todo espaço-papel tem um, e transformá-lo em
+        // entidade criaria uma moldura fantasma do tamanho da prancha sobre tudo.
+        let mut pares = viewport(&[]);
+        let posicao = pares.iter().position(|(c, _)| *c == 69).expect("há 69");
+        pares[posicao] = (69, "1");
+
+        let (leitura, _) = ler(&pares);
+
+        assert!(leitura.entities.is_empty());
+        // Compreendido e deliberadamente não modelado: não é "não suportado".
+        assert!(leitura.unsupported.is_empty());
+    }
+
+    #[test]
+    fn as_camadas_congeladas_saem_do_codigo_331() {
+        // O `331` aponta por handle; sem o mapa da tabela de camadas ele não
+        // resolve para camada nenhuma.
+        let mut camadas = LayerTable::new();
+        let cotas = camadas.create("Cotas").expect("nome válido");
+        let eixos = camadas.create("Eixos").expect("nome válido");
+
+        let handles: BTreeMap<String, String> = [
+            (String::from("A1"), String::from("Cotas")),
+            (String::from("A2"), String::from("Eixos")),
+        ]
+        .into_iter()
+        .collect();
+
+        let leitura = read_entities(
+            &secao(&viewport(&[(331, "A1"), (331, "A2")])),
+            &mut camadas,
+            &handles,
+        );
+
+        let janela = janela_lida(&leitura);
+        assert!(janela.is_layer_frozen(cotas));
+        assert!(janela.is_layer_frozen(eixos));
+        assert_eq!(janela.frozen_layers.len(), 2);
+        assert_eq!(leitura.unresolved_frozen_layers, 0);
+    }
+
+    #[test]
+    fn handle_de_camada_que_nao_resolve_e_contado() {
+        let (leitura, _) = ler(&viewport(&[(331, "handle-perdido")]));
+
+        assert!(janela_lida(&leitura).frozen_layers.is_empty());
+        assert_eq!(leitura.unresolved_frozen_layers, 1);
+    }
+
+    #[test]
+    fn o_recorte_por_entidade_e_contado_em_vez_de_sumir() {
+        // O `340` aponta para a entidade que delimita a vista, e a leitura não
+        // mantém mapa de handle para entidade. A janela sai retangular, e a
+        // contagem é o que impede a diferença de passar em silêncio: prancha com
+        // recorte perdido mostra mais do que deveria.
+        let (leitura, _) = ler(&viewport(&[(340, "2F")]));
+
+        assert_eq!(leitura.clipped_viewports, 1);
+        assert_eq!(
+            janela_lida(&leitura).clip,
+            neocad_model::ViewportClip::Window
+        );
+    }
+
+    #[test]
+    fn janela_sem_medidas_e_contada_como_nao_representada() {
+        // Sem centro, largura, altura ou altura de vista não há como situá-la no
+        // papel, e inventar um retângulo seria desenhar o que o arquivo não diz.
+        let pares: Vec<(u16, &str)> = viewport(&[])
+            .into_iter()
+            .filter(|(codigo, _)| *codigo != 45)
+            .collect();
+
+        let (leitura, _) = ler(&pares);
+
+        assert!(leitura.entities.is_empty());
+        assert_eq!(leitura.unsupported.get("VIEWPORT"), Some(&1));
+    }
     use crate::sections;
 
     /// Monta uma seção `ENTITIES` a partir de pares.
@@ -485,7 +787,7 @@ mod tests {
 
     fn ler(pares: &[(u16, &str)]) -> (EntitiesReading, LayerTable) {
         let mut camadas = LayerTable::new();
-        let leitura = read_entities(&secao(pares), &mut camadas);
+        let leitura = read_entities(&secao(pares), &mut camadas, &BTreeMap::new());
 
         (leitura, camadas)
     }
@@ -501,7 +803,7 @@ mod tests {
             let secao = secao.expect("fixture bem formada");
 
             if secao.kind == SectionKind::Entities {
-                leitura = read_entities(&secao, &mut camadas);
+                leitura = read_entities(&secao, &mut camadas, &BTreeMap::new());
             }
         }
 
@@ -881,7 +1183,7 @@ mod tests {
             .expect("bem formada");
         let mut camadas = LayerTable::new();
 
-        let leitura = read_entities(&secao, &mut camadas);
+        let leitura = read_entities(&secao, &mut camadas, &BTreeMap::new());
 
         assert!(leitura.entities.is_empty());
     }
