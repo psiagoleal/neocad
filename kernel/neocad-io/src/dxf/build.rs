@@ -71,7 +71,11 @@ pub fn build_document(reading: &DxfReading) -> Result<DocumentBuild, DocumentErr
 
     copiar_camadas(&mut document, &reading.layers)?;
 
+    // As abas declaradas pelo arquivo vêm primeiro, com a configuração de página
+    // que ele traz. Só depois é que a citação de uma entidade cria aba — e aí é
+    // porque o arquivo de fato não a declarou.
     let mut abas: BTreeMap<String, BlockId> = BTreeMap::new();
+    declarar_abas(&mut document, reading, &mut abas, &mut build)?;
     let mut destino_de = |document: &mut Document,
                           espaco: &EntitySpace,
                           criadas: &mut Vec<String>,
@@ -150,6 +154,48 @@ pub fn build_document(reading: &DxfReading) -> Result<DocumentBuild, DocumentErr
     build.document = document;
 
     Ok(build)
+}
+
+/// Cria as abas que o arquivo declara, com a configuração de página delas.
+///
+/// A aba `Model` é ignorada: ela já existe em todo documento, e recriá-la seria
+/// recusa por nome duplicado em todo arquivo real.
+fn declarar_abas(
+    document: &mut Document,
+    reading: &DxfReading,
+    abas: &mut BTreeMap<String, BlockId>,
+    build: &mut DocumentBuild,
+) -> Result<(), DocumentError> {
+    for declarada in &reading.layouts {
+        if let Some(existente) = document.layouts().id_of(&declarada.name) {
+            // A aba do espaço-modelo cai aqui, e é só atualizar a página dela.
+            if let Some(registro) = document.layouts_mut().get_mut(existente) {
+                registro.set_page_setup(declarada.page_setup);
+                registro.set_tab_order(declarada.tab_order);
+            }
+
+            continue;
+        }
+
+        let bloco = match criar_aba(document, &declarada.name) {
+            Ok(bloco) => bloco,
+            Err(_) => {
+                build.relocated_layouts.push(declarada.name.clone());
+                continue;
+            }
+        };
+
+        if let Some(id) = document.layouts().of_block(bloco) {
+            if let Some(registro) = document.layouts_mut().get_mut(id) {
+                registro.set_page_setup(declarada.page_setup);
+                registro.set_tab_order(declarada.tab_order);
+            }
+        }
+
+        abas.insert(declarada.name.clone(), bloco);
+    }
+
+    Ok(())
 }
 
 /// Cria uma aba e devolve o bloco dela.
@@ -427,5 +473,72 @@ mod tests {
         assert_eq!(na_aba(&build, "Prancha A2"), 1);
         assert_eq!(build.skipped_count, 0);
         assert!(build.relocated_layouts.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod tests_layouts_declarados {
+    use super::*;
+    use crate::read_dxf;
+
+    #[test]
+    fn a_aba_declarada_traz_a_configuracao_de_pagina() {
+        // Antes do MT-KL-10 a aba nascia da citação e vinha com a página padrão;
+        // agora vem do arquivo, com o papel que ele declara.
+        let caminho = format!(
+            "{}/../../e2e/fixtures/two-layouts.dxf",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let bytes = std::fs::read(&caminho).expect("fixture existe");
+        let build = build_document(&read_dxf(&bytes)).expect("montagem válida");
+
+        let prancha = build
+            .document
+            .layouts()
+            .get_by_name("Prancha A1")
+            .expect("aba declarada");
+
+        assert_eq!(prancha.page_setup().paper_width, 420.0);
+        assert_eq!(prancha.page_setup().paper_height, 297.0);
+        assert_eq!(prancha.tab_order(), 1);
+        // Declarada pelo arquivo, e não inventada pela citação.
+        assert!(!build.created_layouts.contains(&String::from("Prancha A1")));
+    }
+
+    #[test]
+    fn a_aba_do_espaco_modelo_declarada_atualiza_a_que_ja_existe() {
+        let caminho = format!(
+            "{}/../../e2e/fixtures/two-layouts.dxf",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let bytes = std::fs::read(&caminho).expect("fixture existe");
+        let build = build_document(&read_dxf(&bytes)).expect("montagem válida");
+
+        // Modelo mais as duas pranchas, e não uma quarta aba duplicada.
+        assert_eq!(build.document.layouts().len(), 3);
+    }
+
+    #[test]
+    fn as_entidades_caem_nas_abas_declaradas() {
+        let caminho = format!(
+            "{}/../../e2e/fixtures/two-layouts.dxf",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let bytes = std::fs::read(&caminho).expect("fixture existe");
+        let build = build_document(&read_dxf(&bytes)).expect("montagem válida");
+
+        let entidades = |aba: &str| {
+            build
+                .document
+                .layouts()
+                .get_by_name(aba)
+                .map_or(0, |registro| {
+                    build.document.entities_in_block(registro.block()).count()
+                })
+        };
+
+        assert_eq!(entidades("Prancha A1"), 2);
+        assert_eq!(entidades("Prancha A2"), 1);
+        assert!(build.created_layouts.is_empty());
     }
 }

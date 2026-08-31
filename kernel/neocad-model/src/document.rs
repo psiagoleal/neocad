@@ -372,6 +372,15 @@ impl Document {
         &self.layouts
     }
 
+    /// Tabela de layouts, para alterar a configuração de página das abas.
+    ///
+    /// Dá acesso mutável ao **conteúdo** das abas, e não à sua estrutura: criar,
+    /// renomear e remover continuam passando pelo documento, que é quem sabe
+    /// manter o bloco e as entidades em sincronia com a aba.
+    pub fn layouts_mut(&mut self) -> &mut LayoutTable {
+        &mut self.layouts
+    }
+
     /// Cria um layout de espaço-papel, com o seu bloco.
     ///
     /// # As duas coisas nascem juntas

@@ -14,6 +14,9 @@ use super::sections::{Section, SectionKind};
 /// Nome da tabela de camadas dentro da seção `TABLES`.
 const TABELA_DE_CAMADAS: &str = "LAYER";
 
+/// Nome da tabela de registros de bloco dentro da seção `TABLES`.
+const TABELA_DE_BLOCOS: &str = "BLOCK_RECORD";
+
 /// Códigos que estruturam o arquivo e não descrevem a camada.
 ///
 /// Ficam de fora da contagem de [`LayerTableReading::unread_codes`] para que ela
@@ -259,6 +262,74 @@ fn aplicar(leitura: &mut LayerTableReading, camada: CamadaCrua) {
     registro.set_off(camada.is_off());
     registro.set_frozen(camada.is_frozen());
     registro.set_locked(camada.is_locked());
+}
+
+/// Mapeia handle para nome de registro de bloco.
+///
+/// # Para que serve
+///
+/// Um objeto `LAYOUT` aponta para o seu bloco pelo **handle**, no código `330`.
+/// Sem este mapa o ponteiro não vira nada, e o vínculo entre a aba e o lugar
+/// onde as entidades dela moram se perde — a prancha existiria sem conteúdo.
+///
+/// Só o handle e o nome são lidos: o resto do registro de bloco já vem pela
+/// seção `BLOCKS`, e duplicar aqui abriria espaço para as duas leituras
+/// divergirem.
+#[must_use]
+pub fn read_block_record_names(section: &Section) -> BTreeMap<String, String> {
+    let mut nomes = BTreeMap::new();
+
+    if section.kind != SectionKind::Tables {
+        return nomes;
+    }
+
+    let mut na_tabela = false;
+    let mut handle: Option<String> = None;
+    let mut nome: Option<String> = None;
+
+    for par in &section.pairs {
+        if par.code == 0 {
+            guardar(&mut nomes, handle.take(), nome.take());
+
+            match marcador(par) {
+                Some("TABLE") => na_tabela = false,
+                Some(TABELA_DE_BLOCOS) => na_tabela = true,
+                Some("ENDTAB") => na_tabela = false,
+                _ => {}
+            }
+
+            continue;
+        }
+
+        if !na_tabela {
+            // O `2` que nomeia a tabela vem depois do `0/TABLE`, e é ele que
+            // liga o percurso.
+            if par.code == 2 && marcador(par) == Some(TABELA_DE_BLOCOS) {
+                na_tabela = true;
+            }
+
+            continue;
+        }
+
+        match par.code {
+            5 => handle = marcador(par).map(str::to_owned),
+            2 => nome = marcador(par).map(str::to_owned),
+            _ => {}
+        }
+    }
+
+    guardar(&mut nomes, handle, nome);
+
+    nomes
+}
+
+/// Guarda o par handle/nome quando os dois existem.
+fn guardar(nomes: &mut BTreeMap<String, String>, handle: Option<String>, nome: Option<String>) {
+    if let (Some(handle), Some(nome)) = (handle, nome) {
+        if !handle.is_empty() && !nome.is_empty() {
+            nomes.insert(handle, nome);
+        }
+    }
 }
 
 #[cfg(test)]

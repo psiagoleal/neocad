@@ -45,6 +45,11 @@ pub struct DxfReport {
     pub skipped_sections: BTreeMap<String, usize>,
     /// Falhas locais do percurso de seções, que não impediram a leitura.
     pub section_errors: Vec<DxfSectionError>,
+    /// Abas cujo vínculo com o bloco não resolveu.
+    ///
+    /// O layout continua sendo entregue: perder a prancha porque o ponteiro está
+    /// torto seria descartar o conteúdo por causa de um handle.
+    pub unresolved_layouts: Vec<String>,
 }
 
 impl DxfReport {

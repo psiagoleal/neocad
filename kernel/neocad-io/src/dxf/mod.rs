@@ -16,6 +16,7 @@
 mod blocks;
 mod build;
 mod entities;
+mod objects;
 mod pairs;
 mod report;
 mod sections;
@@ -27,27 +28,19 @@ pub use build::{build_document, DocumentBuild, DEFAULT_PAPER_LAYOUT};
 pub use entities::{
     read_entities, EntitiesReading, EntitySpace, ReadEntity, RejectedEntity, DEFAULT_PAPER_SPACE,
 };
+pub use objects::{read_layouts, LayoutDefinition, LayoutsReading};
 pub use pairs::{pairs, DxfPair, DxfPairError, DxfPairs, DxfValue};
 pub use report::DxfReport;
 pub use sections::{sections, DxfSectionError, Section, SectionKind, Sections};
-pub use tables::{read_layer_table, LayerTableReading, RejectedLayer};
+pub use tables::{read_block_record_names, read_layer_table, LayerTableReading, RejectedLayer};
 pub use writer::{formatar_real, write_dxf, DxfContents, ACAD_VERSION};
 
 use neocad_model::LayerTable;
 
 /// Um arquivo DXF lido por inteiro.
 ///
-/// # Por que ainda não é um `Document`
-///
-/// Montar um [`neocad_model::Document`] exige colocar cada entidade num registro
-/// de bloco, e as entidades de espaço-papel precisam dos blocos `*Paper_Space*`,
-/// que a `BlockTable` **recusa criar** — nomes iniciados por `*` são reservados.
-/// Abrir essa via é o MT-KL-04, na fase de layouts.
-///
-/// A alternativa seria descartar as entidades de papel para montar o documento
-/// agora, e isso a diretriz de conformidade do ADR 0005 proíbe: 70% dos desenhos
-/// do acervo têm conteúdo lá. Entre entregar um documento incompleto e entregar
-/// a leitura completa, a leitura completa é a que não perde trabalho alheio.
+/// É o retrato cru do arquivo. Para virar um documento do modelo, passa por
+/// [`build_document`], que decide o bloco de destino de cada entidade.
 #[derive(Debug)]
 pub struct DxfReading {
     /// Tabela de camadas, incluindo as criadas por citação de entidade.
@@ -56,6 +49,8 @@ pub struct DxfReading {
     pub entities: Vec<ReadEntity>,
     /// Definições de bloco, na ordem do arquivo.
     pub blocks: Vec<BlockDefinition>,
+    /// Layouts declarados pela seção `OBJECTS`, na ordem do arquivo.
+    pub layouts: Vec<LayoutDefinition>,
     /// O que a leitura não compreendeu.
     pub report: DxfReport,
 }
@@ -151,8 +146,15 @@ pub fn read_dxf(input: &[u8]) -> DxfReading {
         }
     }
 
+    // Os registros de bloco vêm antes dos layouts: é o handle deles que faz o
+    // código `330` de um layout virar um bloco.
+    let block_names = primeira_tables
+        .map(|indice| read_block_record_names(&colhidas[indice]))
+        .unwrap_or_default();
+
     let mut entities = Vec::new();
     let mut blocks = Vec::new();
+    let mut layouts = Vec::new();
 
     for (indice, secao) in colhidas.iter().enumerate() {
         match secao.kind {
@@ -183,6 +185,12 @@ pub fn read_dxf(input: &[u8]) -> DxfReading {
                     report.contar_nao_representado(tipo, quantidade);
                 }
             }
+            SectionKind::Objects => {
+                let leitura = read_layouts(secao, &block_names);
+
+                report.unresolved_layouts.extend(leitura.unresolved_blocks);
+                layouts.extend(leitura.layouts);
+            }
             _ => {
                 *report
                     .skipped_sections
@@ -196,6 +204,7 @@ pub fn read_dxf(input: &[u8]) -> DxfReading {
         layers,
         entities,
         blocks,
+        layouts,
         report,
     }
 }
@@ -402,21 +411,18 @@ mod tests {
 
     #[test]
     fn secao_nao_consumida_e_registrada_com_o_tamanho() {
-        // A `OBJECTS` é onde moram os `LAYOUT`: esta contagem é a medida do que
-        // falta para a fase KL.
+        // O `HEADER` ainda não é consumido, e a contagem é a medida do que
+        // falta ler.
         let bytes = arquivo(&[
             ("HEADER", &[(9, "$ACADVER"), (1, "AC1015")]),
-            (
-                "OBJECTS",
-                &[(0, "LAYOUT"), (1, "Prancha A1"), (0, "LAYOUT")],
-            ),
             ("ENTITIES", RETA),
         ]);
 
         let leitura = read_dxf(&bytes);
 
         assert_eq!(leitura.report.skipped_sections.get("HEADER"), Some(&2));
-        assert_eq!(leitura.report.skipped_sections.get("OBJECTS"), Some(&3));
+        // A `OBJECTS` saiu desta lista no MT-KL-10: agora ela é consumida.
+        assert!(!leitura.report.skipped_sections.contains_key("OBJECTS"));
         // Lacuna conhecida não é sujeira do arquivo.
         assert!(leitura.report.is_clean());
     }

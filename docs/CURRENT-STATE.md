@@ -919,9 +919,37 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
 - [x] **A fachada WebAssembly deixou de duplicar a montagem.** `try_open_dxf`
       montava meio documento por conta própria — só o espaço-modelo. Agora chama
       `build_document`, e a lógica mora na crate que conhece a leitura.
-- [ ] **Próximo passo:** **MT-KL-10** — ler os objetos `LAYOUT` da seção
-      `OBJECTS`, com nome de aba, ordem e configuração de página. É o que
-      transforma "aba criada por citação" em "aba declarada pelo arquivo".
+- [x] **MT-KL-10 concluído:** `neocad-io/src/dxf/objects.rs` lê os objetos
+      `LAYOUT` da seção `OBJECTS` — nome de aba, ordem, configuração de página e
+      vínculo ao bloco. A aba deixou de nascer por citação: quando o arquivo a
+      declara, ela vem com o papel que ele diz. 177 testes na crate de I/O;
+      **489** no kernel.
+- [x] **O achado do MT-KL-01 virou requisito de projeto do leitor.** Um objeto
+      `LAYOUT` traz duas subclasses que **repetem** códigos: o `1` é nome da
+      configuração numa e nome da aba na outra; o `70` é sinalizador de plotagem
+      numa e de controle na outra. Ler o registro achatado faria a aba herdar o
+      nome da configuração, quase sempre vazio — foi exatamente o que derrubou a
+      minha fixture escrita à mão. O percurso acompanha o marcador `100` e
+      recorta cada subclasse antes de interpretar.
+- [x] **O vínculo com o bloco exigiu ler a `BLOCK_RECORD`.** O `330` de um layout
+      aponta para um **handle**, e sem o mapa handle→nome o ponteiro não vira
+      nada: a prancha existiria sem conteúdo. `read_block_record_names` lê só o
+      handle e o nome — o resto do registro já vem pela `BLOCKS`, e duplicar
+      abriria espaço para as duas leituras divergirem.
+- [x] **Layout sem bloco correspondente é relatado, não descartado.** Continua na
+      lista com `block_name` vazio e entra em `report.unresolved_layouts`. Perder
+      a prancha porque o ponteiro está torto seria descartar o conteúdo por causa
+      de um handle.
+- [x] **A `OBJECTS` saiu de `skipped_sections`.** Era, desde o MT-K2-06, "a
+      medida direta do que falta para a fase KL". Deixou de ser.
+- [x] **Escala de plotagem chega como razão.** Os códigos `142`/`143` trazem
+      numerador e denominador separados, e é assim que ficam guardados: `1:100`,
+      e não `0,01`. Dividir na leitura perderia a distinção entre `1:3` e o
+      decimal que o aproxima.
+- [ ] **Próximo passo:** **MT-KL-11** — ler as entidades `VIEWPORT`, incluindo as
+      camadas congeladas (código `331`) e o mapeamento do giro (código `51`) para
+      a convenção fixada no MT-KL-07. Atenção ao viewport de identificador `1`,
+      que é a própria folha e não uma janela.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma
