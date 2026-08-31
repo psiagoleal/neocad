@@ -132,12 +132,19 @@ jobs:
         with:
           workspaces: src-tauri
 
-      # `tauri.ci.conf.json` zera o `beforeBuildCommand`. Sem isso o `tauri
-      # build` refaz `pnpm build` aqui dentro — ignorando o artefato que acabou
-      # de ser baixado e exigindo a toolchain WebAssembly nos dois runners.
+      # A sobreposição zera o `beforeBuildCommand`. Sem ela o `tauri build`
+      # refaz `pnpm build` aqui dentro — ignorando o artefato que acabou de ser
+      # baixado e exigindo a toolchain WebAssembly nos dois runners.
+      #
+      # Vai embutida, e não num arquivo do repositório, porque o checkout é do
+      # ref pedido: um arquivo só existiria nas tags posteriores a ele, e
+      # reempacotar uma tag antiga voltaria a quebrar.
+      #
+      # `shell: bash` nos dois para que a citação do JSON seja uma só.
       # `--no-bundle` não é usado: é justamente o empacotamento que se quer.
       - name: Empacotar
-        run: pnpm tauri build --config src-tauri/tauri.ci.conf.json
+        shell: bash
+        run: pnpm tauri build --config '{"build":{"beforeBuildCommand":""}}'
 
       - name: Reunir artefatos (Linux)
         if: matrix.os == 'ubuntu-latest'
