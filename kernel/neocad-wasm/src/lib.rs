@@ -23,7 +23,7 @@
 use neocad_geometry::{Aabb, Point2};
 use neocad_io::{
     build_document, read_dxf, write_dxf, BlockDefinition, DocumentBuild, DxfContents, EntitySpace,
-    ReadEntity,
+    LayoutDefinition, ReadEntity,
 };
 use neocad_model::{
     Arc, Circle, Color, Document, Entity, EntityId, Geometry, LayerId, LayerRecord, Line, Polyline,
@@ -937,7 +937,13 @@ impl CadSession {
     }
 
     fn try_to_dxf(&self) -> Vec<u8> {
-        let entidades: Vec<ReadEntity> = self
+        let layouts = self.document.layouts();
+        let modelo = layouts.model_layout();
+
+        // As entidades saem na ordem em que o desenho as guarda: primeiro o
+        // espaço-modelo, depois cada aba. Cada uma leva o seu espaço, e é dele
+        // que a gravação tira os códigos `67` e `410`.
+        let mut entidades: Vec<ReadEntity> = self
             .document
             .entities_in_block(self.document.model_space())
             .map(|(_, entidade)| ReadEntity {
@@ -946,11 +952,42 @@ impl CadSession {
             })
             .collect();
 
+        let mut declarados: Vec<LayoutDefinition> = Vec::new();
+
+        for (id, registro) in layouts.in_tab_order() {
+            if id == modelo {
+                continue;
+            }
+
+            let bloco = self
+                .document
+                .blocks()
+                .get(registro.block())
+                .map(|b| b.name().to_owned());
+
+            entidades.extend(self.document.entities_in_block(registro.block()).map(
+                |(_, entidade)| ReadEntity {
+                    space: EntitySpace::Paper(registro.name().to_owned()),
+                    entity: entidade.clone(),
+                },
+            ));
+
+            declarados.push(LayoutDefinition {
+                name: registro.name().to_owned(),
+                tab_order: registro.tab_order(),
+                block_name: bloco,
+                page_setup: registro.page_setup(),
+            });
+        }
+
+        // Bloco de aba não é bloco do desenho: o conteúdo dele já saiu como
+        // entidade de espaço-papel, e gravá-lo aqui o duplicaria.
         let blocos: Vec<BlockDefinition> = self
             .document
             .blocks()
             .iter()
             .filter(|(id, _)| *id != self.document.model_space())
+            .filter(|(id, _)| layouts.of_block(*id).is_none())
             .map(|(_, registro)| BlockDefinition {
                 name: registro.name().to_owned(),
                 base_point: registro.origin(),
@@ -969,6 +1006,7 @@ impl CadSession {
             layers: self.document.layers(),
             entities: &entidades,
             blocks: &blocos,
+            layouts: &declarados,
         })
     }
 

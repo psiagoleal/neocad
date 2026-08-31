@@ -45,10 +45,30 @@ pub(super) fn write_blocks(saida: &mut Saida, contents: &DxfContents<'_>, handle
         );
     }
 
+    // Os blocos das demais abas — `*Paper_Space0` em diante — saem antes dos
+    // blocos comuns: sem eles, uma aba declarada na `OBJECTS` apontaria para um
+    // registro que o arquivo não tem.
+    for nome in contents
+        .layouts
+        .iter()
+        .filter_map(|layout| layout.block_name.as_deref())
+        .filter(|nome| !eh_espaco_reservado(nome))
+    {
+        write_block(
+            saida,
+            nome,
+            Point2::ORIGIN,
+            &[],
+            None,
+            contents.layers,
+            handles,
+        );
+    }
+
     for bloco in contents
         .blocks
         .iter()
-        .filter(|b| !eh_espaco_reservado(&b.name))
+        .filter(|b| !eh_bloco_de_espaco(&b.name, contents))
     {
         write_block(
             saida,
@@ -99,9 +119,23 @@ pub(super) fn model_space_extents(contents: &DxfContents<'_>) -> Option<Aabb> {
     )
 }
 
-/// Indica se o nome é de um dos blocos de espaço.
+/// Indica se o nome é de um dos dois blocos de espaço que saem sempre.
 fn eh_espaco_reservado(nome: &str) -> bool {
     nome_igual(nome, MODEL_SPACE) || nome_igual(nome, DEFAULT_PAPER_SPACE)
+}
+
+/// Indica se o nome é de um bloco de espaço — inclusive o de uma aba.
+///
+/// Bloco de aba é gravado uma vez, junto com o layout que o declara. Um nome
+/// anônimo como `*U1` **não** entra aqui: apesar do asterisco, ele é conteúdo de
+/// verdade — hachura e cota vivem nesses blocos — e excluí-lo perderia desenho.
+fn eh_bloco_de_espaco(nome: &str, contents: &DxfContents<'_>) -> bool {
+    eh_espaco_reservado(nome)
+        || contents
+            .layouts
+            .iter()
+            .filter_map(|layout| layout.block_name.as_deref())
+            .any(|bloco| nome_igual(bloco, nome))
 }
 
 /// Compara nomes como os formatos CAD comparam: ignorando caixa.
@@ -154,11 +188,18 @@ fn write_block(
 /// # Limitação declarada da escrita de `VIEWPORT`
 ///
 /// O recorte por entidade ([`neocad_model::ViewportClip::Boundary`]) **não é
-/// gravado**: o código `340` exige o handle da entidade que delimita, e a escrita
-/// distribui handles ao percorrer, sem manter o mapa de entidade para handle.
-/// Uma janela recortada regravada hoje voltaria como janela retangular. Nada no
-/// modelo produz esse recorte ainda — ele só aparece com a leitura do MT-KL-11 —,
-/// e fechá-lo é trabalho do MT-KL-12, que completa a escrita de layout.
+/// gravado**. O código `340` exige o handle da **entidade** que delimita, e o que
+/// a escrita recebe é uma lista de entidades sem identidade: não há como saber
+/// qual delas o recorte aponta.
+///
+/// O congelamento por janela, que sofria do mesmo sintoma, foi resolvido no
+/// MT-KL-12 — mas por uma razão que não vale para o recorte: camada tem **nome**,
+/// e nome é chave estável entre a tabela e a janela. Entidade não tem. Fechar o
+/// recorte exige a escrita passar a receber o documento, com identificadores, em
+/// vez de uma lista solta.
+///
+/// A leitura conta as janelas recortadas em `DxfReport::clipped_viewports`, então
+/// a diferença aparece em vez de acontecer em silêncio.
 fn write_entity(
     saida: &mut Saida,
     entidade: &Entity,
@@ -254,6 +295,21 @@ fn write_entity(
             saida.real(22, viewport.view_center.y);
             saida.real(45, viewport.view_height);
             saida.real(51, viewport.twist.to_degrees());
+
+            // O `331` aponta a camada congelada **por handle**, e é por isso que
+            // a tabela de camadas registra o seu ao ser gravada. A camada cujo
+            // handle não existe é omitida: apontar para nada faria o leitor
+            // congelar camada errada, que é pior do que não congelar.
+            for congelada in &viewport.frozen_layers {
+                let handle = layers
+                    .get(*congelada)
+                    .and_then(|camada| handles.camada(camada.name()))
+                    .map(str::to_owned);
+
+                if let Some(handle) = handle {
+                    saida.par(331, &handle);
+                }
+            }
         }
     }
 }
@@ -307,13 +363,27 @@ fn escrever_cor(saida: &mut Saida, color: EntityColor) {
 pub(super) fn block_record_names<'a>(contents: &DxfContents<'a>) -> Vec<&'a str> {
     let mut nomes = vec![MODEL_SPACE, DEFAULT_PAPER_SPACE];
 
+    // Os blocos das abas vêm antes dos comuns, na mesma ordem em que a seção
+    // `BLOCKS` os grava — a tabela e a seção precisam concordar.
+    nomes.extend(
+        contents
+            .layouts
+            .iter()
+            .filter_map(|layout| layout.block_name.as_deref())
+            .filter(|nome| !eh_espaco_reservado(nome)),
+    );
+
     nomes.extend(
         contents
             .blocks
             .iter()
-            .filter(|b| !eh_espaco_reservado(&b.name))
+            .filter(|b| !eh_bloco_de_espaco(&b.name, contents))
             .map(|b| b.name.as_str()),
     );
+
+    // Bloco declarado por duas vias — uma aba e a seção `BLOCKS` — sairia
+    // duplicado, e handle repetido invalida o arquivo.
+    nomes.dedup_by(|a, b| nome_igual(a, b));
 
     nomes
 }
@@ -339,6 +409,7 @@ mod tests {
             layers,
             entities: entidades,
             blocks: &[],
+            layouts: &[],
         });
 
         read_dxf(&bytes).entities
@@ -467,6 +538,7 @@ mod tests {
             layers: &camadas,
             entities: &[no_modelo(reta)],
             blocks: &[],
+            layouts: &[],
         });
         let leitura = read_dxf(&bytes);
 
@@ -595,6 +667,7 @@ mod tests {
             layers: &camadas,
             entities: &[],
             blocks: &blocos,
+            layouts: &[],
         });
         let leitura = read_dxf(&bytes);
 
@@ -619,6 +692,7 @@ mod tests {
             layers: &camadas,
             entities: &[],
             blocks: &blocos,
+            layouts: &[],
         });
         let leitura = read_dxf(&bytes);
 
@@ -645,6 +719,7 @@ mod tests {
             layers: &camadas,
             entities: &[],
             blocks: &blocos,
+            layouts: &[],
         });
         let leitura = read_dxf(&bytes);
 
@@ -679,6 +754,7 @@ mod tests {
             layers: &camadas,
             entities: &[],
             blocks: &blocos,
+            layouts: &[],
         });
         let leitura = read_dxf(&bytes);
 
@@ -716,6 +792,7 @@ mod tests {
             layers: &camadas,
             entities: &entidades,
             blocks: &blocos,
+            layouts: &[],
         };
 
         assert_eq!(write_dxf(&conteudo), write_dxf(&conteudo));
@@ -751,6 +828,7 @@ mod tests {
             layers: &camadas,
             entities: &entidades,
             blocks: &[],
+            layouts: &[],
         })
         .expect("há entidade no modelo");
 
@@ -766,6 +844,7 @@ mod tests {
             layers: &camadas,
             entities: &[],
             blocks: &[],
+            layouts: &[],
         })
         .is_none());
     }
@@ -784,6 +863,7 @@ mod tests {
             layers: &original.layers,
             entities: &original.entities,
             blocks: &original.blocks,
+            layouts: &[],
         });
         let relido = read_dxf(&regravado);
 
@@ -804,6 +884,7 @@ mod tests {
                 layers: &relido.layers,
                 entities: &relido.entities,
                 blocks: &relido.blocks,
+                layouts: &[],
             })
         );
     }
@@ -864,6 +945,7 @@ mod tests {
             layers: &camadas,
             entities: &entidades,
             blocks: &[],
+            layouts: &[],
         });
         let leitura = read_dxf(&bytes);
 

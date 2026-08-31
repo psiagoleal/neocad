@@ -60,7 +60,8 @@ fn write_block_record_table(saida: &mut Saida, contents: &DxfContents<'_>, handl
     abrir_tabela(saida, "BLOCK_RECORD", nomes.len(), handles);
 
     for nome in nomes {
-        abrir_registro(saida, "BLOCK_RECORD", "AcDbBlockTableRecord", handles);
+        let handle = abrir_registro(saida, "BLOCK_RECORD", "AcDbBlockTableRecord", handles);
+        handles.registrar_bloco(nome, &handle);
         saida.par(2, nome);
         saida.inteiro(70, 0);
     }
@@ -80,11 +81,15 @@ fn abrir_tabela(saida: &mut Saida, nome: &str, entradas: usize, handles: &mut Ha
 }
 
 /// Abre um registro de tabela, com handle e os marcadores de subclasse.
-fn abrir_registro(saida: &mut Saida, tipo: &str, subclasse: &str, handles: &mut Handles) {
+fn abrir_registro(saida: &mut Saida, tipo: &str, subclasse: &str, handles: &mut Handles) -> String {
+    let handle = handles.proximo();
+
     saida.par(0, tipo);
-    saida.par(5, &handles.proximo());
+    saida.par(5, &handle);
     saida.par(100, "AcDbSymbolTableRecord");
     saida.par(100, subclasse);
+
+    handle
 }
 
 /// Escreve a tabela de tipos de linha, com a entrada `Continuous`.
@@ -117,7 +122,8 @@ pub(super) fn write_layer_table(saida: &mut Saida, layers: &LayerTable, handles:
 
 /// Escreve um registro de camada.
 fn write_layer(saida: &mut Saida, camada: &LayerRecord, handles: &mut Handles) {
-    abrir_registro(saida, "LAYER", "AcDbLayerTableRecord", handles);
+    let handle = abrir_registro(saida, "LAYER", "AcDbLayerTableRecord", handles);
+    handles.registrar_camada(camada.name(), &handle);
     saida.par(2, camada.name());
     saida.inteiro(70, flags(camada));
 

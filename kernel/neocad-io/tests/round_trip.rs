@@ -145,6 +145,7 @@ fn regravar(leitura: &DxfReading) -> Vec<u8> {
         layers: &leitura.layers,
         entities: &leitura.entities,
         blocks: &leitura.blocks,
+        layouts: &leitura.layouts,
     })
 }
 
@@ -378,4 +379,129 @@ fn a_fixture_de_layouts_atravessa_com_as_duas_pranchas() {
 
     assert_eq!(relido.model_space_count(), 2);
     assert_eq!(relido.paper_space_layouts(), ["Prancha A1", "Prancha A2"]);
+}
+
+// -- Layouts atravessam a gravação -------------------------------------------
+
+/// Abas de uma leitura, na ordem em que o arquivo as declara.
+fn abas(leitura: &DxfReading) -> Vec<(String, u16, Option<String>)> {
+    leitura
+        .layouts
+        .iter()
+        .map(|layout| {
+            (
+                layout.name.clone(),
+                layout.tab_order,
+                layout.block_name.clone(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn as_abas_atravessam_a_gravacao_com_nome_ordem_e_bloco() {
+    let original = read_dxf(&fixture("two-layouts.dxf"));
+    let relido = read_dxf(&regravar(&original));
+
+    assert_eq!(abas(&relido), abas(&original));
+    assert_eq!(
+        abas(&relido)
+            .iter()
+            .map(|(nome, _, _)| nome.as_str())
+            .collect::<Vec<_>>(),
+        ["Model", "Prancha A1", "Prancha A2"]
+    );
+}
+
+#[test]
+fn a_configuracao_de_pagina_atravessa_a_gravacao() {
+    let original = read_dxf(&fixture("two-layouts.dxf"));
+    let relido = read_dxf(&regravar(&original));
+
+    let pagina = |leitura: &DxfReading, aba: &str| {
+        leitura
+            .layouts
+            .iter()
+            .find(|layout| layout.name == aba)
+            .map(|layout| layout.page_setup)
+    };
+
+    assert_eq!(
+        pagina(&relido, "Prancha A1"),
+        pagina(&original, "Prancha A1")
+    );
+    assert_eq!(
+        pagina(&relido, "Prancha A1").map(|p| p.paper_width),
+        Some(420.0)
+    );
+}
+
+#[test]
+fn as_entidades_de_papel_voltam_nas_mesmas_abas() {
+    let original = read_dxf(&fixture("two-layouts.dxf"));
+    let relido = read_dxf(&regravar(&original));
+
+    assert_eq!(relido.paper_space_layouts(), original.paper_space_layouts());
+    assert_eq!(relido.paper_space_layouts(), ["Prancha A1", "Prancha A2"]);
+    assert_eq!(relido.model_space_count(), 2);
+}
+
+#[test]
+fn a_aba_do_modelo_sai_uma_vez_so() {
+    // Sair duas vezes foi o primeiro defeito que o teste de ponto fixo pegou: a
+    // escrita grava a aba `Model` sempre, e a leitura a trazia junto do arquivo.
+    let original = read_dxf(&fixture("two-layouts.dxf"));
+    let regravado = String::from_utf8(regravar(&original)).expect("saída é UTF-8");
+
+    assert_eq!(regravado.matches("\r\nModel\r\n").count(), 1);
+}
+
+#[test]
+fn o_congelamento_por_janela_atravessa_a_gravacao() {
+    // O código `331` aponta a camada congelada por handle, e é por isso que a
+    // tabela de camadas registra o dela ao ser gravada. Sem o mapa, a prancha
+    // reabriria mostrando o que devia esconder.
+    let arquivo = b"  0\nSECTION\n  2\nTABLES\n\
+                      0\nTABLE\n  2\nLAYER\n\
+                      0\nLAYER\n  5\nA1\n  2\nCotas\n 62\n1\n\
+                      0\nENDTAB\n  0\nENDSEC\n\
+                      0\nSECTION\n  2\nENTITIES\n\
+                      0\nVIEWPORT\n  8\n0\n 67\n1\n410\nPrancha\n\
+                     10\n200.0\n 20\n150.0\n 40\n100.0\n 41\n50.0\n\
+                     68\n1\n 69\n2\n 12\n10.0\n 22\n20.0\n 45\n25.0\n\
+                    331\nA1\n\
+                      0\nENDSEC\n  0\nEOF\n";
+    let original = read_dxf(arquivo);
+    let congeladas = |leitura: &DxfReading| match &leitura.entities[0].entity.geometry {
+        Geometry::Viewport(janela) => janela.frozen_layers.len(),
+        outra => panic!("esperava janela, veio {outra:?}"),
+    };
+    assert_eq!(congeladas(&original), 1);
+
+    let relido = read_dxf(&regravar(&original));
+
+    assert_eq!(congeladas(&relido), 1);
+    assert_eq!(relido.report.unresolved_frozen_layers, 0);
+}
+
+#[test]
+fn perda_declarada_o_recorte_por_entidade_nao_e_gravado() {
+    // O `340` exige o handle da **entidade** que delimita, e a escrita recebe uma
+    // lista de entidades sem identidade. O congelamento, que sofria do mesmo
+    // sintoma, se resolveu porque camada tem nome — chave estável entre a tabela
+    // e a janela. Entidade não tem. A leitura conta, para a diferença aparecer.
+    let arquivo = b"  0\nSECTION\n  2\nENTITIES\n\
+                      0\nVIEWPORT\n  8\n0\n 67\n1\n410\nPrancha\n\
+                     10\n200.0\n 20\n150.0\n 40\n100.0\n 41\n50.0\n\
+                     68\n1\n 69\n2\n 12\n10.0\n 22\n20.0\n 45\n25.0\n\
+                    340\n2F\n\
+                      0\nENDSEC\n  0\nEOF\n";
+    let original = read_dxf(arquivo);
+    assert_eq!(original.report.clipped_viewports, 1);
+
+    let relido = read_dxf(&regravar(&original));
+
+    // A janela sobrevive; o recorte não.
+    assert_eq!(relido.entities.len(), 1);
+    assert_eq!(relido.report.clipped_viewports, 0);
 }

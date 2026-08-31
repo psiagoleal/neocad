@@ -19,14 +19,19 @@
 //!   endereço de memória ou de ordem de alocação.
 
 mod entities;
+mod objects;
 mod tables;
+
+use std::collections::BTreeMap;
 
 use neocad_geometry::Point2;
 use neocad_model::LayerTable;
 
 use super::blocks::BlockDefinition;
 use super::entities::ReadEntity;
+use super::objects::LayoutDefinition;
 use entities::{model_space_extents, write_blocks, write_entities};
+use objects::write_objects;
 use tables::write_tables;
 
 /// O conteúdo de um desenho, na forma que a escrita consome.
@@ -43,6 +48,11 @@ pub struct DxfContents<'a> {
     pub entities: &'a [ReadEntity],
     /// Definições de bloco.
     pub blocks: &'a [BlockDefinition],
+    /// Layouts do desenho, sem a aba do espaço-modelo.
+    ///
+    /// A aba `Model` não entra: ela é gravada sempre, porque todo arquivo a tem,
+    /// e recebê-la aqui abriria a porta para gravá-la duas vezes.
+    pub layouts: &'a [LayoutDefinition],
 }
 
 impl<'a> DxfContents<'a> {
@@ -53,6 +63,7 @@ impl<'a> DxfContents<'a> {
             layers,
             entities: &[],
             blocks: &[],
+            layouts: &[],
         }
     }
 }
@@ -90,12 +101,47 @@ const FIM_DE_LINHA: &str = "\r\n";
 #[derive(Debug)]
 pub(super) struct Handles {
     proximo: u64,
+    /// Handle de cada camada, pelo nome.
+    ///
+    /// Existe porque o código `331` de uma janela aponta para a camada
+    /// congelada **por handle**. Sem este mapa o congelamento por viewport não
+    /// atravessa a gravação, e a prancha reabre mostrando o que devia esconder.
+    camadas: BTreeMap<String, String>,
+    /// Handle de cada registro de bloco, pelo nome.
+    ///
+    /// Serve ao código `330` de um layout, que é o que liga a aba ao lugar onde
+    /// as entidades dela moram.
+    blocos: BTreeMap<String, String>,
 }
 
 impl Handles {
     /// Começa em `0x10`, faixa acima da que o próprio formato reserva.
-    pub(super) const fn new() -> Self {
-        Self { proximo: 0x10 }
+    pub(super) fn new() -> Self {
+        Self {
+            proximo: 0x10,
+            camadas: BTreeMap::new(),
+            blocos: BTreeMap::new(),
+        }
+    }
+
+    /// Registra o handle de uma camada, para o código `331`.
+    pub(super) fn registrar_camada(&mut self, nome: &str, handle: &str) {
+        self.camadas.insert(nome.to_owned(), handle.to_owned());
+    }
+
+    /// Handle da camada, quando ela já foi gravada.
+    pub(super) fn camada(&self, nome: &str) -> Option<&str> {
+        self.camadas.get(nome).map(String::as_str)
+    }
+
+    /// Registra o handle de um registro de bloco, para o código `330`.
+    pub(super) fn registrar_bloco(&mut self, nome: &str, handle: &str) {
+        self.blocos.insert(nome.to_owned(), handle.to_owned());
+    }
+
+    /// Handle do registro de bloco, quando ele já foi gravado.
+    pub(super) fn bloco(&self, nome: &str) -> Option<&str> {
+        self.blocos.get(nome).map(String::as_str)
     }
 
     /// Devolve o próximo handle, em hexadecimal maiúsculo como o formato exige.
@@ -237,6 +283,7 @@ pub fn write_dxf(contents: &DxfContents<'_>) -> Vec<u8> {
     write_tables(&mut corpo, contents, &mut handles);
     write_blocks(&mut corpo, contents, &mut handles);
     write_entities(&mut corpo, contents, &mut handles);
+    write_objects(&mut corpo, contents, &mut handles);
 
     let mut saida = Saida::new();
     write_header(&mut saida, contents, &handles);
@@ -345,7 +392,8 @@ mod tests {
                 SectionKind::Header,
                 SectionKind::Tables,
                 SectionKind::Blocks,
-                SectionKind::Entities
+                SectionKind::Entities,
+                SectionKind::Objects
             ]
         );
     }

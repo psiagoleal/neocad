@@ -969,10 +969,32 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       entra em `unresolved_frozen_layers`.
 - [x] **Janela sem código `68` é tratada como ligada.** Mostrar algo que o
       usuário pode desligar é melhor do que esconder algo que ele não encontra.
-- [ ] **Próximo passo:** **MT-KL-12** — escrever layouts, viewports e entidades
-      de papel, fechando a ida e volta. É onde as duas limitações irmãs da
-      escrita (`340` e `331`) se resolvem juntas, com o mapa de handle que a
-      gravação hoje não mantém.
+- [x] **MT-KL-12 concluído — FASE KL FECHADA.** A escrita reproduz a seção
+      `OBJECTS` com os objetos `LAYOUT`, os blocos de cada aba e o congelamento
+      por janela. Abas, configuração de página e entidades de papel atravessam a
+      ida e volta. 187 testes na crate de I/O e 18 no round-trip; **505** no
+      kernel.
+- [x] **A previsão de que as duas limitações irmãs cairiam juntas estava meio
+      errada, e vale corrigir.** O congelamento (`331`) foi resolvido: camada tem
+      **nome**, e nome é chave estável entre a tabela e a janela, então bastou a
+      gravação registrar o handle de cada camada. O recorte (`340`) **não** foi:
+      ele aponta para uma **entidade**, e o que a escrita recebe é uma lista de
+      entidades sem identidade. Fechá-lo exige a escrita passar a receber o
+      documento, com identificadores, em vez de uma lista solta — trabalho para
+      quando a fachada parar de traduzir documento em lista.
+- [x] **O teste de ponto fixo do MT-K2-09 provou o seu valor duas vezes.** Pegou
+      a aba `Model` saindo duplicada — a escrita a grava sempre, e a leitura
+      passou a trazê-la do arquivo — e depois o bloco de aba gravado duas vezes,
+      uma pelo layout e outra pela seção `BLOCKS`. Handle repetido invalida o
+      arquivo, e nenhum dos dois apareceria numa inspeção a olho.
+- [x] **Bloco anônimo não é bloco de espaço.** `*U1` e `*D15` começam com
+      asterisco e **são conteúdo de verdade** — hachura e cota vivem neles. O
+      filtro exclui os blocos de espaço nominalmente, e não pelo prefixo, senão
+      perderia desenho.
+- [ ] **Próximo passo:** ponto de funcionalidade completa. A pedido do usuário,
+      gerar os dois builds (Linux nativo e Windows x64) e atualizar a release.
+      **Antes disso, decidir com ele o que fazer com a branch:** a `feat/kernel-cad-k1`
+      acumula K1, K2 e KL e nunca foi mesclada na `master`.
 - [ ] **Nota de arquitetura para o MT-K2-09:** `BlockRecord` guarda `EntityId`, e
       identificador só existe dentro de um `Document`. Por isso a leitura de
       blocos devolve `BlockDefinition` com as entidades por valor, e não uma
