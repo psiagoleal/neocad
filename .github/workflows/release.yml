@@ -132,10 +132,12 @@ jobs:
         with:
           workspaces: src-tauri
 
-      # `pnpm build` já rodou no job anterior e o resultado veio pelo artefato.
-      # `--no-bundle` não é usado aqui: é justamente o empacotamento que se quer.
+      # `tauri.ci.conf.json` zera o `beforeBuildCommand`. Sem isso o `tauri
+      # build` refaz `pnpm build` aqui dentro — ignorando o artefato que acabou
+      # de ser baixado e exigindo a toolchain WebAssembly nos dois runners.
+      # `--no-bundle` não é usado: é justamente o empacotamento que se quer.
       - name: Empacotar
-        run: pnpm tauri build --config src-tauri/tauri.conf.json
+        run: pnpm tauri build --config src-tauri/tauri.ci.conf.json
 
       - name: Reunir artefatos (Linux)
         if: matrix.os == 'ubuntu-latest'
