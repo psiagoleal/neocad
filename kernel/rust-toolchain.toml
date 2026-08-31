@@ -1,0 +1,8 @@
+# Caminho relativo: kernel/rust-toolchain.toml
+# Toolchain do workspace do kernel. O alvo WebAssembly já fica disponível para as
+# fases seguintes (MT-K1-11 e MT-K1-12).
+
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]

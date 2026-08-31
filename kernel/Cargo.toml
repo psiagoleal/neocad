@@ -1,0 +1,46 @@
+# Caminho relativo: kernel/Cargo.toml
+# Workspace do kernel CAD do NeoCAD (ADR 0003).
+#
+# Este workspace é deliberadamente independente do de `src-tauri/`: nenhuma crate
+# daqui conhece Tauri, Svelte, DOM ou tipos do NeoCAD, de modo que o kernel possa
+# ser reaproveitado em outros projetos.
+
+[workspace]
+resolver = "2"
+members = [
+	"neocad-geometry",
+	"neocad-topology",
+	"neocad-model",
+	"neocad-transaction",
+	"neocad-io",
+	"neocad-wasm",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.82"
+authors = ["Iago Leal"]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/psiagoleal/neocad"
+description = "Kernel CAD do NeoCAD"
+
+# Disciplina de biblioteca exigida pelo ADR 0003: API pública documentada e
+# ausência de `unsafe` sem justificativa explícita.
+[workspace.lints.rust]
+missing_docs = "deny"
+missing_debug_implementations = "warn"
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+# O perfil de release existe por causa do tamanho do `.wasm`, que o frontend
+# baixa a cada visita. Ao chegar a leitura e a escrita DXF (MT-K2-10) o pacote
+# saltou de 106 KB para 321 KB de uma vez; estas opções recuperam parte disso
+# sem tirar as mensagens de pânico, que são o que resta para diagnosticar um
+# defeito do kernel dentro do navegador.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1

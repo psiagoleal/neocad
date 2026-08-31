@@ -141,6 +141,18 @@ button:disabled {
 	border-color: rgba(127, 179, 255, 0.3);
 }
 
+/*
+ * O menu `Editar` é o primeiro lugar em que o estado desabilitado carrega
+ * informação — "não há o que desfazer" —, e não apenas indisponibilidade
+ * temporária. Recuar o item por inteiro comunica isso melhor do que apenas
+ * esmaecê-lo, que o faria parecer um botão quebrado.
+ */
+.menu-item:disabled {
+	background: transparent;
+	border-color: transparent;
+	color: rgba(232, 241, 255, 0.45);
+}
+
 .inline-action {
 	padding: 0.45rem 0.75rem;
 	font-size: 0.84rem;

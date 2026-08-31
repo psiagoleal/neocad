@@ -1,0 +1,20 @@
+# Caminho relativo: kernel/neocad-transaction/Cargo.toml
+
+[package]
+name = "neocad-transaction"
+description = "Transações reversíveis e command stack do kernel CAD do NeoCAD"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+neocad-model = { path = "../neocad-model", version = "0.0.0" }
+
+[dev-dependencies]
+neocad-geometry = { path = "../neocad-geometry", version = "0.0.0" }
+
+[lints]
+workspace = true

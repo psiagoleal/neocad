@@ -2,77 +2,120 @@
 
 # Roadmap de painéis, comandos CAD e simulação numérica
 
+> **Realinhado ao [ADR 0003](./adr/0003-kernel-cad-proprio.md) em 2026-08-06.**
+> A versão anterior deste documento pressupunha a arquitetura de wrapper, em que o
+> teto funcional era o do `@mlightcad/cad-simple-viewer` e a diretriz central era
+> "não prometer comandos que o upstream não executa". Essa premissa deixou de
+> valer: o NeoCAD passa a construir kernel próprio, e o upstream é rebaixado a
+> parser e renderer substituível. As frentes abaixo foram reordenadas em função
+> disso.
+
 ## Objetivo
 
-Este documento consolida o planejamento da próxima etapa funcional do NeoCAD após a modularização do workspace frontend.
+Consolidar o planejamento funcional do NeoCAD após a modularização do workspace
+frontend e a decisão de kernel próprio.
 
-O foco agora é evoluir o app em quatro frentes complementares:
+O trabalho se organiza em duas trilhas paralelas de ritmo diferente:
 
-1. **painéis de propriedades e camadas**;
-2. **menu `Ajuda` com referência dos comandos CAD implementados**;
-3. **comandos CAD básicos de criação e edição**;
-4. **trilha macro de funcionalidades FEM/CFD com engines open-source externas**.
+1. **Trilha do kernel (K1–K9)** — profunda, lenta, define o teto do produto.
+2. **Trilha de interface (Frentes 1–3)** — rasa, rápida, consome o que o kernel
+   expõe e mantém o produto utilizável a cada passo.
+
+A trilha de simulação numérica (Frente 4) permanece como investigação de longo
+prazo, agora com uma dependência técnica clara: ela só se torna natural depois de
+K7–K9, quando o kernel tiver geometria 3D e topologia próprias.
 
 ## Contexto atual
 
-No estado atual do projeto, o NeoCAD já possui:
+O NeoCAD já possui:
 
 - workspace desktop modularizado em Svelte;
 - menu superior no estilo desktop;
 - canvas CAD com integração ao `@mlightcad/cad-simple-viewer`;
 - barra de comandos do viewer upstream preservada no canvas;
-- adaptador `NeoCadViewer` com `executeCommand(command)`;
-- suporte a abertura de `DWG` e `DXF`, recentes, drag-and-drop e ações iniciais de viewport.
+- adaptador `NeoCadViewer` com `executeCommand(command)` e
+  `listCommandDescriptors()`;
+- catálogo de comandos derivado em runtime, exposto em `Ajuda > Comandos CAD`;
+- suporte a abertura de `DWG` e `DXF`, recentes, drag-and-drop e ações iniciais de
+  viewport;
+- CI com verificação de tipos, lint, testes, build, Rust e política de licenças.
 
-Isso significa que a base para a próxima etapa **já não é mais a refatoração da UI**, mas sim a construção de funcionalidades sobre a arquitetura atual.
+O que **não** existe, e que nenhuma quantidade de trabalho de interface resolve:
+undo/redo, salvamento de arquivo, edição consistente e modelagem 3D. Esses são os
+alvos da trilha do kernel.
 
-## Princípios para a próxima etapa
+## Princípios para esta etapa
 
-- manter o **NeoCAD como shell desktop própria**, sem perder o reaproveitamento do upstream;
-- evitar prometer comandos CAD que o upstream ainda não executa de forma confiável;
-- tratar o menu `Ajuda` como **catálogo vivo** do que realmente está disponível;
-- separar claramente o núcleo CAD da trilha de simulação numérica;
-- manter FEM/CFD como **módulo optativo e desacoplado**, nunca como dependência obrigatória do fluxo base de CAD.
+- o **modelo de documento do NeoCAD** é a fonte de verdade a partir de K1; a UI
+  não consulta o modelo do upstream para decidir o que existe no desenho;
+- a fronteira do **ADR 0001** permanece: componentes Svelte e rotas não conhecem
+  tipos do upstream nem do kernel, apenas contratos NeoCAD em `src/lib/types/`;
+- nenhuma fase do kernel pode causar **regressão observável**: enquanto K_n não
+  estiver pronta, a capacidade correspondente continua sendo servida pelo
+  upstream;
+- a interface só expõe o que **executa de fato** — a diretriz antiga continua
+  valendo, mas agora a referência é o kernel, não o upstream;
+- FEM/CFD permanece **módulo optativo e desacoplado**, nunca dependência
+  obrigatória do fluxo base de CAD.
+
+## Trilha do kernel
+
+Detalhamento e diretrizes de conformidade no [ADR 0003](./adr/0003-kernel-cad-proprio.md).
+
+| Fase   | Entrega                                      | Destrava na interface                        |
+| ------ | -------------------------------------------- | -------------------------------------------- |
+| **K1** | Modelo de documento + transações (undo/redo) | Frentes 1 e 3; menu `Editar`                 |
+| **K2** | Leitura e escrita DXF nativas                | `Salvar`/`Exportar`; núcleo headless (A1)    |
+| **K3** | Geometria 2D e operações de edição           | offset, trim/extend, fillet, snapping        |
+| **K4** | Solver de restrições 2D                      | desenho paramétrico                          |
+| **K5** | Renderização própria                         | grips, seleção fina, preview dinâmico        |
+| **K6** | Leitura DWG (sobre LibreDWG, em `neocad-io`) | independência do upstream para abrir arquivo |
+| **K7** | Geometria 3D (NURBS)                         | visualização e medição 3D                    |
+| **K8** | Topologia B-rep                              | navegação por faces/arestas, propriedades 3D |
+| **K9** | Modelagem sólida + STEP/IGES                 | modelagem 3D; pré-processamento de simulação |
+
+A leitura nativa de DXF entrou em K2 pelo [ADR 0004](./adr/0004-interface-para-agentes-de-ia.md):
+o ADR 0003 não a previa, porque assumia o upstream como parser — premissa que não
+vale para um núcleo headless. É acréscimo de escopo, não supersessão.
+
+K1 é o gargalo de tudo o que vem depois e está quebrada em micro-tickets em
+[`docs/tickets/k1-modelo-documento-transacoes.md`](./tickets/k1-modelo-documento-transacoes.md).
 
 ## Frente 1 — Painéis de propriedades e camadas
 
 ### Objetivo
 
-Adicionar painéis laterais para inspeção e controle do documento ativo, com foco inicial em:
+Painéis laterais para inspeção e controle do documento ativo: camadas,
+propriedades da seleção e preparação para operações de edição.
 
-- camadas;
-- propriedades básicas do documento/seleção;
-- preparação para operações futuras de edição.
+### Reposicionamento
 
-### Escopo inicial recomendado
+A versão anterior planejava ler camadas e propriedades diretamente do
+`@mlightcad/data-model`, conforme o ADR 0001. **Isso continua válido apenas até
+K1.** Depois de K1, os painéis leem o modelo do NeoCAD.
 
-#### Painel de camadas
+Consequência prática: **implementar os painéis em modo leitura antes de K1 é
+aceitável e recomendável** — eles validam a ergonomia da UI e o contrato de
+tipos —, mas as **ações de escrita** (ligar/desligar camada, editar propriedade)
+devem esperar K1, porque sem transação não há undo, e uma edição sem undo é uma
+regressão de usabilidade que depois precisa ser desfeita.
 
-Capacidades mínimas:
+### Escopo antes de K1 (somente leitura)
 
-- listar camadas do documento ativo;
-- exibir nome, estado visível e metadados básicos quando disponíveis;
-- filtrar ou localizar camadas por texto;
-- permitir ligar/desligar camadas se a API do upstream já expuser isso com segurança.
+- listar camadas do documento ativo com nome, cor, estado e metadados básicos;
+- filtrar camadas por texto;
+- estado vazio quando nada estiver selecionado;
+- resumo do documento ativo quando não houver entidade selecionada;
+- propriedades básicas da entidade selecionada.
 
-#### Painel de propriedades
+### Escopo após K1 (escrita)
 
-Capacidades mínimas:
+- ligar/desligar, congelar e bloquear camada, cada ação como transação
+  reversível;
+- edição de propriedade da entidade selecionada, idem;
+- seleção múltipla com edição em lote.
 
-- mostrar estado vazio quando nada estiver selecionado;
-- mostrar resumo do documento ativo quando não houver entidade selecionada;
-- mostrar propriedades básicas da entidade selecionada quando o upstream disponibilizar os dados.
-
-### Dependências técnicas
-
-Antes da implementação, vale confirmar no upstream/adaptador:
-
-- como acessar a tabela de camadas do documento atual;
-- como reagir a seleção de entidades;
-- quais metadados de entidades estão disponíveis sem fork do upstream;
-- se a alteração de visibilidade de camadas já existe como API estável.
-
-### Estrutura sugerida
+### Estrutura
 
 ```text
 src/lib/components/workspace/
@@ -85,140 +128,53 @@ src/lib/services/
 └── cad-selection.ts
 ```
 
-### Ordem recomendada
-
-1. leitura de camadas;
-2. painel de camadas em modo somente leitura;
-3. painel de propriedades em modo somente leitura;
-4. ações de camada quando a API do upstream estiver validada.
-
 ## Frente 2 — Menu `Ajuda` com referência de comandos CAD
 
-### Objetivo
+**Status: concluída** (commit `254cb2f`). O catálogo é derivado em runtime do
+command stack e exposto em `Ajuda > Comandos CAD`, conforme o ADR 0001.
 
-Transformar o menu `Ajuda` em um ponto de consulta rápida para o usuário sobre os comandos CAD realmente disponíveis no NeoCAD.
+### Ajuste necessário a partir de K1
 
-### Diretriz principal
-
-A lista exibida em `Ajuda` deve ser **derivada de um catálogo interno de comandos**, e não de texto solto hardcoded na UI.
-
-Isso evita divergência entre:
-
-- o que o menu informa;
-- o que o viewer aceita;
-- o que a toolbar e atalhos realmente disparam.
-
-### Conteúdo sugerido da referência
-
-Para cada comando:
-
-- nome amigável;
-- comando textual enviado ao viewer;
-- categoria;
-- status: implementado, experimental, planejado;
-- forma de acesso: barra de comandos, menu, botão, atalho;
-- observações de uso.
-
-### Estrutura sugerida
-
-```text
-src/lib/config/
-└── cad-command-catalog.ts
-
-src/lib/components/workspace/
-├── HelpCommandsDialog.svelte
-└── HelpCommandsList.svelte
-```
-
-### Contrato sugerido do catálogo
-
-```ts
-export interface CadCommandCatalogItem {
-	id: string;
-	label: string;
-	command: string;
-	category: 'navigation' | 'draw' | 'modify' | 'selection' | 'other';
-	status: 'implemented' | 'experimental' | 'planned';
-	access: Array<'menu' | 'toolbar' | 'command-bar' | 'shortcut'>;
-	notes?: string;
-}
-```
-
-### Evolução sugerida do menu `Ajuda`
-
-- `Ajuda > Comandos CAD`;
-- `Ajuda > Sobre o NeoCAD`.
-
-### Entrega mínima
-
-- catálogo interno versionado no código;
-- diálogo/modal com lista filtrável;
-- entrada no menu `Ajuda` apontando para esse catálogo.
+A fonte do catálogo passa a ser **a união** dos comandos do kernel e dos comandos
+ainda servidos pelo upstream, com a origem visível ao usuário durante a
+transição. O `CadCommandCatalogItem` já prevê `status`; será preciso acrescentar
+a noção de origem para que o catálogo continue sendo o retrato fiel do que
+executa.
 
 ## Frente 3 — Comandos CAD básicos de criação e edição
 
 ### Objetivo
 
-Evoluir do estado atual, em que o app já mantém a barra de comandos do viewer e algumas ações de viewport, para um conjunto inicial de comandos úteis de desenho e edição.
+Sair do estado atual — barra de comandos do upstream e ações de viewport — para
+um conjunto útil de comandos de desenho e edição acionáveis pela UI do NeoCAD.
 
-## Estratégia recomendada
+### Reposicionamento
 
-### Etapa 1 — Inventário real do upstream
+A versão anterior recomendava inventariar o que o upstream aceita e expor apenas
+isso. O inventário foi feito e está em
+[`docs/upstream-capabilities-spike.md`](./upstream-capabilities-spike.md): o
+upstream tem ~31 comandos e **não tem** `UNDO/REDO, SCALE, MIRROR, ARRAY, OFFSET,
+TRIM/EXTEND, BLOCK/INSERT`.
 
-Antes de construir botões e menu, mapear os comandos que o `cad-simple-viewer` já aceita de forma estável no fluxo atual.
+A conclusão mudou. Em vez de aceitar essa lista como teto, ela passa a ser a
+**especificação do que o kernel precisa entregar**:
 
-Essa etapa deve responder:
+- `UNDO/REDO` → K1;
+- `SCALE, MIRROR, ARRAY` → K1 (transformações sobre o modelo próprio);
+- `OFFSET, TRIM/EXTEND, fillet/chamfer` → K3 (dependem de geometria);
+- `BLOCK/INSERT` → K1 (tabela de blocos no modelo).
 
-- quais comandos textuais já funcionam hoje;
-- quais exigem contexto adicional;
-- quais ainda são apenas planejados no upstream;
-- quais comandos podem ser expostos no NeoCAD sem gerar UX enganosa.
+### Ordem recomendada
 
-### Etapa 2 — Expor somente o que estiver validado
+1. **Antes de K1:** nenhum comando de edição novo na UI. Expor comandos de
+   edição sobre o modelo do upstream cria trabalho que será descartado, e sem
+   undo é hostil ao usuário.
+2. **Com K1:** menu `Editar` com `Desfazer`/`Refazer`, e os comandos de
+   transformação que dependem apenas do modelo.
+3. **Com K3:** comandos que dependem de geometria.
+4. **Depois:** toolbars, atalhos de teclado e presença no catálogo de `Ajuda`.
 
-A UI do NeoCAD deve primeiro expor comandos que já foram validados pelo time, por exemplo:
-
-- `line`;
-- `circle`;
-- `rectang` ou equivalente upstream;
-- `erase`;
-- comandos de viewport e seleção já disponíveis.
-
-> Importante: os nomes acima devem ser tratados como candidatos iniciais. A nomenclatura final depende do inventário real do upstream e da forma como `executeCommand()` interage com ele.
-
-### Etapa 3 — Adicionar acessos complementares
-
-Depois da validação textual, os comandos podem ganhar:
-
-- entrada no menu `Arquivo`/`Exibir`/futuro menu `Desenhar`;
-- botões na toolbar contextual;
-- atalhos de teclado;
-- presença no catálogo do menu `Ajuda`.
-
-### Categorias sugeridas de comandos
-
-#### Navegação e viewport
-
-- ajustar vista;
-- zoom;
-- pan;
-- seleção.
-
-#### Desenho
-
-- linha;
-- círculo;
-- retângulo;
-- polilinha.
-
-#### Edição básica
-
-- apagar;
-- mover;
-- copiar;
-- rotacionar.
-
-### Estrutura sugerida
+### Estrutura
 
 ```text
 src/lib/services/
@@ -230,103 +186,72 @@ src/lib/components/workspace/
 └── ModifyToolbar.svelte
 ```
 
-### Contrato sugerido para o serviço de comandos
-
-```ts
-export function executeCadCommand(commandId: string): void;
-export function listImplementedCadCommands(): CadCommandCatalogItem[];
-export function listPlannedCadCommands(): CadCommandCatalogItem[];
-```
-
-### Critério de aceite desta frente
+### Critério de aceite
 
 - o NeoCAD exibe apenas comandos comprovadamente funcionais;
-- o catálogo em `Ajuda` reflete exatamente a realidade do app;
-- a barra de comandos do upstream continua sendo o ponto principal de entrada textual;
-- a UI complementar do NeoCAD apenas facilita o acesso aos comandos já validados.
+- o catálogo em `Ajuda` reflete exatamente a realidade do app, incluindo a origem
+  (kernel ou upstream) durante a transição;
+- toda edição é reversível por `Desfazer`.
 
-## Frente 4 — Trilha macro de FEM/CFD
+## Frente 4 — Trilha de FEM/CFD
 
-## Posição arquitetural recomendada
+### Posição arquitetural
 
-Funcionalidades de simulação numérica devem entrar como **módulo separado de pré-processamento, execução e pós-processamento**, e não como parte do núcleo do viewer CAD.
-
-Em termos práticos:
+Simulação numérica entra como **módulo separado de pré-processamento, execução e
+pós-processamento**, e não como parte do núcleo CAD:
 
 - o NeoCAD continua sendo o shell principal de CAD;
-- FEM/CFD entra como trilha opcional;
-- engines numéricas devem ser tratadas como **backends externos** acionados pelo desktop shell, não pelo frontend diretamente.
+- FEM/CFD é trilha opcional;
+- engines numéricas são **backends externos** acionados pelo desktop shell, não
+  pelo frontend.
 
-## Avaliação macro das engines citadas
+### Dependência do kernel
 
-### FreeFEM++
+Esta é a mudança principal em relação à versão anterior do documento. O
+pré-processamento de simulação — definir domínio, contorno, condições de
+contorno, gerar malha — exige **geometria e topologia consultáveis**. Sobre um
+modelo de entidades de desenho 2D isso é improvisação; sobre B-rep é natural.
 
-**Pontos fortes**:
+Portanto, a Frente 4 fica formalmente **posterior a K8**, e o exportador STEP de
+K9 passa a ser o formato de intercâmbio com malhadores e solvers externos.
+Qualquer piloto anterior a isso deve ser tratado como experimento descartável, e
+não como base de produto.
 
-- muito interessante para prototipação matemática e problemas de elementos finitos;
-- flexível para problemas 2D e PDEs customizadas;
-- excelente para investigação técnica e acadêmica.
+### Compatibilidade de licença
 
-**Limitações para o NeoCAD como produto desktop**:
+CalculiX, Elmer, Gmsh, OpenFOAM e SU2 são GPL ou compatíveis, o que é coerente
+com o [ADR 0002](./adr/0002-relicenciamento-para-gpl-3.md). Como são acionados
+como **processos externos**, e não ligados ao binário, a integração não impõe
+restrição adicional além da já assumida.
 
-- fluxo mais orientado a script do que a experiência de usuário final estilo CAD;
-- menor aderência imediata a um pipeline “desenho → malha → solver → resultados” amigável para usuário generalista;
-- pode ser melhor como backend experimental de pesquisa do que como engine principal de primeira integração.
+### Avaliação das engines
 
-### OpenFOAM
+#### FEA / FEM
 
-**Pontos fortes**:
+- **CalculiX** — orientado a arquivos e execução por linha de comando, combina
+  bem com uma arquitetura em que o NeoCAD orquestra casos locais. Candidato
+  natural ao primeiro piloto.
+- **Elmer FEM** — multiphysics, histórico relevante em pesquisa e engenharia,
+  encaixe melhor que um solver script-first para integração progressiva.
+- **FreeFEM++** — excelente para prototipação matemática e PDEs customizadas, mas
+  o fluxo é orientado a script, com baixa aderência a um pipeline "desenho →
+  malha → solver → resultados" para usuário generalista. Melhor como trilha
+  paralela de pesquisa do que como engine de primeira integração.
 
-- ecossistema robusto e amplamente conhecido para CFD;
-- grande maturidade para casos avançados;
-- forte relevância para usuários técnicos.
+#### CFD
 
-**Limitações para o NeoCAD neste estágio**:
+- **SU2** — open-source, mais direto de integrar por CLI do que um ecossistema
+  inteiro. Ponto de entrada mais controlável para uma primeira trilha CFD.
+- **OpenFOAM** — ecossistema robusto e maduro, mas com integração e empacotamento
+  pesados e operação mais natural em Linux; para alvo Windows tende a depender de
+  WSL ou containers. Fica como backend avançado opcional, não como primeira
+  entrega.
 
-- integração e empacotamento pesados;
-- operação mais natural em Linux do que em Windows desktop puro;
-- para alvo Windows, tende a depender de WSL, containers ou ambiente externo controlado;
-- curva de UX alta para um MVP centrado em CAD desktop leve.
+#### Malha
 
-## Alternativas open-source mais viáveis para avaliação
+- **Gmsh** — malhador natural para consumir STEP produzido em K9.
 
-### Para FEA / FEM
-
-#### CalculiX
-
-Boa opção para considerar porque:
-
-- é relativamente conhecido no ecossistema open-source de análise estrutural;
-- se adapta bem a fluxo orientado por arquivos e execução em linha de comando;
-- combina melhor com uma arquitetura em que o NeoCAD orquestra casos locais.
-
-#### Elmer FEM
-
-Boa opção para considerar porque:
-
-- é multiphysics;
-- possui histórico relevante em pesquisa e engenharia;
-- se encaixa melhor que um solver puramente script-first quando pensamos em integração progressiva via desktop shell.
-
-### Para CFD
-
-#### SU2
-
-Boa opção para avaliação inicial porque:
-
-- é open-source;
-- tende a ser mais direto de integrar por CLI do que um ecossistema inteiro como OpenFOAM;
-- pode ser um ponto de entrada mais controlável para uma primeira trilha CFD.
-
-#### OpenFOAM como backend avançado opcional
-
-Continua fazendo sentido, mas provavelmente como:
-
-- backend avançado para Linux/WSL;
-- modo experimental;
-- integração posterior, não primeira entrega da trilha CFD.
-
-## Arquitetura macro recomendada para simulação
+### Arquitetura macro
 
 ```mermaid
 graph TD
@@ -336,85 +261,101 @@ graph TD
   C --> E[CFD Engine]
   B --> F[Tauri Commands]
   F --> G[Execução local / WSL / container]
-  B --> H[Pré-processamento e pós-processamento]
+  B --> H[Pré e pós-processamento]
+  I[kernel: B-rep K8 + STEP K9] --> B
 ```
 
-## Proposta prática em etapas
+### Etapas
 
-### Etapa S0 — Pesquisa técnica e recorte de escopo
+- **S0 — Recorte de escopo.** Caso de uso prioritário, público-alvo, se a
+  primeira entrega é FEA, CFD ou apenas pré-processamento, formatos intermediários
+  de geometria e malha.
+- **S1 — Pré-processamento.** Derivar do modelo B-rep as entidades de domínio e
+  contorno; atribuir condições de contorno; exportar para malhador.
+- **S2 — Piloto com engine única.** CalculiX ou Elmer para FEA; SU2 para CFD. Uma
+  só, até o fim.
+- **S3 — Execução externa via Tauri.** Montagem de diretório de caso, escrita de
+  arquivos de entrada, execução de processo local, captura de logs, status e
+  artefatos.
+- **S4 — Pós-processamento.** Leitura de resultados, sobreposição de campos no
+  app, sem depender da UI nativa de cada solver.
 
-Definir:
+## Frente 5 — Interface para agentes de IA
 
-- caso de uso prioritário de simulação;
-- público-alvo inicial;
-- se a primeira entrega é FEA, CFD ou apenas pré-processamento;
-- formatos intermediários de geometria e malha.
+Decisão e diretrizes de conformidade no
+[ADR 0004](./adr/0004-interface-para-agentes-de-ia.md).
 
-### Etapa S1 — Pré-processamento e dados
+### Objetivo
 
-Objetivo:
+Permitir que agentes de IA — Claude Code CLI e outros — e também scripts, CI e
+humanos leiam e editem arquivos CAD através do NeoCAD, sem navegador e sem
+interface gráfica.
 
-- derivar entidades CAD relevantes para contorno, domínio e condições de contorno;
-- preparar exportação para malha e solver;
-- sem ainda prometer solver embutido no produto final.
+### Por que só agora é possível
 
-### Etapa S2 — Prova de conceito com engine única
+Enquanto o modelo de documento viveu dentro da WebView, não havia caminho
+headless: ler um `DWG` exigia inicializar o viewer upstream com workers e canvas.
+As crates do kernel são Rust puro, sem GUI — o núcleo headless é consequência
+direta de K1 e K2, e esta frente é a primeira aplicação que ele habilita além da
+interface gráfica.
 
-Recomendação:
+Isso também significa que a frente **não compete** com o kernel por prioridade:
+ela depende dele.
 
-- escolher **uma única engine** para o primeiro piloto.
+### Camadas
 
-Sugestão prática:
+| Camada       | Papel                                              | Depende de   |
+| ------------ | -------------------------------------------------- | ------------ |
+| `neocad-cli` | Núcleo funcional; inspeção e edição por comando    | K1 + K2      |
+| `neocad-mcp` | Fachada Model Context Protocol, sem lógica própria | `neocad-cli` |
 
-- FEA inicial: **CalculiX** ou **Elmer** como caminho mais produto-orientado;
-- FreeFEM++ fica como trilha paralela de pesquisa matemática, se desejado;
-- CFD inicial: **SU2** para piloto mais controlado;
-- OpenFOAM fica como meta posterior ou modo avançado Linux/WSL.
+O CLI vem primeiro por três razões: serve qualquer agente, inclusive os que não
+falam MCP; é útil sozinho, para conversão em lote, scripts e regressão em CI; e
+manter a lógica fora do servidor de protocolo evita que a capacidade fique presa
+a um padrão que ainda está em evolução.
 
-### Etapa S3 — Execução externa via Tauri
+### Fases
 
-Implementar:
+- **A1 — Inspeção.** `neocad info`, `neocad layers`, `neocad entities`,
+  `neocad convert`. Somente leitura, com `--format json`.
+- **A2 — Edição.** Criar, alterar e remover entidades e camadas, cada operação
+  como transação reversível do command stack de K1.
+- **A3 — Servidor MCP.** Ferramentas tipadas sobre A1 e A2.
 
-- comandos Tauri para montar diretórios de caso;
-- escrita de arquivos de entrada;
-- execução de solver externo por processo local;
-- captura de logs, status e artefatos de saída.
+### Salvaguardas da edição automatizada
 
-### Etapa S4 — Pós-processamento no NeoCAD
+Um agente editando um desenho opera sobre trabalho de engenharia de outra pessoa,
+sem supervisão contínua e sem o retorno visual que um operador humano tem.
+Sobrescrever um arquivo de projeto por interpretação equivocada é perda real e
+silenciosa. Por isso, condição para A2 existir:
 
-Objetivo:
+- nunca gravar sobre o arquivo de entrada sem `--in-place` explícito;
+- `--dry-run` em todo comando de edição, mostrando o que mudaria sem gravar;
+- toda mutação pelo command stack transacional, portanto reversível e auditável;
+- escrita determinística, para que a diferença entre duas versões seja legível.
 
-- ler resultados simplificados;
-- sobrepor campos e resultados no app;
-- evitar depender de UI nativa de cada solver.
+### Ganho colateral
 
-## Recomendação executiva
+Um núcleo headless torna executáveis em CI os **testes de regressão sobre
+arquivos CAD reais** — hoje impossíveis sem navegador, e a defesa mais importante
+contra regressão de compatibilidade quando o kernel assumir o parsing.
 
-Se o objetivo é manter o roadmap viável e incremental, a ordem recomendada é:
+## Ordem executiva recomendada
 
-1. **painéis de camadas e propriedades**;
-2. **catálogo de comandos em `Ajuda`**;
-3. **comandos CAD básicos realmente validados**;
-4. **estudo de FEA/CFD como módulo separado**;
-5. **piloto com uma engine única antes de expandir para outras**.
+1. **K1** — modelo de documento e transações (em micro-tickets);
+2. **Frente 1 em modo leitura**, em paralelo, validando a ergonomia dos painéis;
+3. **Frente 3 com `Desfazer`/`Refazer`** e transformações sobre o modelo próprio;
+4. **K2 — leitura e escrita DXF nativas**, que fecha o ciclo abrir → editar →
+   salvar na GUI e, ao mesmo tempo, completa o núcleo headless;
+5. **A1 — CLI de inspeção**, que valida a API do kernel sob um segundo consumidor
+   e destrava regressão sobre arquivos reais em CI;
+6. **K3/K4** e a Frente 1 em modo escrita;
+7. **A2 — CLI de edição**, sobre as transações já exercitadas pela GUI;
+8. **K5/K6**, reduzindo a dependência do upstream;
+9. **A3 — servidor MCP**, fachada sobre A1 e A2;
+10. **K7–K9**, o núcleo 3D;
+11. **Frente 4**, sobre B-rep e STEP.
 
-## Próximos passos sugeridos
-
-### Curto prazo
-
-- criar catálogo interno de comandos CAD;
-- evoluir o menu `Ajuda` para exibir os comandos implementados;
-- validar tecnicamente o inventário real de comandos aceitos pelo upstream;
-- iniciar painéis laterais de camadas e propriedades em modo leitura.
-
-### Médio prazo
-
-- expor comandos básicos de desenho pela UI;
-- adicionar atalhos e toolbar contextual;
-- persistir preferências dos painéis e da shell desktop.
-
-### Longo prazo
-
-- abrir uma trilha dedicada de simulação com documento próprio;
-- decidir primeira engine de FEA/CFD a ser pilotada;
-- integrar execução externa via Tauri/Rust.
+A1 aparece cedo de propósito: é barato depois de K2, e serve de prova de que a API
+do kernel não embutiu suposições da interface gráfica. Descobrir isso com um CLI
+de leitura custa pouco; descobrir em K7 custa caro.

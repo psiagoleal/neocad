@@ -1,0 +1,16 @@
+# Caminho relativo: kernel/neocad-geometry/Cargo.toml
+
+[package]
+name = "neocad-geometry"
+description = "Geometria do kernel CAD do NeoCAD: primitivas 2D/3D, curvas e superfícies"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

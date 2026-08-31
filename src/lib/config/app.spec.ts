@@ -13,7 +13,7 @@ import { appMetadata, isSupportedDesktopTarget, primaryStack, supportedTargets }
 describe('app config', () => {
 	it('expõe os metadados principais do NeoCAD', () => {
 		expect(appMetadata.name).toBe('NeoCAD');
-		expect(appMetadata.license).toBe('MIT');
+		expect(appMetadata.license).toBe('GPL-3.0-or-later');
 		expect(primaryStack).toContain('Tauri 2');
 		expect(primaryStack).toContain('@mlightcad/cad-simple-viewer');
 		expect(appMetadata.status).toContain('Fase 2');

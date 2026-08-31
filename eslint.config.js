@@ -11,7 +11,7 @@ import svelteConfig from './svelte.config.js';
 const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
 export default defineConfig(
-	{ ignores: ['static/workers/**/*.js'] },
+	{ ignores: ['static/workers/**/*.js', 'src/lib/kernel/pkg/**'] },
 	includeIgnoreFile(gitignorePath),
 	js.configs.recommended,
 	ts.configs.recommended,

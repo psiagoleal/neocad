@@ -1,4 +1,4 @@
-.PHONY: help install check lint format test build cargo-check tauri-dev tauri-debug tauri-debug-nobundle tauri-build e2e-install e2e cmake-configure cmake-smoke cmake-linux-bundle cmake-windows-x64-portable cmake-windows-x64-portable-fixed-runtime cmake-windows-x64-nsis cmake-windows-x64-nsis-fixed-runtime release-version release-package release-build release-tag release-publish release clean
+.PHONY: help install check lint format test build kernel-wasm kernel-wasm-dev workers-sync workers-check licenses-check licenses-list cargo-check kernel-fmt kernel-clippy kernel-test kernel-cargo-check kernel-check tauri-dev tauri-debug tauri-debug-nobundle tauri-build e2e-install e2e cmake-configure cmake-smoke cmake-linux-bundle cmake-windows-x64-portable cmake-windows-x64-portable-fixed-runtime cmake-windows-x64-nsis cmake-windows-x64-nsis-fixed-runtime release-version release-package release-build release-tag release-publish release dist-test dist-test-linux dist-test-windows dist-test-deps clean
 
 help:
 	@echo "Comandos disponíveis:"
@@ -8,7 +8,17 @@ help:
 	@echo "  make format                            - formata o projeto"
 	@echo "  make test                              - roda os testes unitários"
 	@echo "  make build                             - gera build web do SvelteKit"
+	@echo "  make kernel-wasm                       - compila o kernel CAD para WebAssembly (release)"
+	@echo "  make kernel-wasm-dev                   - idem, perfil de desenvolvimento (mais rápido)"
+	@echo "  make workers-sync                      - copia os workers do upstream de node_modules"
+	@echo "  make workers-check                     - falha se os workers divergirem do manifesto"
+	@echo "  make licenses-check                    - valida licenças de runtime contra a política"
+	@echo "  make licenses-list                     - lista o inventário de licenças de runtime"
 	@echo "  make cargo-check                       - valida o backend Tauri/Rust"
+	@echo "  make kernel-check                      - fmt + check + clippy + test do kernel CAD"
+	@echo "  make kernel-fmt                        - confere a formatação do kernel CAD"
+	@echo "  make kernel-clippy                     - roda o clippy do kernel CAD"
+	@echo "  make kernel-test                       - roda os testes do kernel CAD"
 	@echo "  make tauri-dev                         - inicia o app desktop em modo dev"
 	@echo "  make tauri-debug-nobundle              - gera binário debug sem bundle"
 	@echo "  make tauri-build                       - gera build desktop padrão"
@@ -21,6 +31,10 @@ help:
 	@echo "  make cmake-windows-x64-portable-fixed-runtime - gera .zip Windows portátil exigindo Fixed Runtime local"
 	@echo "  make cmake-windows-x64-nsis            - gera instalador NSIS current-user com embedBootstrapper"
 	@echo "  make cmake-windows-x64-nsis-fixed-runtime - gera instalador NSIS current-user com Fixed Runtime local"
+	@echo "  make dist-test                         - builds locais de TESTE: Linux + Windows"
+	@echo "  make dist-test-linux                   - apenas o build de teste Linux"
+	@echo "  make dist-test-windows                 - apenas o build de teste Windows (cross MinGW)"
+	@echo "  make dist-test-deps                    - diagnostica pré-requisitos dos builds de teste"
 	@echo "  make release-version                   - imprime a versão atual (package.json)"
 	@echo "  make release-package                   - copia o .zip portátil para *_v<versão>.zip"
 	@echo "  make release-build                     - build portátil fixed-runtime + artefato versionado"
@@ -47,8 +61,44 @@ test:
 build:
 	pnpm build
 
+kernel-wasm:
+	pnpm kernel:build
+
+kernel-wasm-dev:
+	pnpm kernel:build:dev
+
+workers-sync:
+	pnpm workers:sync
+
+workers-check:
+	pnpm workers:check
+
+licenses-check:
+	pnpm licenses:check
+
+licenses-list:
+	@pnpm licenses:list
+
 cargo-check:
 	cargo check --manifest-path src-tauri/Cargo.toml
+
+# Os alvos do kernel entram em `kernel/` em vez de usar `--manifest-path`, porque
+# o `rust-toolchain.toml` só é aplicado a partir do diretório de trabalho.
+kernel-fmt:
+	cd kernel && cargo fmt --all --check
+
+kernel-clippy:
+	cd kernel && cargo clippy --all-targets -- -D warnings
+
+kernel-test:
+	cd kernel && cargo test --all
+
+kernel-cargo-check:
+	cd kernel && cargo check --all-targets
+
+# Mesma sequência do job `kernel` da CI: fmt -> check -> clippy -> test.
+kernel-check: kernel-fmt kernel-cargo-check kernel-clippy kernel-test
+	@echo "kernel: fmt, check, clippy e testes OK"
 
 tauri-dev:
 	pnpm tauri dev
@@ -89,6 +139,19 @@ cmake-windows-x64-nsis: cmake-configure
 cmake-windows-x64-nsis-fixed-runtime: cmake-configure
 	cmake --build --preset windows-x64-nsis-fixed-runtime
 
+# Builds locais de teste. Sempre os dois alvos; ver scripts/build-test.sh.
+dist-test:
+	./scripts/build-test.sh all
+
+dist-test-linux:
+	./scripts/build-test.sh linux
+
+dist-test-windows:
+	./scripts/build-test.sh windows
+
+dist-test-deps:
+	@./scripts/build-test.sh deps
+
 release-version:
 	@./scripts/release.sh version
 
@@ -110,3 +173,4 @@ release:
 clean:
 	rm -rf build .svelte-kit
 	rm -rf .cmake
+	rm -rf src/lib/kernel/pkg

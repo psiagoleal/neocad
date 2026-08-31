@@ -9,12 +9,16 @@
 	import type { WorkspaceView } from '$lib/components/workspace/types';
 	import { appMetadata, nextMilestones, primaryStack, supportedTargets } from '$lib/config/app';
 	import {
+		chooseCadSavePath,
 		createCadDocumentPayloadFromFile,
 		getCadRuntimeLabel,
 		readCadDocumentFromPath,
-		selectCadDocument
+		selectCadDocument,
+		toDxfFileName,
+		writeCadDocument
 	} from '$lib/services/cad-file';
 	import { listCadCommandCatalog } from '$lib/services/cad-commands';
+	import { CadDocument } from '$lib/services/cad-document';
 	import {
 		clearRecentDocuments as clearStoredRecentDocuments,
 		listRecentDocuments,
@@ -23,6 +27,9 @@
 	import type {
 		CadCommandCatalogItem,
 		CadDocumentPayload,
+		CadDxfOpenReport,
+		CadHistoryState,
+		CadLoadReport,
 		CadRecentDocument,
 		CadViewerDocumentState,
 		CadViewerMessage,
@@ -50,6 +57,243 @@
 	let notificationSequence = 0;
 	let isCommandsHelpOpen = $state(false);
 	let commandCatalog: CadCommandCatalogItem[] = $state([]);
+
+	/** Documento do kernel próprio. Convive com o upstream durante a transição. */
+	let kernelDocument: CadDocument | null = $state(null);
+	let isSaving = $state(false);
+
+	/**
+	 * Último retrato carregado no kernel.
+	 *
+	 * Guardado porque é dele que sai o aviso de perda ao salvar: enquanto a
+	 * abertura passar pelo upstream, é a extração que sabe quantas entidades não
+	 * couberam no modelo. O MT-K2-12 troca essa fonte pela leitura nativa.
+	 */
+	let lastLoadReport: CadLoadReport | null = $state(null);
+
+	/**
+	 * Verdadeiro quando o kernel leu o arquivo por conta própria.
+	 *
+	 * Impede que a ativação do documento pelo upstream sobrescreva, com o
+	 * retrato extraído dele, o documento que a leitura nativa já montou — o
+	 * retrato sabe menos, e trocar um pelo outro seria regredir.
+	 */
+	let kernelReadNatively = $state(false);
+	const emptyHistory: CadHistoryState = {
+		canUndo: false,
+		canRedo: false,
+		undoLabel: null,
+		redoLabel: null,
+		undoDepth: 0,
+		redoDepth: 0
+	};
+	let history: CadHistoryState = $state(emptyHistory);
+
+	/**
+	 * Relê o estado da pilha após qualquer ação que possa tê-lo mudado.
+	 *
+	 * O kernel é a fonte de verdade; guardar uma cópia derivada aqui e mantê-la
+	 * sincronizada à mão seria a forma mais fácil de o menu passar a mentir.
+	 */
+	function refreshHistory(): void {
+		history = kernelDocument?.getHistory() ?? emptyHistory;
+	}
+
+	/**
+	 * Carrega no kernel o desenho que o upstream acabou de abrir.
+	 *
+	 * O upstream continua sendo quem lê o arquivo e quem desenha (K5 e K6 ainda
+	 * não chegaram); o kernel passa a ser a fonte de verdade sobre o que existe
+	 * no desenho.
+	 */
+	async function loadIntoKernel(): Promise<void> {
+		if (viewerController == null || kernelReadNatively) {
+			return;
+		}
+
+		const snapshot = viewerController.extractDocumentSnapshot();
+
+		if (snapshot == null) {
+			return;
+		}
+
+		try {
+			kernelDocument ??= await CadDocument.create();
+			const report = kernelDocument.load(snapshot);
+			lastLoadReport = report;
+			refreshHistory();
+
+			pushNotification(
+				'info',
+				`Kernel: ${report.entityCount} entidade(s) em ${report.layerCount} camada(s).` +
+					(report.unsupportedCount > 0
+						? ` ${report.unsupportedCount} entidade(s) ainda não suportada(s) pelo kernel.`
+						: '')
+			);
+		} catch (error) {
+			pushNotification(
+				'warning',
+				error instanceof Error
+					? `Kernel não pôde carregar o desenho: ${error.message}`
+					: 'Kernel não pôde carregar o desenho.'
+			);
+		}
+	}
+
+	/**
+	 * Descreve, em uma frase, o que uma gravação descartaria.
+	 *
+	 * `null` quando nada se perde. A frase existe para a perda **aparecer antes
+	 * de acontecer**: salvar por cima de um original sem dizer que a cota e a
+	 * prancha não vão junto é destruir trabalho alheio em silêncio, e o ADR 0005
+	 * proíbe.
+	 */
+	function describeSaveLoss(): string | null {
+		const partes: string[] = [];
+		const naoModeladas = lastLoadReport?.unsupportedCount ?? 0;
+
+		if (naoModeladas > 0) {
+			partes.push(`${naoModeladas} entidade(s) que o kernel ainda não representa`);
+		}
+
+		try {
+			const perda = kernelDocument?.getSaveLoss();
+
+			if (perda != null && !perda.isLossless) {
+				if (perda.paperSpaceCount > 0) {
+					const abas = perda.paperSpace.map((layout) => layout.name).join(', ');
+					partes.push(`${perda.paperSpaceCount} entidade(s) em espaço-papel (${abas})`);
+				}
+
+				if (perda.xrefCount > 0) {
+					partes.push(`${perda.xrefCount} referência(s) externa(s)`);
+				}
+			}
+		} catch (error) {
+			// Consultar a perda não pode impedir de salvar; o que não pode é
+			// salvar fingindo que não há perda.
+			pushNotification(
+				'warning',
+				error instanceof Error
+					? `Não foi possível apurar o que se perde ao salvar: ${error.message}`
+					: 'Não foi possível apurar o que se perde ao salvar.'
+			);
+		}
+
+		return partes.length > 0 ? partes.join('; ') : null;
+	}
+
+	/**
+	 * Confirma a gravação quando ela sobrescreve um arquivo existente e há perda.
+	 *
+	 * Só pergunta no caminho que de fato destrói: no navegador a gravação é um
+	 * download, que não sobrescreve nada.
+	 */
+	async function confirmLossyOverwrite(perda: string, fileName: string): Promise<boolean> {
+		const mensagem =
+			`Salvar sobre ${fileName} descarta: ${perda}.\n\n` +
+			'O kernel grava apenas o que representa. Deseja continuar?';
+
+		if (!isTauriRuntime) {
+			return true;
+		}
+
+		const { confirm } = await import('@tauri-apps/plugin-dialog');
+
+		return confirm(mensagem, { title: 'Salvar com perda', kind: 'warning' });
+	}
+
+	/** Grava o desenho do kernel, escolhendo o destino quando necessário. */
+	async function saveDrawing(escolherDestino: boolean): Promise<void> {
+		if (kernelDocument == null || currentDocument == null || isSaving) {
+			return;
+		}
+
+		isSaving = true;
+
+		try {
+			const fileName = toDxfFileName(currentDocument.fileName);
+			const sobrescreveOriginal =
+				!escolherDestino && isTauriRuntime && currentDocument.path != null;
+			const perda = describeSaveLoss();
+
+			if (sobrescreveOriginal && perda != null) {
+				const seguir = await confirmLossyOverwrite(perda, fileName);
+
+				if (!seguir) {
+					pushNotification('info', 'Gravação cancelada.');
+					return;
+				}
+			}
+
+			let destino = sobrescreveOriginal ? currentDocument.path : undefined;
+
+			if (!sobrescreveOriginal && isTauriRuntime) {
+				const escolhido = await chooseCadSavePath(fileName);
+
+				if (escolhido == null) {
+					pushNotification('info', 'Gravação cancelada.');
+					return;
+				}
+
+				destino = escolhido;
+			}
+
+			await writeCadDocument(kernelDocument.toDxf(), fileName, destino);
+
+			pushNotification(
+				perda == null ? 'success' : 'warning',
+				perda == null
+					? `Desenho gravado em ${destino ?? fileName}.`
+					: `Desenho gravado em ${destino ?? fileName}. Ficou de fora: ${perda}.`
+			);
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error ? `Falha ao salvar: ${error.message}` : 'Falha ao salvar o desenho.'
+			);
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	async function saveDrawingAction(): Promise<void> {
+		await saveDrawing(false);
+	}
+
+	async function saveDrawingAsAction(): Promise<void> {
+		await saveDrawing(true);
+	}
+
+	async function undoAction(): Promise<void> {
+		try {
+			if (kernelDocument?.undo() !== true) {
+				return;
+			}
+
+			refreshHistory();
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error ? error.message : 'Falha ao desfazer a última ação.'
+			);
+		}
+	}
+
+	async function redoAction(): Promise<void> {
+		try {
+			if (kernelDocument?.redo() !== true) {
+				return;
+			}
+
+			refreshHistory();
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error ? error.message : 'Falha ao refazer a última ação.'
+			);
+		}
+	}
 
 	function pushNotification(kind: CadViewerMessage['kind'], text: string): void {
 		notifications = [
@@ -177,16 +421,105 @@
 		}
 	}
 
+	/** Indica se o arquivo é DXF, único formato que a leitura nativa cobre. */
+	function isDxfPayload(fileName: string): boolean {
+		return fileName.toLowerCase().endsWith('.dxf');
+	}
+
+	/**
+	 * Lê o DXF com o kernel, antes e independentemente do upstream.
+	 *
+	 * Devolve `null` quando a leitura falhou — e aí o caminho antigo, pelo
+	 * retrato do upstream, continua valendo.
+	 */
+	async function readDxfWithKernel(payload: CadDocumentPayload): Promise<CadDxfOpenReport | null> {
+		try {
+			kernelDocument ??= await CadDocument.create();
+			const report = kernelDocument.openDxf(payload.content);
+
+			kernelReadNatively = true;
+			// O aviso de perda passa a ter fonte única: o próprio kernel.
+			lastLoadReport = null;
+			refreshHistory();
+
+			pushNotification(
+				report.loss.isLossless ? 'info' : 'warning',
+				`Kernel: ${report.entityCount} entidade(s) em ${report.layerCount} camada(s)` +
+					(report.blockCount > 0 ? `, ${report.blockCount} bloco(s)` : '') +
+					`. ${report.summary}.`
+			);
+
+			for (const erro of report.errors) {
+				pushNotification('warning', `Leitura DXF: ${erro}.`);
+			}
+
+			return report;
+		} catch (error) {
+			kernelReadNatively = false;
+			pushNotification(
+				'warning',
+				error instanceof Error
+					? `Kernel não pôde ler o DXF: ${error.message}`
+					: 'Kernel não pôde ler o DXF.'
+			);
+
+			return null;
+		}
+	}
+
+	/**
+	 * Adota o documento que só o kernel conseguiu ler.
+	 *
+	 * O upstream falhou em desenhar, mas o desenho **existe**: as contagens são
+	 * reais e `Salvar` funciona. Deixar a aplicação no estado "nada aberto"
+	 * descartaria um documento que o kernel tem em mãos.
+	 */
+	function adoptKernelOnlyDocument(payload: CadDocumentPayload): void {
+		const state: CadViewerDocumentState = {
+			fileName: payload.fileName,
+			docTitle: payload.fileName,
+			mode: 'write',
+			source: payload.source,
+			path: payload.path
+		};
+
+		currentDocument = state;
+		hasVisitedViewerWorkspace = true;
+		activeWorkspace = 'viewer';
+		clearProgress();
+		void rememberDocument(state);
+	}
+
 	async function openCadPayload(payload: CadDocumentPayload): Promise<void> {
 		if (viewerController == null) {
 			throw new Error('Viewer CAD ainda não foi inicializado.');
 		}
 
+		kernelReadNatively = false;
+
+		// A leitura nativa acontece **antes** do upstream e não depende dele: é o
+		// que faz um arquivo que o parser de terceiro não abre continuar sendo um
+		// documento aqui.
+		const kernelReport = isDxfPayload(payload.fileName) ? await readDxfWithKernel(payload) : null;
+
 		const isSuccess = await viewerController.openDocument(payload, 'write');
 
-		if (!isSuccess) {
-			pushNotification('error', `Falha ao carregar ${payload.fileName}.`);
+		if (isSuccess) {
+			return;
 		}
+
+		if (kernelReport == null) {
+			pushNotification('error', `Falha ao carregar ${payload.fileName}.`);
+			return;
+		}
+
+		adoptKernelOnlyDocument(payload);
+		pushNotification(
+			'warning',
+			`O desenho foi lido pelo kernel, mas o renderizador não conseguiu exibi-lo. ` +
+				`As camadas, as contagens e o comando Salvar funcionam; o traçado na tela ` +
+				`depende do renderizador próprio, que ainda não chegou.`
+		);
 	}
 
 	async function openCadDrawing(): Promise<void> {
@@ -354,6 +687,7 @@
 					clearProgress();
 					void rememberDocument(state);
 					pushNotification('success', `Desenho carregado com sucesso: ${state.docTitle}`);
+					void loadIntoKernel();
 				}
 			});
 
@@ -381,6 +715,8 @@
 			currentDocument = null;
 			progress = null;
 			viewerController = null;
+			kernelDocument = null;
+			history = emptyHistory;
 
 			if (controller != null) {
 				void controller.destroy();
@@ -406,10 +742,17 @@
 		{unreadMessages}
 		{isOpening}
 		{recentDocuments}
+		{history}
+		onUndo={undoAction}
+		onRedo={redoAction}
 		onGoHome={showHomeWorkspace}
 		onGoViewer={() => showViewerWorkspace()}
 		onGoAbout={showAboutWorkspace}
 		onOpenDrawing={openCadDrawing}
+		onSaveDrawing={saveDrawingAction}
+		onSaveDrawingAs={saveDrawingAsAction}
+		canSaveDrawing={kernelDocument != null && currentDocument != null}
+		{isSaving}
 		onOpenRecent={openRecentDrawing}
 		onClearRecents={clearRecentDocumentsList}
 		onFitView={fitDrawingToView}

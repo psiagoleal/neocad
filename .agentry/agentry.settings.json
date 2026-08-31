@@ -1,0 +1,75 @@
+{
+	"$schema": "https://agentry.dev/schema/agentry-settings-schema-1.json",
+	"_comentario": "Perfil PESSOAL -- friccao minima, nuvem liberada. E o unico perfil em que a arquitetura completa fica ativa: o Claude Code planeja e le a documentacao, o Ollama le o que e sensivel via `subagent` com task_class='local'. Ver ai-coding-agent-profiles/docs/adr/0007 e agentry/docs/adr/0041-0042.",
+	"schemaVersion": 1,
+	"profile": "pessoal",
+	"permissions": {
+		"_comentario": "readAllow e uma lista FECHADA de caminhos legiveis (sintaxe .gitignore): o que nao casar e bloqueado, entao um arquivo confidencial novo nasce protegido. Ele so alcanca tools com argumento de caminho (fs_read/fs_write/fs_edit) -- shell_exec, shell_background, glob e fs_search leem por outras vias e por isso estao em deny; sem elas ali, readAllow seria falsa sensacao de protecao.",
+		"deny": ["shell_exec", "shell_background", "glob", "fs_search"],
+		"ask": [],
+		"readAllow": [
+			"README.md",
+			"AGENTS.md",
+			"CLAUDE.md",
+			"CHANGELOG.md",
+			"docs/**",
+			"skills/**",
+			"*.toml",
+			"*.md"
+		]
+	},
+	"subagentPermissions": {
+		"_comentario": "Permissoes do subagente -- SUBSTITUEM as do agente principal (nao somam). Vazio aqui significa 'sem restricao': e o que devolve ao modelo local a leitura que o agente principal perdeu. Sem isto, negar leitura ao principal cegaria tambem o subagente, e a delegacao nao teria como funcionar.",
+		"deny": [],
+		"ask": []
+	},
+	"context": {
+		"repoMap": {
+			"enabled": true
+		},
+		"semanticRag": {
+			"enabled": true
+		},
+		"lspGrounding": {
+			"enabled": true
+		}
+	},
+	"providers": {
+		"ollama": {
+			"_comentario": "structuredOutput FALSE de proposito (emenda de 2026-07-24 a ADR-0012 do agentry): com ele ligado, o campo `format` do Ollama restringe a geracao do TEXTO e o modelo devolve a tool-call como string JSON, entao nenhuma ferramenta executa. Ligue apenas para modelos antigos sem tool-calling nativo.",
+			"structuredOutput": false
+		},
+		"claudeCli": {
+			"_comentario": "Assinatura Claude Pro/Max via o binario `claude` ja autenticado (nenhuma chave de API; o agentry nunca le seu token). mcpTools devolve ao Claude as ferramentas do proprio agentry, sob as permissions acima -- e o que permite usa-lo como agente principal COM tool-calling. As ferramentas embutidas do Claude Code ficam desligadas nos dois modos.",
+			"model": "opus",
+			"mcpTools": true
+		}
+	},
+	"taskClasses": {
+		"chat": {
+			"_comentario": "Dois candidatos, nesta ordem. O agentry filtra por classe de egresso da sessao (derivada de 'profile'): sob cloud-ok o claude-cli atende; sob cloud-opt-out ou local-only ele e descartado e o Ollama assume sozinho. A mesma declaracao serve aos tres perfis -- a exclusao da nuvem vem da taxonomia de egresso, nao de uma lista que alguem precisa lembrar de manter. Se o binario `claude` nao estiver instalado, o agentry nao registra o provider e a queda para o Ollama tambem acontece.",
+			"candidates": [
+				{
+					"provider": "claude-cli",
+					"model": "opus",
+					"egressClass": "cloud-ok"
+				},
+				{
+					"provider": "ollama",
+					"model": "llama3.1:8b",
+					"egressClass": "local-only"
+				}
+			]
+		},
+		"local": {
+			"_comentario": "Alvo da tool `subagent` (subagent com task_class='local'). E a metade 'o modelo local le o que e sensivel' da arquitetura: com readAllow abaixo, o agente principal nao consegue abrir os arquivos confidenciais e precisa delegar essas leituras aqui. Nunca sai da maquina.",
+			"candidates": [
+				{
+					"provider": "ollama",
+					"model": "llama3.1:8b",
+					"egressClass": "local-only"
+				}
+			]
+		}
+	}
+}

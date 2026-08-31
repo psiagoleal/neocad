@@ -2,11 +2,11 @@
 
 # NeoCAD
 
+[![CI](https://github.com/psiagoleal/neocad/actions/workflows/ci.yml/badge.svg)](https://github.com/psiagoleal/neocad/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-phase%202-blue)
-![Build](https://img.shields.io/badge/build-viewer_integration_in_progress-success)
 ![Coverage](https://img.shields.io/badge/coverage-not_configured-lightgrey)
-![Version](https://img.shields.io/badge/version-0.1.0-informational)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![Version](https://img.shields.io/github/v/release/psiagoleal/neocad?include_prereleases&sort=semver)](https://github.com/psiagoleal/neocad/releases)
+![License](https://img.shields.io/badge/license-GPL--3.0--or--later-green)
 ![Targets](https://img.shields.io/badge/targets-Windows%20%7C%20Linux-6f42c1)
 
 NeoCAD é um wrapper desktop open-source para o [`cad-viewer`](https://github.com/mlightcad/cad-viewer), construído com **SvelteKit** e **Tauri 2**, com foco inicial em **Windows** e **Linux**. O objetivo é distribuir uma aplicação simples de instalar para abrir, visualizar e evoluir a edição básica de arquivos CAD diretamente no desktop, sem exigir que o usuário final instale `pnpm` ou configure um ambiente JavaScript.
@@ -49,7 +49,7 @@ Nesta etapa, o projeto já possui:
 
 ## Princípios do projeto
 
-- **MIT real open-source** para maximizar adoção e colaboração;
+- **copyleft real (GPL-3.0)**, para que melhorias derivadas retornem à comunidade;
 - **wrapper separado do upstream** para reduzir custo de manutenção;
 - **desktop first**, sem perder a possibilidade de reaproveitamento web;
 - **arquitetura modular**, com uma camada de adaptação entre NeoCAD e o núcleo do viewer;
@@ -174,6 +174,7 @@ pnpm test:e2e
 .
 ├── README.md
 ├── LICENSE
+├── THIRD-PARTY-LICENSES.md   # Proveniência e licenças das dependências distribuídas
 ├── CHANGELOG.md
 ├── docs/
 │   ├── architecture.md
@@ -189,8 +190,9 @@ pnpm test:e2e
 │       ├── styles/     # Tokens, layout e estilos compartilhados
 │       ├── types/      # Tipos compartilhados
 │       └── viewer/     # Adaptador do viewer integrado
+├── scripts/            # Automação: release, sync de workers, política de licenças
 ├── static/             # Assets estáticos
-│   └── workers/        # Workers do viewer para DXF, DWG e MTEXT
+│   └── workers/        # Workers do upstream (derivados de node_modules no build)
 ├── src-tauri/          # Backend Rust, plugins e empacotamento Tauri
 ├── package.json
 └── svelte.config.js
@@ -255,7 +257,18 @@ Consulte:
 
 ## Licença
 
-Este projeto está licenciado sob a **MIT License**. Consulte o arquivo `LICENSE` para detalhes.
+O NeoCAD está licenciado sob a **GNU General Public License v3.0 ou posterior** (`GPL-3.0-or-later`). Consulte o arquivo [`LICENSE`](./LICENSE) para o texto integral.
+
+A escolha está registrada no [ADR 0002](./docs/adr/0002-relicenciamento-para-gpl-3.md). O projeto depende, no caminho crítico de leitura de arquivos CAD, de bibliotecas sob GPL-3.0 — a **LibreDWG** (formato DWG) e o **`dxf-json`** (formato DXF) —, e a licença do projeto acompanha essa realidade. O levantamento completo de proveniência das dependências distribuídas está em [`THIRD-PARTY-LICENSES.md`](./THIRD-PARTY-LICENSES.md).
+
+Ao redistribuir binários do NeoCAD, a GPL-3.0 exige a oferta do código-fonte correspondente aos destinatários.
+
+A verificação é automatizada:
+
+```bash
+pnpm licenses:check   # falha se entrar uma licença nova ou copyleft não avaliada
+pnpm licenses:list    # inventário completo das dependências de runtime
+```
 
 ---
 

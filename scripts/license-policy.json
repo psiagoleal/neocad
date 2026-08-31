@@ -1,0 +1,49 @@
+{
+	"$comment": "Política de licenças de dependências de runtime do NeoCAD. O projeto é GPL-3.0-or-later (ADR 0002), então são aceitas licenças permissivas e copyleft compatíveis com a GPL-3.0. Consumida por scripts/check-licenses.mjs. Ver THIRD-PARTY-LICENSES.md.",
+	"projectLicense": "GPL-3.0-or-later",
+	"allowed": [
+		"0BSD",
+		"Apache-2.0",
+		"Apache-2.0 OR MIT",
+		"BSD-2-Clause",
+		"BSD-3-Clause",
+		"CC0-1.0",
+		"GPL-3.0",
+		"GPL-3.0-only",
+		"GPL-3.0-or-later",
+		"ISC",
+		"LGPL-2.1-or-later",
+		"LGPL-3.0-or-later",
+		"MIT",
+		"MIT OR Apache-2.0",
+		"MPL-2.0",
+		"Unlicense"
+	],
+	"denied": [
+		"AGPL-3.0",
+		"AGPL-3.0-only",
+		"AGPL-3.0-or-later",
+		"BUSL-1.1",
+		"CC-BY-NC-4.0",
+		"GPL-2.0-only",
+		"SSPL-1.0",
+		"UNLICENSED"
+	],
+	"$trackedComment": "Dependências copyleft cuja proveniência é acompanhada explicitamente. A verificação falha se a licença declarada aqui divergir da licença observada na árvore, sinalizando mudança de termos no upstream.",
+	"tracked": [
+		{
+			"package": "@mlightcad/dxf-json",
+			"version": "1.2.0",
+			"license": "GPL-3.0",
+			"reachedVia": "@mlightcad/data-model -> @mlightcad/dxf-json",
+			"note": "Caminho de parsing DXF. Fork de dxf-json sob GPL-3.0."
+		},
+		{
+			"package": "@mlightcad/libredwg-web",
+			"version": "0.7.1",
+			"license": "GPL-3.0",
+			"reachedVia": "@mlightcad/cad-simple-viewer -> @mlightcad/libredwg-converter -> @mlightcad/libredwg-web",
+			"note": "Build WASM da LibreDWG (GPL-3.0). Caminho de parsing DWG. Mantido mesmo na trilha de kernel próprio (ADR 0003)."
+		}
+	]
+}
