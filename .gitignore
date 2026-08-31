@@ -59,3 +59,6 @@ dist-test/
 # Desenhos de teste vindos de projetos confidenciais (AGENTS.md §0.1).
 # Nunca versionar: este repositório é público.
 docs/test/
+
+# Preferências locais do Claude Code: por máquina, não por repositório.
+.claude/settings.local.json

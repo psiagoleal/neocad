@@ -11,3 +11,6 @@ bun.lockb
 /src-tauri/target/
 /src-tauri/gen/
 thread_implementation.md
+
+# Preferências locais do Claude Code: por máquina, não por repositório.
+.claude/settings.local.json
