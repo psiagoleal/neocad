@@ -174,14 +174,25 @@ jobs:
           Copy-Item LICENSE, THIRD-PARTY-LICENSES.md $destino
           Get-ChildItem $destino
 
-      - name: Compactar
-        shell: bash
+      # A compactação é o único passo genuinamente dividido por plataforma: o
+      # runner Windows não tem `zip`, e o Linux não tem PowerShell.
+      - name: Compactar (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           set -euo pipefail
           versao="$(node -p "require('./package.json').version")"
           cd dist
           zip -r "NeoCAD_v${versao}_${{ matrix.plataforma }}.zip" "NeoCAD-${{ matrix.plataforma }}"
           ls -la ./*.zip
+
+      - name: Compactar (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $versao = node -p "require('./package.json').version"
+          $alvo = "dist/NeoCAD_v${versao}_${{ matrix.plataforma }}.zip"
+          Compress-Archive -Path "dist/NeoCAD-${{ matrix.plataforma }}" -DestinationPath $alvo -Force
+          Get-ChildItem dist/*.zip
 
       - uses: actions/upload-artifact@v5
         with:
