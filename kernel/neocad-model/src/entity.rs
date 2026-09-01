@@ -6,7 +6,7 @@
 
 use core::f64::consts::{FRAC_PI_2, TAU};
 
-use neocad_geometry::{point_on_circle, Aabb, Point2};
+use neocad_geometry::{point_on_circle, Aabb, Arc, Circle, Line, Point2, Polyline};
 
 use crate::layer::{Color, LayerId};
 use crate::viewport::Viewport;
@@ -17,56 +17,6 @@ use crate::viewport::Viewport;
 /// mais alto para **superestimar** a caixa: uma caixa maior que a real faz o
 /// ajuste de vista sobrar, enquanto uma menor cortaria o texto da tela.
 const TEXT_ADVANCE_RATIO: f64 = 0.8;
-
-/// Segmento de reta entre dois pontos.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Line {
-    /// Ponto inicial.
-    pub start: Point2,
-    /// Ponto final.
-    pub end: Point2,
-}
-
-/// Circunferência completa.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Circle {
-    /// Centro.
-    pub center: Point2,
-    /// Raio.
-    pub radius: f64,
-}
-
-/// Arco de circunferência.
-///
-/// Os ângulos são medidos em radianos, no sentido anti-horário a partir do eixo
-/// X positivo, e o arco vai de `start_angle` até `end_angle` **nesse sentido** —
-/// a convenção do DXF. Um arco com `start_angle == end_angle` é degenerado e
-/// reduz-se a um ponto; circunferências completas são representadas por
-/// [`Circle`].
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Arc {
-    /// Centro.
-    pub center: Point2,
-    /// Raio.
-    pub radius: f64,
-    /// Ângulo inicial, em radianos.
-    pub start_angle: f64,
-    /// Ângulo final, em radianos.
-    pub end_angle: f64,
-}
-
-/// Sequência de vértices ligados por segmentos de reta.
-///
-/// Não modela abaulamento (`bulge`) de segmento, que o DXF usa para representar
-/// trechos em arco dentro de uma polilinha. Entra em K3, junto com as operações
-/// que dependem dele.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Polyline {
-    /// Vértices, em ordem de percurso.
-    pub vertices: Vec<Point2>,
-    /// Se verdadeiro, há um segmento ligando o último vértice ao primeiro.
-    pub closed: bool,
-}
 
 /// Texto de uma linha.
 #[derive(Debug, Clone, PartialEq)]

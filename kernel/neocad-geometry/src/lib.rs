@@ -15,7 +15,9 @@
 //! NeoCAD, e não pode receber dependências copyleft.
 
 mod aabb;
+mod curve;
 mod point;
 
 pub use aabb::Aabb;
+pub use curve::{Arc, Circle, Line, Polyline};
 pub use point::{point_on_circle, Point2};

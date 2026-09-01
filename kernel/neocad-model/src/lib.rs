@@ -31,7 +31,7 @@ pub use arena::{Arena, RestoreError};
 pub use block::{BlockError, BlockId, BlockRecord, BlockTable, MODEL_SPACE_NAME};
 pub use change::{Change, ChangeError};
 pub use document::{Document, DocumentEditor, DocumentError, EntityPlacement};
-pub use entity::{Arc, Circle, Entity, EntityColor, Geometry, Line, Polyline, Text};
+pub use entity::{Entity, EntityColor, Geometry, Text};
 pub use id::EntityId;
 pub use layer::{
     Color, LayerError, LayerId, LayerRecord, LayerTable, LineWeight, DEFAULT_LAYER_NAME,
@@ -40,6 +40,10 @@ pub use layout::{
     LayoutError, LayoutId, LayoutRecord, LayoutTable, PageSetup, PlotMargins, PlotRotation,
     PlotUnits, MODEL_LAYOUT_NAME,
 };
+// As curvas moram em `neocad-geometry` desde o MT-K3-01. A reexportação existe
+// para que quem as consome pelo nome do modelo — a camada DXF e a fachada wasm —
+// não precise saber que elas mudaram de casa.
+pub use neocad_geometry::{Arc, Circle, Line, Polyline};
 pub use text_style::{
     TextStyleError, TextStyleId, TextStyleRecord, TextStyleTable, STANDARD_TEXT_STYLE_NAME,
 };

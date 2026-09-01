@@ -203,9 +203,10 @@ impl Change {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity::{Circle, Geometry, Line};
+    use crate::entity::Geometry;
     use crate::layer::Color;
     use neocad_geometry::Point2;
+    use neocad_geometry::{Circle, Line};
 
     fn line(layer: LayerId, x: f64) -> Entity {
         Entity::new(

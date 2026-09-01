@@ -1336,9 +1336,10 @@ mod tests {
     }
 
     use crate::block::MODEL_SPACE_NAME;
-    use crate::entity::{Circle, Geometry, Line};
+    use crate::entity::Geometry;
     use crate::layer::DEFAULT_LAYER_NAME;
     use crate::text_style::STANDARD_TEXT_STYLE_NAME;
+    use neocad_geometry::{Circle, Line};
 
     fn line(layer: LayerId, x: f64) -> Entity {
         Entity::new(
