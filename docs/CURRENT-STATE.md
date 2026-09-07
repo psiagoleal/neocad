@@ -1069,9 +1069,17 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       das quatro primitivas saíram de `neocad-model`, onde moravam ao lado da
       entidade em vez de ao lado da geometria; `Geometry::bounding_box` delega, e
       texto e janela ficam onde estavam por não serem curvas. 551 testes.
-- [ ] **Próximo:** MT-K3-05 — interseção entre primitivas, o coração da fase:
-      aparo, extensão, concordância e o snap de interseção são todos
-      consumidores dela.
+- [x] **MT-K3-05 concluído.** Interseção entre as quatro primitivas, em todas as
+      combinações, despachada por um enum `AnyCurve` — traço responde por uma
+      curva de cada vez, e interseção é sobre duas. As duas perguntas do ADR 0006
+      convivem: _se as curvas se tocam_ é tolerância; _de que lado o extremo
+      está_ é o predicado exato. Cada degenerescência tem teste próprio:
+      tangência por dentro e por fora, circunferências coincidentes, colineares
+      sobrepostos, colineares que só se encostam, e o cruzamento que cai fora da
+      varredura do arco. A ordem dos pontos segue o parâmetro da **primeira**
+      curva, senão o aparo teria de adivinhar qual pedaço é qual. 574 testes.
+- [ ] **Próximo:** MT-K3-06 — índice espacial e consulta por região, que é o que
+      cada movimento de cursor da fase de UI/UX vai chamar.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem
