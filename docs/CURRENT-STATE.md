@@ -1060,9 +1060,18 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       ida e volta DXF, porque a gravação tira as entidades do documento sem
       passar pelas views, e a interface ainda não desenha polilinha. Fecha no
       MT-K3-12.
-- [ ] **Próximo:** MT-K3-04 — avaliação uniforme de curva (ponto em parâmetro,
-      tangente, comprimento, ponto mais próximo e caixa), que é o que evita cada
-      operação do bloco C reescrever o mesmo `match` sobre quatro variantes.
+- [x] **MT-K3-04 concluído.** O traço `Curve` dá às quatro primitivas uma
+      resposta comum para ponto em parâmetro, direção, comprimento, ponto mais
+      próximo e caixa. O parâmetro vai de 0 a 1 e é **grampeado** — estender é
+      operação com nome próprio, não efeito colateral de avaliar — e não é
+      comprimento de arco, que fica fora da fase. A direção sai como ângulo, e
+      não vetor, que é como o kernel já fala de direção. As caixas envolventes
+      das quatro primitivas saíram de `neocad-model`, onde moravam ao lado da
+      entidade em vez de ao lado da geometria; `Geometry::bounding_box` delega, e
+      texto e janela ficam onde estavam por não serem curvas. 551 testes.
+- [ ] **Próximo:** MT-K3-05 — interseção entre primitivas, o coração da fase:
+      aparo, extensão, concordância e o snap de interseção são todos
+      consumidores dela.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem

@@ -4,9 +4,7 @@
 //! \author Iago Leal
 //! \date 2026-08-07
 
-use core::f64::consts::{FRAC_PI_2, TAU};
-
-use neocad_geometry::{point_on_circle, Aabb, Arc, Circle, Line, Point2, Polyline};
+use neocad_geometry::{Aabb, Arc, Circle, Curve, Line, Point2, Polyline};
 
 use crate::layer::{Color, LayerId};
 use crate::viewport::Viewport;
@@ -122,68 +120,14 @@ impl Geometry {
     #[must_use]
     pub fn bounding_box(&self) -> Aabb {
         match self {
-            Self::Line(line) => Aabb::new(line.start, line.end),
-            Self::Circle(circle) => circle_bounding_box(circle.center, circle.radius),
-            Self::Arc(arc) => arc_bounding_box(arc),
-            Self::Polyline(polyline) => polyline_bounding_box(polyline),
+            Self::Line(line) => line.bounding_box(),
+            Self::Circle(circle) => circle.bounding_box(),
+            Self::Arc(arc) => arc.bounding_box(),
+            Self::Polyline(polyline) => polyline.bounding_box(),
             Self::Text(text) => text_bounding_box(text),
             Self::Viewport(viewport) => viewport.bounding_box(),
         }
     }
-}
-
-/// Caixa envolvente de uma polilinha.
-///
-/// Os vértices não bastam quando há abaulamento: um trecho em arco sai da corda
-/// que liga os dois vértices, e uma caixa que ignorasse isso cortaria o desenho
-/// no ajuste de vista. Cada trecho curvo entra pela caixa do seu próprio arco.
-fn polyline_bounding_box(polyline: &Polyline) -> Aabb {
-    let mut bounds =
-        Aabb::from_points(polyline.points()).unwrap_or_else(|| Aabb::from_point(Point2::ORIGIN));
-
-    for index in 0..polyline.segment_count() {
-        if let Some(arc) = polyline.segment_arc(index) {
-            bounds = bounds.union(arc_bounding_box(&arc));
-        }
-    }
-
-    bounds
-}
-
-/// Caixa envolvente de uma circunferência completa.
-fn circle_bounding_box(center: Point2, radius: f64) -> Aabb {
-    let radius = radius.abs();
-
-    Aabb::new(
-        Point2::new(center.x - radius, center.y - radius),
-        Point2::new(center.x + radius, center.y + radius),
-    )
-}
-
-/// Caixa envolvente de um arco.
-///
-/// A caixa dos dois extremos **não basta**: um arco que cruza um dos eixos
-/// cardeais atinge, nesse cruzamento, um valor extremo que nenhum dos extremos
-/// alcança. Um arco de 315° a 45°, por exemplo, tem os dois extremos em
-/// `x = r·cos(45°) ≈ 0,707·r`, mas passa por `x = r` ao cruzar 0°. Por isso cada
-/// ângulo cardeal contido na varredura entra na caixa.
-fn arc_bounding_box(arc: &Arc) -> Aabb {
-    let radius = arc.radius.abs();
-    let start = point_on_circle(arc.center, radius, arc.start_angle);
-    let end = point_on_circle(arc.center, radius, arc.end_angle);
-
-    let sweep = normalize_angle(arc.end_angle - arc.start_angle);
-    let mut bounds = Aabb::new(start, end);
-
-    for quarter in 0..4 {
-        let angle = FRAC_PI_2 * f64::from(quarter);
-
-        if normalize_angle(angle - arc.start_angle) <= sweep {
-            bounds = bounds.expanded_to_include(point_on_circle(arc.center, radius, angle));
-        }
-    }
-
-    bounds
 }
 
 /// Caixa envolvente aproximada de um texto.
@@ -213,22 +157,11 @@ fn text_bounding_box(text: &Text) -> Aabb {
     Aabb::from_points(rotated).unwrap_or_else(|| Aabb::from_point(text.position))
 }
 
-/// Normaliza um ângulo para o intervalo `[0, 2π)`.
-fn normalize_angle(angle: f64) -> f64 {
-    let remainder = angle % TAU;
-
-    if remainder < 0.0 {
-        remainder + TAU
-    } else {
-        remainder
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::layer::LayerTable;
-    use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
+    use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
     use neocad_geometry::{PolylineVertex, Tolerance};
 
     fn layer() -> LayerId {
