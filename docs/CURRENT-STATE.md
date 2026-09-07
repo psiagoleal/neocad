@@ -1078,8 +1078,18 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       sobrepostos, colineares que só se encostam, e o cruzamento que cai fora da
       varredura do arco. A ordem dos pontos segue o parâmetro da **primeira**
       curva, senão o aparo teria de adivinhar qual pedaço é qual. 574 testes.
-- [ ] **Próximo:** MT-K3-06 — índice espacial e consulta por região, que é o que
-      cada movimento de cursor da fase de UI/UX vai chamar.
+- [x] **MT-K3-06 concluído.** `SpatialIndex` em `neocad-geometry` e
+      `Document::spatial_index`. É hierarquia de caixas, não grade: grade
+      uniforme pressupõe entidades de tamanho parecido, e um desenho técnico tem
+      a moldura da prancha e o texto de uma cota com quatro ordens de grandeza
+      entre eles. O que sai são **candidatos** — refinar até o traço é do
+      MT-K3-07. O teste confronta 500 caixas geradas e 200 regiões contra a
+      varredura linear, nas duas magnitudes, exigindo conjuntos idênticos.
+      **Desvio de escopo declarado:** o ticket apontava `block.rs`, mas o bloco
+      só guarda identificadores; a geometria está na arena, então o método
+      nasceu em `document.rs`. 581 testes.
+- [ ] **Próximo:** MT-K3-07 — teste de acerto e prendimento (`osnap`), que fecha
+      o bloco B e é o gesto mais frequente de qualquer CAD.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem

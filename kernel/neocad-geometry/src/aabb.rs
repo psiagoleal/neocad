@@ -120,6 +120,19 @@ impl Aabb {
             && point.y <= self.max.y
     }
 
+    /// Se as duas caixas se tocam.
+    ///
+    /// Encostar conta como tocar: duas caixas que dividem uma aresta se
+    /// interceptam. A consulta por região prefere devolver um candidato a mais
+    /// a perder um que estava exatamente na borda.
+    #[must_use]
+    pub fn intersects(self, other: Self) -> bool {
+        self.min().x <= other.max().x
+            && other.min().x <= self.max().x
+            && self.min().y <= other.max().y
+            && other.min().y <= self.max().y
+    }
+
     /// Menor caixa que contém esta e a outra.
     #[must_use]
     pub fn union(self, other: Self) -> Self {

@@ -19,6 +19,7 @@ mod curve;
 mod intersect;
 mod point;
 mod predicate;
+mod spatial;
 mod tolerance;
 
 pub use aabb::Aabb;
@@ -28,4 +29,5 @@ pub use curve::{
 pub use intersect::{intersect, AnyCurve, Intersections};
 pub use point::{point_on_circle, Point2};
 pub use predicate::{orientation, Orientation};
+pub use spatial::SpatialIndex;
 pub use tolerance::{Tolerance, BASE_ANGULAR, BASE_LINEAR};
