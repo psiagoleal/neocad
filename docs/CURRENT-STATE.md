@@ -7,9 +7,15 @@
 
 ## Último turno
 
-- **Data:** 2026-08-11
-- **Branch:** `feat/kernel-cad-k1`
-- **Commit:** pendente (MT-K2-01)
+- **Data:** 2026-09-07
+- **Branch:** `feat/kernel-cad-k3`
+- **Commit:** `4b8e008` (MT-K3-01) + MT-K3-02 pendente
+
+### Fase K3 em curso
+
+O ADR 0006 foi aceito e o bloco A dos micro-tickets de
+`docs/tickets/k3-geometria-2d-edicao.md` está em execução. O kernel deixou de
+apenas guardar geometria e passou a ter com que **decidir** sobre ela.
 
 ### Fase K1 concluída
 
@@ -1024,6 +1030,26 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       deve ser automatizado. Em `scripts/release.sh` sobrevivem `version` e
       `tag`; `package`, `build` e `publish` não são mais referenciados por
       ninguém — **candidatos a remoção quando você quiser.**
+- [x] **MT-K3-01 concluído.** `Line`, `Circle`, `Arc` e `Polyline` passaram de
+      `neocad-model` para `neocad-geometry`, que é onde o ADR 0003 as coloca.
+      Estavam na crate errada por ordem de construção: K1 precisou de entidade
+      antes de precisar de geometria. `neocad-model` reexporta as quatro, então
+      nenhum consumidor externo mudou; dois módulos de teste internos trocaram o
+      caminho de importação, sem asserção alterada.
+- [x] **MT-K3-02 concluído.** `Tolerance` e o predicado de orientação exato
+      existem em `neocad-geometry`, e os epsilons dispersos nos testes de
+      `point.rs` e `entity.rs` passaram a consumi-los. A tolerância efetiva é
+      `max(1e-9, 1024·magnitude·ε)`: perto da origem manda a intenção do
+      desenhista, longe dela manda a aritmética. **Efeito colateral aceito:** o
+      teste de `point.rs` comparava a `1e-12` e passou a comparar a `1e-9` — o
+      valor apertado não tinha justificativa e a margem segue muito acima do erro
+      dessas contas. O predicado usa o filtro de erro de Shewchuk com ramo exato
+      por expansão de ponto flutuante, sem dependência externa; a consistência das
+      seis permutações é verificada em 4.000 trincas quase degeneradas, nas duas
+      magnitudes. 528 testes no kernel, contra 505 antes da fase.
+- [ ] **Próximo:** MT-K3-03 — abaulamento (`bulge`) na polilinha, que hoje é
+      perda silenciosa: toda polilinha com trecho curvo é lida como se fosse
+      toda reta, e a regravação endireita o desenho.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem

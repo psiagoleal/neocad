@@ -212,19 +212,18 @@ mod tests {
     use super::*;
     use crate::layer::LayerTable;
     use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
-
-    const TOLERANCE: f64 = 1e-9;
+    use neocad_geometry::Tolerance;
 
     fn layer() -> LayerId {
         LayerTable::new().default_layer()
     }
 
     fn assert_bounds(actual: Aabb, min: Point2, max: Point2) {
+        let tolerancia = Tolerance::default();
+
         assert!(
-            (actual.min().x - min.x).abs() < TOLERANCE
-                && (actual.min().y - min.y).abs() < TOLERANCE
-                && (actual.max().x - max.x).abs() < TOLERANCE
-                && (actual.max().y - max.y).abs() < TOLERANCE,
+            tolerancia.points_equal(actual.min(), min)
+                && tolerancia.points_equal(actual.max(), max),
             "esperado min {min:?} max {max:?}, obtido min {:?} max {:?}",
             actual.min(),
             actual.max()
@@ -343,7 +342,7 @@ mod tests {
             Point2::new(1.0, FRAC_PI_4.sin()),
         );
         assert!(
-            (caixa.max().x - 1.0).abs() < TOLERANCE,
+            Tolerance::default().lengths_equal(caixa.max().x, 1.0),
             "o cruzamento de 0° tem de entrar na caixa"
         );
     }
@@ -353,7 +352,7 @@ mod tests {
         // De 45° a 135°: atinge y = 1 ao cruzar 90°.
         let caixa = Geometry::Arc(arc(FRAC_PI_4, 3.0 * FRAC_PI_4)).bounding_box();
 
-        assert!((caixa.max().y - 1.0).abs() < TOLERANCE);
+        assert!(Tolerance::default().lengths_equal(caixa.max().y, 1.0));
         assert_bounds(
             caixa,
             Point2::new(-FRAC_PI_4.cos(), FRAC_PI_4.sin()),
@@ -366,7 +365,7 @@ mod tests {
         // De 135° a 225°: atinge x = -1 ao cruzar 180°.
         let caixa = Geometry::Arc(arc(3.0 * FRAC_PI_4, 5.0 * FRAC_PI_4)).bounding_box();
 
-        assert!((caixa.min().x + 1.0).abs() < TOLERANCE);
+        assert!(Tolerance::default().lengths_equal(caixa.min().x, -1.0));
     }
 
     #[test]
@@ -374,7 +373,7 @@ mod tests {
         // De 225° a 315°: atinge y = -1 ao cruzar 270°.
         let caixa = Geometry::Arc(arc(5.0 * FRAC_PI_4, 7.0 * FRAC_PI_4)).bounding_box();
 
-        assert!((caixa.min().y + 1.0).abs() < TOLERANCE);
+        assert!(Tolerance::default().lengths_equal(caixa.min().y, -1.0));
     }
 
     #[test]
