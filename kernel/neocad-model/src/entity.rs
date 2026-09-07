@@ -125,12 +125,29 @@ impl Geometry {
             Self::Line(line) => Aabb::new(line.start, line.end),
             Self::Circle(circle) => circle_bounding_box(circle.center, circle.radius),
             Self::Arc(arc) => arc_bounding_box(arc),
-            Self::Polyline(polyline) => Aabb::from_points(polyline.vertices.iter().copied())
-                .unwrap_or_else(|| Aabb::from_point(Point2::ORIGIN)),
+            Self::Polyline(polyline) => polyline_bounding_box(polyline),
             Self::Text(text) => text_bounding_box(text),
             Self::Viewport(viewport) => viewport.bounding_box(),
         }
     }
+}
+
+/// Caixa envolvente de uma polilinha.
+///
+/// Os vértices não bastam quando há abaulamento: um trecho em arco sai da corda
+/// que liga os dois vértices, e uma caixa que ignorasse isso cortaria o desenho
+/// no ajuste de vista. Cada trecho curvo entra pela caixa do seu próprio arco.
+fn polyline_bounding_box(polyline: &Polyline) -> Aabb {
+    let mut bounds =
+        Aabb::from_points(polyline.points()).unwrap_or_else(|| Aabb::from_point(Point2::ORIGIN));
+
+    for index in 0..polyline.segment_count() {
+        if let Some(arc) = polyline.segment_arc(index) {
+            bounds = bounds.union(arc_bounding_box(&arc));
+        }
+    }
+
+    bounds
 }
 
 /// Caixa envolvente de uma circunferência completa.
@@ -212,7 +229,7 @@ mod tests {
     use super::*;
     use crate::layer::LayerTable;
     use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
-    use neocad_geometry::Tolerance;
+    use neocad_geometry::{PolylineVertex, Tolerance};
 
     fn layer() -> LayerId {
         LayerTable::new().default_layer()
@@ -417,14 +434,14 @@ mod tests {
 
     #[test]
     fn caixa_da_polilinha_envolve_os_vertices() {
-        let geometria = Geometry::Polyline(Polyline {
-            vertices: vec![
+        let geometria = Geometry::Polyline(Polyline::from_points(
+            [
                 Point2::new(0.0, 0.0),
                 Point2::new(5.0, 2.0),
                 Point2::new(-1.0, 8.0),
             ],
-            closed: false,
-        });
+            false,
+        ));
 
         assert_bounds(
             geometria.bounding_box(),
@@ -434,26 +451,38 @@ mod tests {
     }
 
     #[test]
-    fn fechar_a_polilinha_nao_muda_a_caixa() {
-        let vertices = vec![Point2::ORIGIN, Point2::new(4.0, 0.0), Point2::new(4.0, 3.0)];
-        let aberta = Geometry::Polyline(Polyline {
-            vertices: vertices.clone(),
+    fn a_caixa_da_polilinha_acompanha_o_trecho_em_arco() {
+        // Meia-volta de (0,0) a (2,0), que desce até y = −1, e depois um trecho
+        // reto para cima. Uma caixa tirada só dos vértices pararia em y = 0 e
+        // cortaria o arco no ajuste de vista.
+        let geometria = Geometry::Polyline(Polyline {
+            vertices: vec![
+                PolylineVertex::new(Point2::ORIGIN, 1.0),
+                PolylineVertex::straight(Point2::new(2.0, 0.0)),
+                PolylineVertex::straight(Point2::new(2.0, 5.0)),
+            ],
             closed: false,
         });
-        let fechada = Geometry::Polyline(Polyline {
-            vertices,
-            closed: true,
-        });
+
+        assert_bounds(
+            geometria.bounding_box(),
+            Point2::new(0.0, -1.0),
+            Point2::new(2.0, 5.0),
+        );
+    }
+
+    #[test]
+    fn fechar_a_polilinha_nao_muda_a_caixa() {
+        let vertices = [Point2::ORIGIN, Point2::new(4.0, 0.0), Point2::new(4.0, 3.0)];
+        let aberta = Geometry::Polyline(Polyline::from_points(vertices, false));
+        let fechada = Geometry::Polyline(Polyline::from_points(vertices, true));
 
         assert_eq!(aberta.bounding_box(), fechada.bounding_box());
     }
 
     #[test]
     fn polilinha_sem_vertices_produz_caixa_degenerada_na_origem() {
-        let geometria = Geometry::Polyline(Polyline {
-            vertices: Vec::new(),
-            closed: false,
-        });
+        let geometria = Geometry::Polyline(Polyline::from_points([], false));
 
         assert!(geometria.bounding_box().is_degenerate());
         assert_eq!(geometria.bounding_box().min(), Point2::ORIGIN);

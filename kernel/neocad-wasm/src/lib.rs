@@ -229,8 +229,13 @@ impl From<&Geometry> for GeometryView {
                 start_angle: arc.start_angle,
                 end_angle: arc.end_angle,
             },
+            // O abaulamento não atravessa para o JavaScript nesta fase: a
+            // interface ainda não desenha nem edita polilinha, e a gravação DXF
+            // sai do documento sem passar por aqui, então a ida e volta o
+            // preserva. Quem cria polilinha pelo JavaScript cria toda reta.
+            // Fechar isso é do MT-K3-12, que expõe K3 à fachada.
             Geometry::Polyline(polyline) => Self::Polyline {
-                vertices: polyline.vertices.iter().copied().map(Into::into).collect(),
+                vertices: polyline.points().map(Into::into).collect(),
                 closed: polyline.closed,
             },
             Geometry::Text(text) => Self::Text {
@@ -298,10 +303,10 @@ impl From<GeometryView> for Geometry {
                 start_angle,
                 end_angle,
             }),
-            GeometryView::Polyline { vertices, closed } => Self::Polyline(Polyline {
-                vertices: vertices.into_iter().map(Into::into).collect(),
+            GeometryView::Polyline { vertices, closed } => Self::Polyline(Polyline::from_points(
+                vertices.into_iter().map(Into::into),
                 closed,
-            }),
+            )),
             GeometryView::Text {
                 position,
                 content,

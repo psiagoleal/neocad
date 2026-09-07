@@ -1047,9 +1047,22 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       por expansão de ponto flutuante, sem dependência externa; a consistência das
       seis permutações é verificada em 4.000 trincas quase degeneradas, nas duas
       magnitudes. 528 testes no kernel, contra 505 antes da fase.
-- [ ] **Próximo:** MT-K3-03 — abaulamento (`bulge`) na polilinha, que hoje é
-      perda silenciosa: toda polilinha com trecho curvo é lida como se fosse
-      toda reta, e a regravação endireita o desenho.
+- [x] **MT-K3-03 concluído.** A polilinha representa trecho em arco, e o código
+      de grupo `42` atravessa a leitura, a gravação e a ida e volta — nos dois
+      formatos, `LWPOLYLINE` e o par `POLYLINE`/`VERTEX`. **Correção ao próprio
+      ticket:** ele dizia que a perda sairia do rol de perdas declaradas do
+      MT-K2-09, mas ela nunca esteve lá. A perda era cometida pela **leitura**, e
+      uma suíte que compara uma leitura com a sua própria regravação é cega a
+      isso — as duas gerações concordavam em estar erradas. A caixa envolvente
+      passou a acompanhar o arco, que sai da corda. 541 testes no kernel.
+- [ ] **Limitação declarada:** o abaulamento não atravessa a fronteira
+      WebAssembly. Polilinha criada pelo JavaScript nasce toda reta. Não afeta a
+      ida e volta DXF, porque a gravação tira as entidades do documento sem
+      passar pelas views, e a interface ainda não desenha polilinha. Fecha no
+      MT-K3-12.
+- [ ] **Próximo:** MT-K3-04 — avaliação uniforme de curva (ponto em parâmetro,
+      tangente, comprimento, ponto mais próximo e caixa), que é o que evita cada
+      operação do bloco C reescrever o mesmo `match` sobre quatro variantes.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem

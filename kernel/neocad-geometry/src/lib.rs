@@ -21,7 +21,7 @@ mod predicate;
 mod tolerance;
 
 pub use aabb::Aabb;
-pub use curve::{Arc, Circle, Line, Polyline};
+pub use curve::{Arc, Circle, Line, Polyline, PolylineVertex};
 pub use point::{point_on_circle, Point2};
 pub use predicate::{orientation, Orientation};
 pub use tolerance::{Tolerance, BASE_ANGULAR, BASE_LINEAR};

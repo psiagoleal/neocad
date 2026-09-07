@@ -43,7 +43,7 @@ pub use layout::{
 // As curvas moram em `neocad-geometry` desde o MT-K3-01. A reexportação existe
 // para que quem as consome pelo nome do modelo — a camada DXF e a fachada wasm —
 // não precise saber que elas mudaram de casa.
-pub use neocad_geometry::{Arc, Circle, Line, Polyline};
+pub use neocad_geometry::{Arc, Circle, Line, Polyline, PolylineVertex};
 pub use text_style::{
     TextStyleError, TextStyleId, TextStyleRecord, TextStyleTable, STANDARD_TEXT_STYLE_NAME,
 };
