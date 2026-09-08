@@ -4,7 +4,9 @@
 //! \author Iago Leal
 //! \date 2026-08-07
 
-use neocad_geometry::{Aabb, Arc, Circle, Curve, Line, Point2, Polyline};
+use neocad_geometry::{
+    Aabb, Arc, Circle, Curve, Line, Point2, Polyline, PolylineVertex, Transform,
+};
 
 use crate::layer::{Color, LayerId};
 use crate::viewport::Viewport;
@@ -105,6 +107,18 @@ impl Entity {
         }
     }
 
+    /// A mesma entidade, com a forma levada pela transformação.
+    ///
+    /// Camada e cor não são geometria e atravessam intactas.
+    #[must_use]
+    pub fn transformed(&self, transform: &Transform) -> Self {
+        Self {
+            layer: self.layer,
+            color: self.color,
+            geometry: self.geometry.transformed(transform),
+        }
+    }
+
     /// Caixa envolvente da entidade.
     ///
     /// Uma polilinha sem vértices produz caixa degenerada na origem, por não
@@ -116,6 +130,71 @@ impl Entity {
 }
 
 impl Geometry {
+    /// A mesma forma, levada pela transformação.
+    ///
+    /// A semelhança preserva o tipo — circunferência continua circunferência,
+    /// arco continua arco —, que é a razão de o kernel só admitir semelhanças
+    /// (ver `Transform`).
+    ///
+    /// Duas consequências da reflexão merecem atenção, porque errá-las produz um
+    /// desenho parecido com o certo e diferente dele. **O arco troca de pontas:**
+    /// ele é sempre anti-horário, e o que era percorrido num sentido passa a ser
+    /// percorrido no outro, de modo que o ângulo final vira inicial. **O
+    /// abaulamento troca de sinal**, pela mesma razão.
+    ///
+    /// O texto é levado de posição e de altura, mas as letras **não** são
+    /// espelhadas: é a convenção do AutoCAD com `MIRRTEXT` desligado, e existe
+    /// porque carimbo espelhado é ilegível, não é desenho.
+    #[must_use]
+    pub fn transformed(&self, transform: &Transform) -> Self {
+        match self {
+            Self::Line(line) => Self::Line(Line {
+                start: transform.apply(line.start),
+                end: transform.apply(line.end),
+            }),
+            Self::Circle(circle) => Self::Circle(Circle {
+                center: transform.apply(circle.center),
+                radius: circle.radius * transform.scale(),
+            }),
+            Self::Arc(arc) => {
+                let (start, end) = if transform.is_reflected() {
+                    (arc.end_angle, arc.start_angle)
+                } else {
+                    (arc.start_angle, arc.end_angle)
+                };
+
+                Self::Arc(Arc {
+                    center: transform.apply(arc.center),
+                    radius: arc.radius * transform.scale(),
+                    start_angle: transform.apply_angle(start),
+                    end_angle: transform.apply_angle(end),
+                })
+            }
+            Self::Polyline(polyline) => Self::Polyline(Polyline {
+                vertices: polyline
+                    .vertices
+                    .iter()
+                    .map(|vertex| PolylineVertex {
+                        point: transform.apply(vertex.point),
+                        bulge: if transform.is_reflected() {
+                            -vertex.bulge
+                        } else {
+                            vertex.bulge
+                        },
+                    })
+                    .collect(),
+                closed: polyline.closed,
+            }),
+            Self::Text(text) => Self::Text(Text {
+                position: transform.apply(text.position),
+                content: text.content.clone(),
+                height: text.height * transform.scale(),
+                rotation: transform.apply_angle(text.rotation),
+            }),
+            Self::Viewport(viewport) => Self::Viewport(viewport.transformed(transform)),
+        }
+    }
+
     /// Caixa envolvente da forma.
     #[must_use]
     pub fn bounding_box(&self) -> Aabb {
@@ -162,7 +241,7 @@ mod tests {
     use super::*;
     use crate::layer::LayerTable;
     use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
-    use neocad_geometry::{PolylineVertex, Tolerance};
+    use neocad_geometry::{PolylineVertex, Tolerance, Transform};
 
     fn layer() -> LayerId {
         LayerTable::new().default_layer()
@@ -187,6 +266,142 @@ mod tests {
             start_angle,
             end_angle,
         }
+    }
+
+    #[test]
+    fn a_reflexao_troca_as_pontas_do_arco() {
+        // Arco do primeiro quadrante, espelhado pelo eixo X. O resultado ocupa o
+        // quarto quadrante, e o que era ângulo final vira inicial — porque o
+        // arco é sempre anti-horário e o percurso inverteu.
+        let arco = Geometry::Arc(Arc {
+            center: Point2::ORIGIN,
+            radius: 2.0,
+            start_angle: 0.0,
+            end_angle: FRAC_PI_2,
+        });
+        let espelho = Transform::mirror(Point2::ORIGIN, 0.0);
+
+        let Geometry::Arc(refletido) = arco.transformed(&espelho) else {
+            panic!("continua sendo um arco");
+        };
+        let tolerancia = Tolerance::default();
+
+        assert!(tolerancia.angles_equal(refletido.start_angle, -FRAC_PI_2));
+        assert!(tolerancia.angles_equal(refletido.end_angle, 0.0));
+
+        // E o desenho é o mesmo conjunto de pontos: espelhar duas vezes volta.
+        let de_volta = arco.transformed(&espelho).transformed(&espelho);
+
+        assert_eq!(de_volta, arco);
+    }
+
+    #[test]
+    fn a_reflexao_troca_o_sinal_do_abaulamento() {
+        let polilinha = Geometry::Polyline(Polyline {
+            vertices: vec![
+                PolylineVertex::new(Point2::ORIGIN, 0.6),
+                PolylineVertex::straight(Point2::new(4.0, 0.0)),
+            ],
+            closed: false,
+        });
+        let espelho = Transform::mirror(Point2::ORIGIN, 0.0);
+
+        let Geometry::Polyline(refletida) = polilinha.transformed(&espelho) else {
+            panic!("continua sendo uma polilinha");
+        };
+
+        assert!(Tolerance::default().lengths_equal(refletida.vertices[0].bulge, -0.6));
+        assert_eq!(
+            polilinha.transformed(&espelho).transformed(&espelho),
+            polilinha
+        );
+    }
+
+    #[test]
+    fn o_giro_nao_mexe_no_sinal_do_abaulamento() {
+        let polilinha = Geometry::Polyline(Polyline {
+            vertices: vec![
+                PolylineVertex::new(Point2::ORIGIN, 0.6),
+                PolylineVertex::straight(Point2::new(4.0, 0.0)),
+            ],
+            closed: false,
+        });
+        let giro = Transform::rotation_around(Point2::new(2.0, 2.0), FRAC_PI_4);
+
+        let Geometry::Polyline(girada) = polilinha.transformed(&giro) else {
+            panic!("continua sendo uma polilinha");
+        };
+
+        assert!(Tolerance::default().lengths_equal(girada.vertices[0].bulge, 0.6));
+    }
+
+    #[test]
+    fn a_escala_multiplica_o_raio_e_a_altura_do_texto() {
+        let tolerancia = Tolerance::default();
+        let escala = Transform::scaling_around(Point2::ORIGIN, 3.0);
+
+        let Geometry::Circle(circulo) = Geometry::Circle(Circle {
+            center: Point2::new(1.0, 0.0),
+            radius: 2.0,
+        })
+        .transformed(&escala) else {
+            panic!("continua sendo uma circunferência");
+        };
+
+        assert!(tolerancia.lengths_equal(circulo.radius, 6.0));
+        assert!(tolerancia.points_equal(circulo.center, Point2::new(3.0, 0.0)));
+
+        let Geometry::Text(texto) = Geometry::Text(Text {
+            position: Point2::ORIGIN,
+            content: "COTA".to_owned(),
+            height: 2.5,
+            rotation: 0.0,
+        })
+        .transformed(&escala) else {
+            panic!("continua sendo um texto");
+        };
+
+        assert!(tolerancia.lengths_equal(texto.height, 7.5));
+    }
+
+    #[test]
+    fn o_texto_espelhado_continua_legivel() {
+        // Convenção do AutoCAD com `MIRRTEXT` desligado: a posição é espelhada,
+        // as letras não. Carimbo espelhado é ilegível, não é desenho.
+        let texto = Geometry::Text(Text {
+            position: Point2::new(3.0, 4.0),
+            content: "PLANTA".to_owned(),
+            height: 2.0,
+            rotation: 0.0,
+        });
+        let espelho = Transform::mirror(Point2::ORIGIN, 0.0);
+
+        let Geometry::Text(refletido) = texto.transformed(&espelho) else {
+            panic!("continua sendo um texto");
+        };
+        let tolerancia = Tolerance::default();
+
+        assert!(tolerancia.points_equal(refletido.position, Point2::new(3.0, -4.0)));
+        assert!(tolerancia.angles_equal(refletido.rotation, 0.0));
+        assert_eq!(refletido.content, "PLANTA");
+    }
+
+    #[test]
+    fn camada_e_cor_atravessam_a_transformacao() {
+        let camada = layer();
+        let mut entidade = Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::ORIGIN,
+                end: Point2::new(1.0, 1.0),
+            }),
+        );
+        entidade.color = EntityColor::ByBlock;
+
+        let movida = entidade.transformed(&Transform::translation(5.0, 5.0));
+
+        assert_eq!(movida.layer, camada);
+        assert_eq!(movida.color, EntityColor::ByBlock);
     }
 
     #[test]

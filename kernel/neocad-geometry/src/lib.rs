@@ -22,6 +22,7 @@ mod predicate;
 mod snap;
 mod spatial;
 mod tolerance;
+mod transform;
 
 pub use aabb::Aabb;
 pub use curve::{
@@ -33,3 +34,4 @@ pub use predicate::{orientation, Orientation};
 pub use snap::{hit_test, snap, snap_candidates, SnapCandidate, SnapMode};
 pub use spatial::SpatialIndex;
 pub use tolerance::{Tolerance, BASE_ANGULAR, BASE_LINEAR};
+pub use transform::Transform;

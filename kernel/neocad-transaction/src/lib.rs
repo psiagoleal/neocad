@@ -14,6 +14,7 @@
 //! Conforme o ADR 0003, esta crate não conhece Tauri, Svelte, DOM nem tipos do
 //! NeoCAD, e não pode receber dependências copyleft.
 
+pub mod commands;
 mod stack;
 mod transaction;
 

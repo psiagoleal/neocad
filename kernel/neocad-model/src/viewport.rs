@@ -6,7 +6,9 @@
 
 use std::collections::BTreeSet;
 
-use neocad_geometry::{Aabb, Point2};
+use core::f64::consts::FRAC_PI_2;
+
+use neocad_geometry::{Aabb, Point2, Tolerance, Transform};
 
 use crate::id::EntityId;
 use crate::layer::{LayerId, LayerRecord};
@@ -80,6 +82,49 @@ pub struct Viewport {
 }
 
 impl Viewport {
+    /// A mesma janela, levada pela transformação do espaço-papel.
+    ///
+    /// A moldura é movida e redimensionada; a **vista do modelo não muda**, de
+    /// modo que ampliar a janela mostra mais desenho, e não o mesmo desenho
+    /// maior — que é o comportamento de quem estica uma viewport.
+    ///
+    /// # Limitação declarada
+    ///
+    /// A janela é um retângulo alinhado aos eixos: largura e altura, sem ângulo.
+    /// Um giro de um quarto de volta cabe nisso, trocando as duas medidas; um
+    /// giro qualquer **não cabe**, e a janela é movida sem girar. Representar
+    /// moldura inclinada exige um campo que o formato tampouco tem, e inventá-lo
+    /// aqui faria a gravação perdê-lo em silêncio.
+    #[must_use]
+    pub fn transformed(&self, transform: &Transform) -> Self {
+        let scale = transform.scale();
+        // Os eixos trocam quando a direção X vai parar na direção Y. Vale para
+        // giro e para reflexão, e a comparação é de direção, logo pela tolerância
+        // angular do kernel — nunca por um limite escrito aqui (ADR 0006).
+        let tolerance = Tolerance::default();
+        let turned = transform.apply_angle(0.0);
+        let quarter_turn =
+            tolerance.angles_equal(turned, FRAC_PI_2) || tolerance.angles_equal(turned, -FRAC_PI_2);
+
+        let (width, height) = if quarter_turn {
+            (self.height * scale, self.width * scale)
+        } else {
+            (self.width * scale, self.height * scale)
+        };
+
+        Self {
+            center: transform.apply(self.center),
+            width,
+            height,
+            view_center: self.view_center,
+            view_height: self.view_height,
+            twist: self.twist,
+            clip: self.clip,
+            is_on: self.is_on,
+            frozen_layers: self.frozen_layers.clone(),
+        }
+    }
+
     /// Congela uma camada nesta janela. Devolve `false` se já estava congelada.
     pub fn freeze_layer(&mut self, layer: LayerId) -> bool {
         self.frozen_layers.insert(layer)
@@ -536,5 +581,58 @@ mod tests {
 
         assert!(matches!(recortada.clip, ViewportClip::Boundary(_)));
         assert_ne!(recortada.clip, ViewportClip::Window);
+    }
+    #[test]
+    fn a_janela_move_e_redimensiona_sem_mudar_a_vista() {
+        let janela = Viewport {
+            center: Point2::new(100.0, 50.0),
+            width: 80.0,
+            height: 60.0,
+            view_center: Point2::new(1000.0, 2000.0),
+            view_height: 400.0,
+            twist: 0.3,
+            clip: ViewportClip::Window,
+            is_on: true,
+            frozen_layers: BTreeSet::new(),
+        };
+        let dobro = janela.transformed(&Transform::scaling_around(Point2::ORIGIN, 2.0));
+        let tolerancia = Tolerance::default();
+
+        assert!(tolerancia.points_equal(dobro.center, Point2::new(200.0, 100.0)));
+        assert!(tolerancia.lengths_equal(dobro.width, 160.0));
+        assert!(tolerancia.lengths_equal(dobro.height, 120.0));
+
+        // Ampliar a moldura mostra mais desenho, e não o mesmo desenho maior.
+        assert!(tolerancia.points_equal(dobro.view_center, janela.view_center));
+        assert!(tolerancia.lengths_equal(dobro.view_height, janela.view_height));
+        assert!(tolerancia.angles_equal(dobro.twist, janela.twist));
+    }
+
+    #[test]
+    fn um_quarto_de_volta_troca_largura_e_altura() {
+        let janela = Viewport {
+            center: Point2::ORIGIN,
+            width: 80.0,
+            height: 60.0,
+            view_center: Point2::ORIGIN,
+            view_height: 100.0,
+            twist: 0.0,
+            clip: ViewportClip::Window,
+            is_on: true,
+            frozen_layers: BTreeSet::new(),
+        };
+        let tolerancia = Tolerance::default();
+
+        let de_lado = janela.transformed(&Transform::rotation_around(Point2::ORIGIN, FRAC_PI_2));
+
+        assert!(tolerancia.lengths_equal(de_lado.width, 60.0));
+        assert!(tolerancia.lengths_equal(de_lado.height, 80.0));
+
+        // Giro que não é múltiplo do quarto de volta não cabe numa moldura
+        // alinhada aos eixos: ela é movida sem girar, e as medidas ficam.
+        let torta = janela.transformed(&Transform::rotation_around(Point2::ORIGIN, 0.4));
+
+        assert!(tolerancia.lengths_equal(torta.width, 80.0));
+        assert!(tolerancia.lengths_equal(torta.height, 60.0));
     }
 }

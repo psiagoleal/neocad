@@ -1097,9 +1097,22 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       dentro do modo; depois vêm índice da curva e coordenadas, para que empate
       nenhum dependa da ordem de geração. A ordem dos modos está presa por teste
       próprio, por ser comportamento e não detalhe. 599 testes.
-- [ ] **Próximo:** bloco C — MT-K3-08 (transformações), MT-K3-09 (paralela),
-      MT-K3-10 (aparo e extensão), MT-K3-11 (concordância e chanfro). É edição, e
-      cada um deles é comando transacional reversível.
+- [x] **MT-K3-08 concluído.** Mover, copiar, girar, espelhar e escalar como
+      comandos transacionais. `Transform` é **semelhança** de propósito: afim
+      qualquer leva circunferência em elipse, e o modelo não tem elipse — o
+      resultado seria descartado em silêncio ou aproximado sem aviso. Dois
+      detalhes da reflexão têm teste próprio porque errá-los produz desenho
+      parecido com o certo: o arco troca de pontas e o abaulamento troca de
+      sinal. Texto espelhado continua legível (convenção do `MIRRTEXT`
+      desligado). Os comandos não guardam desfazer próprio — atuam sobre o
+      `DocumentEditor`, que já registra a inversa. O critério de aceite é
+      `kernel/neocad-io/tests/undo_bytes.rs`: desfazer devolve o documento byte a
+      byte. 624 testes.
+- [ ] **Limitação declarada:** a moldura de viewport é alinhada aos eixos, então
+      giro que não é múltiplo de um quarto de volta a move sem girar. Representar
+      moldura inclinada exige campo que o formato tampouco tem.
+- [ ] **Próximo:** MT-K3-09 (paralela), MT-K3-10 (aparo e extensão), MT-K3-11
+      (concordância e chanfro), e então MT-K3-12 fecha a fase na fachada.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem

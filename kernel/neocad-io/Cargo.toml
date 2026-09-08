@@ -18,5 +18,10 @@ repository.workspace = true
 neocad-geometry = { path = "../neocad-geometry", version = "0.0.0" }
 neocad-model = { path = "../neocad-model", version = "0.0.0" }
 
+# Só os testes precisam disto: a suíte de desfazer exerce comandos de edição
+# contra a gravação determinística. A crate em si não conhece transações.
+[dev-dependencies]
+neocad-transaction = { path = "../neocad-transaction", version = "0.0.0" }
+
 [lints]
 workspace = true
