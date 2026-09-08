@@ -19,6 +19,7 @@ mod curve;
 mod intersect;
 mod point;
 mod predicate;
+mod snap;
 mod spatial;
 mod tolerance;
 
@@ -29,5 +30,6 @@ pub use curve::{
 pub use intersect::{intersect, AnyCurve, Intersections};
 pub use point::{point_on_circle, Point2};
 pub use predicate::{orientation, Orientation};
+pub use snap::{hit_test, snap, snap_candidates, SnapCandidate, SnapMode};
 pub use spatial::SpatialIndex;
 pub use tolerance::{Tolerance, BASE_ANGULAR, BASE_LINEAR};

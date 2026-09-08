@@ -1088,8 +1088,18 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
       **Desvio de escopo declarado:** o ticket apontava `block.rs`, mas o bloco
       só guarda identificadores; a geometria está na arena, então o método
       nasceu em `document.rs`. 581 testes.
-- [ ] **Próximo:** MT-K3-07 — teste de acerto e prendimento (`osnap`), que fecha
-      o bloco B e é o gesto mais frequente de qualquer CAD.
+- [x] **MT-K3-07 concluído — BLOCO B DE K3 FECHADO.** Acerto e prendimento nos
+      oito modos, sobre as quatro primitivas. A pergunta que o ticket exigia
+      responder era o desempate dentro do raio, e a resposta óbvia — o mais
+      próximo — é errada por razão estrutural: **próximo** devolve por definição
+      o ponto mais perto do cursor, então ordenar por distância tornaria todos os
+      outros modos inalcançáveis. A ordem é por modo, e a distância só desempata
+      dentro do modo; depois vêm índice da curva e coordenadas, para que empate
+      nenhum dependa da ordem de geração. A ordem dos modos está presa por teste
+      próprio, por ser comportamento e não detalhe. 599 testes.
+- [ ] **Próximo:** bloco C — MT-K3-08 (transformações), MT-K3-09 (paralela),
+      MT-K3-10 (aparo e extensão), MT-K3-11 (concordância e chanfro). É edição, e
+      cada um deles é comando transacional reversível.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem
