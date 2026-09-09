@@ -16,7 +16,8 @@
 use neocad_geometry::{Arc, Circle, Line, Point2, Polyline, PolylineVertex};
 use neocad_io::{write_dxf, DxfContents, EntitySpace, ReadEntity};
 use neocad_model::{Document, Entity, EntityId, Geometry, Text};
-use neocad_transaction::{commands, CommandStack};
+use neocad_transaction::commands::CommandError;
+use neocad_transaction::{commands, CommandStack, TransactionError};
 
 /// Um desenho com uma de cada forma que o modelo representa.
 fn desenho() -> (Document, Vec<EntityId>) {
@@ -204,4 +205,63 @@ fn a_operacao_recusa_por_inteiro_quando_uma_entidade_nao_existe() {
     pilha.undo(&mut documento).expect("desfazer não falha");
 
     assert_eq!(bytes(&documento), antes);
+}
+
+#[test]
+fn a_paralela_desfeita_devolve_os_mesmos_bytes() {
+    let (mut documento, ids) = desenho();
+    let antes = bytes(&documento);
+    let quantas_antes = documento.entity_count();
+    let mut pilha = CommandStack::new();
+
+    // As quatro primeiras formas são curvas; a quinta é texto e não tem
+    // paralela.
+    for id in ids.iter().take(4) {
+        let criadas = pilha
+            .edit(&mut documento, "Paralela", |editor| {
+                commands::offset(editor, *id, 0.5, Point2::new(100.0, 100.0))
+            })
+            .expect("paralela de curva não falha");
+
+        assert!(!criadas.is_empty(), "a paralela precisa produzir algo");
+    }
+
+    assert!(
+        documento.entity_count() > quantas_antes,
+        "paralelar acrescenta sem tirar o original"
+    );
+
+    for _ in 0..4 {
+        assert!(
+            pilha.undo(&mut documento).expect("desfazer não falha"),
+            "cada paralela é um passo de desfazer"
+        );
+    }
+
+    assert_eq!(
+        bytes(&documento),
+        antes,
+        "as paralelas desfeitas não devolveram os mesmos bytes"
+    );
+}
+
+#[test]
+fn texto_nao_tem_paralela_e_o_desenho_nao_muda() {
+    let (mut documento, ids) = desenho();
+    let antes = bytes(&documento);
+    let mut pilha = CommandStack::new();
+
+    let resultado = pilha.edit(&mut documento, "Paralela", |editor| {
+        commands::offset(editor, ids[4], 1.0, Point2::new(100.0, 100.0))
+    });
+
+    assert!(
+        matches!(
+            resultado,
+            Err(TransactionError::Command(CommandError::NotACurve))
+        ),
+        "obtido {resultado:?}"
+    );
+    assert_eq!(bytes(&documento), antes, "a recusa não deixa rastro");
+    assert!(!pilha.can_undo(), "recusa não vira passo de desfazer");
 }

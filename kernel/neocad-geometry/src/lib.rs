@@ -17,6 +17,7 @@
 mod aabb;
 mod curve;
 mod intersect;
+mod offset;
 mod point;
 mod predicate;
 mod snap;
@@ -29,6 +30,7 @@ pub use curve::{
     Arc, Circle, ClosestPoint, Curve, Line, Polyline, PolylineSegment, PolylineVertex,
 };
 pub use intersect::{intersect, AnyCurve, Intersections};
+pub use offset::{offset, OffsetError};
 pub use point::{point_on_circle, Point2};
 pub use predicate::{orientation, Orientation};
 pub use snap::{hit_test, snap, snap_candidates, SnapCandidate, SnapMode};

@@ -6,7 +6,7 @@
 
 use std::collections::VecDeque;
 
-use neocad_model::{Document, DocumentEditor, DocumentError};
+use neocad_model::{Document, DocumentEditor};
 
 use crate::transaction::{Transaction, TransactionError};
 
@@ -176,14 +176,15 @@ impl CommandStack {
     /// assert!(document.entity(id).is_none(), "a criação foi desfeita");
     /// # Ok::<(), Box<dyn core::error::Error>>(())
     /// ```
-    pub fn edit<F, T>(
+    pub fn edit<F, T, E>(
         &mut self,
         document: &mut Document,
         name: impl Into<String>,
         build: F,
     ) -> Result<T, TransactionError>
     where
-        F: FnOnce(&mut DocumentEditor<'_>) -> Result<T, DocumentError>,
+        F: FnOnce(&mut DocumentEditor<'_>) -> Result<T, E>,
+        E: Into<TransactionError>,
     {
         let mut editor = document.edit();
 
@@ -204,7 +205,7 @@ impl CommandStack {
                     .rollback()
                     .map_err(|source| TransactionError::RollbackFailed { index: 0, source })?;
 
-                Err(TransactionError::Edit(error))
+                Err(error.into())
             }
         }
     }
@@ -324,7 +325,7 @@ mod tests {
     use super::*;
     use neocad_geometry::Point2;
     use neocad_model::Change;
-    use neocad_model::{Entity, EntityId, Geometry, LayerId, Line};
+    use neocad_model::{DocumentError, Entity, EntityId, Geometry, LayerId, Line};
 
     fn line(layer: LayerId, x: f64) -> Entity {
         Entity::new(
@@ -652,7 +653,7 @@ mod tests {
                 editor.remove_entity(ids[0])?;
                 editor.insert_in_model_space(line(zero, 99.0))?;
 
-                Ok(())
+                Ok::<_, DocumentError>(())
             })
             .expect("edição válida");
 
@@ -677,7 +678,7 @@ mod tests {
                 editor.remove_entity(ids[0])?;
                 editor.remove_entity(ids[0])?;
 
-                Ok(())
+                Ok::<_, DocumentError>(())
             })
             .expect_err("deve falhar");
 
@@ -699,7 +700,7 @@ mod tests {
             .edit(&mut document, "Nada", |editor| {
                 let _ = editor.document().entity_count();
 
-                Ok(())
+                Ok::<_, DocumentError>(())
             })
             .expect("edição vazia");
 

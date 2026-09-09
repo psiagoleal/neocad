@@ -47,8 +47,52 @@
 //! # Ok::<(), Box<dyn core::error::Error>>(())
 //! ```
 
-use neocad_geometry::{Point2, Transform};
-use neocad_model::{DocumentEditor, DocumentError, EntityId};
+use core::fmt;
+
+use neocad_geometry::{offset as parallel_to, AnyCurve, OffsetError, Point2, Tolerance, Transform};
+use neocad_model::{DocumentEditor, DocumentError, Entity, EntityId, Geometry};
+
+/// Por que uma operação de edição não pôde ser feita.
+///
+/// Existe porque a paralela falha por motivo que o documento não sabe nomear: o
+/// raio que a operação anularia não é um defeito do desenho, e devolver
+/// [`DocumentError`] para ele obrigaria a inventar uma variante de documento
+/// para cada geometria que não fecha.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandError {
+    /// Falha vinda do documento.
+    Document(DocumentError),
+    /// A entidade não tem geometria que se possa paralelar.
+    ///
+    /// Texto e janela de prancha são entidades, mas não são curvas.
+    NotACurve,
+    /// Falha vinda da construção da paralela.
+    Offset(OffsetError),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Document(error) => write!(formatter, "{error}"),
+            Self::NotACurve => write!(formatter, "a entidade não é uma curva"),
+            Self::Offset(error) => write!(formatter, "{error}"),
+        }
+    }
+}
+
+impl core::error::Error for CommandError {}
+
+impl From<DocumentError> for CommandError {
+    fn from(error: DocumentError) -> Self {
+        Self::Document(error)
+    }
+}
+
+impl From<OffsetError> for CommandError {
+    fn from(error: OffsetError) -> Self {
+        Self::Offset(error)
+    }
+}
 
 /// Aplica a transformação às entidades, no lugar.
 ///
@@ -195,4 +239,103 @@ pub fn copy(
     dy: f64,
 ) -> Result<Vec<EntityId>, DocumentError> {
     duplicate(editor, entities, &Transform::translation(dx, dy))
+}
+
+/// Cria a paralela de uma entidade, à distância dada, do lado onde está `side`.
+///
+/// A entidade original **permanece**: paralelar é acrescentar, não deslocar —
+/// e é por isso que a operação devolve identificadores novos em vez de nada.
+/// As cópias herdam camada e cor do original e ficam no mesmo bloco.
+///
+/// A paralela de uma polilinha pode se partir em mais de um pedaço quando parte
+/// dela é engolida pela distância pedida, daí a lista.
+///
+/// # Errors
+///
+/// Ver [`CommandError`].
+///
+/// # Exemplo
+///
+/// ```
+/// use neocad_geometry::{Line, Point2};
+/// use neocad_model::{Document, Entity, Geometry};
+/// use neocad_transaction::{commands, CommandStack};
+///
+/// let mut document = Document::new();
+/// let layer = document.layers().default_layer();
+/// let mut stack = CommandStack::new();
+///
+/// let id = stack.edit(&mut document, "Desenhar", |editor| {
+///     editor.insert_in_model_space(Entity::new(
+///         layer,
+///         Geometry::Line(Line { start: Point2::ORIGIN, end: Point2::new(10.0, 0.0) }),
+///     ))
+/// })?;
+///
+/// let paralelas = stack.edit(&mut document, "Paralela", |editor| {
+///     commands::offset(editor, id, 2.0, Point2::new(5.0, 1.0))
+/// })?;
+///
+/// assert_eq!(paralelas.len(), 1);
+/// assert_eq!(document.entity_count(), 2, "a original continua lá");
+///
+/// stack.undo(&mut document)?;
+///
+/// assert_eq!(document.entity_count(), 1, "desfazer tira só a paralela");
+/// # Ok::<(), Box<dyn core::error::Error>>(())
+/// ```
+pub fn offset(
+    editor: &mut DocumentEditor<'_>,
+    entity: EntityId,
+    distance: f64,
+    side: Point2,
+) -> Result<Vec<EntityId>, CommandError> {
+    let source = editor
+        .document()
+        .entity(entity)
+        .ok_or(DocumentError::UnknownEntity)?;
+    let block = editor
+        .document()
+        .entity_placement(entity)
+        .ok_or(DocumentError::UnknownEntity)?
+        .block;
+    let layer = source.layer;
+    let color = source.color;
+
+    let curve = as_curve(&source.geometry).ok_or(CommandError::NotACurve)?;
+    let parallels = parallel_to(&curve, distance, side, Tolerance::default())?;
+    let mut created = Vec::with_capacity(parallels.len());
+
+    for parallel in parallels {
+        let entity = Entity {
+            layer,
+            color,
+            geometry: as_geometry(parallel),
+        };
+
+        created.push(editor.insert_entity(entity, block)?);
+    }
+
+    Ok(created)
+}
+
+/// A geometria vista como curva, quando ela for uma.
+fn as_curve(geometry: &Geometry) -> Option<AnyCurve> {
+    match geometry {
+        Geometry::Line(line) => Some(AnyCurve::Line(*line)),
+        Geometry::Circle(circle) => Some(AnyCurve::Circle(*circle)),
+        Geometry::Arc(arc) => Some(AnyCurve::Arc(*arc)),
+        Geometry::Polyline(polyline) => Some(AnyCurve::Polyline(polyline.clone())),
+        Geometry::Text(_) | Geometry::Viewport(_) => None,
+    }
+}
+
+/// A curva de volta à geometria que o modelo guarda.
+fn as_geometry(curve: AnyCurve) -> Geometry {
+    match curve {
+        AnyCurve::Line(line) => Geometry::Line(line),
+        AnyCurve::Circle(circle) => Geometry::Circle(circle),
+        AnyCurve::Arc(arc) => Geometry::Arc(arc),
+        AnyCurve::Polyline(polyline) => Geometry::Polyline(polyline),
+    }
 }

@@ -7,9 +7,9 @@
 
 ## Último turno
 
-- **Data:** 2026-09-07
+- **Data:** 2026-09-08
 - **Branch:** `feat/kernel-cad-k3`
-- **Commit:** `4b8e008` (MT-K3-01) + MT-K3-02 pendente
+- **Commit:** `a022221` (MT-K3-08) + MT-K3-09 neste turno
 
 ### Fase K3 em curso
 
@@ -1111,8 +1111,26 @@ crate::arena::Arena;` do `block.rs`, que mudou de posição — estava no meio
 - [ ] **Limitação declarada:** a moldura de viewport é alinhada aos eixos, então
       giro que não é múltiplo de um quarto de volta a move sem girar. Representar
       moldura inclinada exige campo que o formato tampouco tem.
-- [ ] **Próximo:** MT-K3-09 (paralela), MT-K3-10 (aparo e extensão), MT-K3-11
-      (concordância e chanfro), e então MT-K3-12 fecha a fase na fachada.
+- [x] **MT-K3-09 concluído.** Paralela de reta, circunferência, arco e polilinha,
+      com o lado escolhido por um ponto. O que separa a paralela certa da ingênua
+      é um critério só, e não uma coleção de casos: **ponto que esteja mais perto
+      do original do que a distância pedida não é ponto da paralela**. Ele apara o
+      laço do canto vizinho e o laço que se fecha entre trechos distantes na
+      sequência com o mesmo gesto. O canto que abre sai em ponta, prolongando os
+      dois lados até se encontrarem — que é o que o AutoCAD faz por omissão.
+      Distância é sempre positiva e o lado vem do ponto: distância negativa seria
+      uma segunda forma de dizer o lado, e duas formas de dizer a mesma coisa
+      acabam discordando. Arco cujo raio a paralela anularia é recusado
+      (`RadiusVanishes`), nunca emitido com raio negativo. A paralela devolve uma
+      **lista** porque a de uma polilinha pode se partir quando um pedaço é
+      engolido. 645 testes.
+- [ ] **Limitação declarada:** o descarte mede a distância pelo **meio** de cada
+      pedaço, depois de cortá-lo em toda autointerseção. Onde a fronteira do que
+      sobra não coincide com uma autointerseção, o pedaço é mantido ou descartado
+      por inteiro. Nas quatro primitivas do modelo essa fronteira é sempre um
+      cruzamento; a ressalva volta a importar quando entrar spline.
+- [ ] **Próximo:** MT-K3-10 (aparo e extensão), MT-K3-11 (concordância e
+      chanfro), e então MT-K3-12 fecha a fase na fachada.
 - [ ] **A release `v0.2.0` fica em rascunho até haver UI/UX.** Decisão sua, de
       2026-08-31: o kernel amadureceu, mas o binário ainda não entrega
       experiência de uso, e sem algo palpável não há por que publicar. A ordem
