@@ -122,6 +122,10 @@ Pare quando **qualquer um** destes ocorrer: aceite nos gates; orçamento esgotad
 platô (ganho marginal perto de zero); reparo que regride em vez de progredir;
 divergência entre avaliadores; gate humano ou de segurança.
 
+**Contar, porém, é obrigatório.** Registrar cada volta com a hipótese que a motivou é o que
+revela o platô e a repetição — ver `laco-de-correcao`, que é este laço com o registro por
+tentativa e o formato de escalada.
+
 ## Gate que não pode falhar não prova nada
 
 O verificador confere **o oráculo declarado** — o comando. Ele não tem como saber se o

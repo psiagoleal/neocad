@@ -56,11 +56,12 @@ Rotas, em ordem de custo:
 
 | Rota | Quando |
 |---|---|
-| `delegacao-openai-compat` com `oa-chat -m <outro modelo>` | Padrão: crítico de outra família, fora da cota da assinatura |
+| `delegacao-openai-compat` com `oa-chat -m <outro modelo> --no-think` | Padrão: crítico de outra família, fora da cota da assinatura |
 | Subagente em janela separada (`delegacao-a-subagentes`) | Quando o material não pode sair da máquina |
 | Outra CLI de agente instalada | Quando você quer também outro harness, não só outro modelo |
 
-Peça veredito **e** a maior lacuna, não uma nota:
+Peça veredito **e** a maior lacuna, **nunca uma nota** — ver `laco-de-correcao` para o porquê
+e para o formato completo quando a crítica vira laço de correção:
 
 > "Objetivo: <...>. Critério: <...>. Artefato em anexo. Responda em duas linhas:
 > `VEREDITO: passa|não passa` e `MAIOR_LACUNA: <uma frase>`. Não proponha código."
@@ -68,6 +69,32 @@ Peça veredito **e** a maior lacuna, não uma nota:
 ⚠️ **O crítico também erra.** Ele não é árbitro final: é um segundo sinal barato. Discordância
 entre construtor e crítico é motivo para você olhar, não para aceitar automaticamente o
 crítico. E repetir a mesma rubrica muitas vezes otimiza para a rubrica, não para a qualidade.
+
+### O que foi medido (e muda a recomendação)
+
+Teste de 2026-09-21: um modelo de outra família, via gateway, revisando dois artefatos — um com
+**dois defeitos conhecidos** (gabarito) e um script recém-publicado, sem defeito conhecido.
+
+| | Com raciocínio | Sem raciocínio (`--no-think`) |
+|---|---|---|
+| Execuções que entregaram resposta | 2 de 4 (as outras esgotaram o orçamento pensando) | 4 de 4 |
+| Custo por revisão | 7 a 12 mil tokens | ~500 |
+| Defeitos do gabarito encontrados | 0 de 2 | 0 de 2, nas duas execuções |
+| Defeitos reais no script publicado | 5, nenhum inventado | os mesmos, com enquadramento diferente |
+
+Três conclusões práticas:
+
+- **Use `--no-think` e rode duas vezes.** O raciocínio não melhorou nada e custou 15× mais;
+  duas execuções baratas mostram mais variância do que uma cara.
+- **Ele é bom onde o erro é de lógica local** — ordem de escolha, dado não validado, retorno
+  ignorado. Achou um defeito real que o teste de quem escreveu não pegou.
+- **Ele é cego para semântica fina de shell e para ordem entre seções.** Não viu que `exit`
+  dentro de `< <(...)` encerra só o subshell, nem que o script escrevia antes de validar — os
+  dois defeitos do gabarito, ambos pegos originalmente por **execução**, não por leitura. Pior:
+  descreveu o gatilho certo de um deles e **previu o efeito errado**, por não ter visto o bug.
+
+Ou seja: o crítico é filtro barato de defeito lógico, não substituto de teste. Onde a dúvida é
+"isto de fato se comporta assim?", rode — é o sinal externo da seção seguinte.
 
 ## 3. Puxe sinal externo
 
@@ -106,3 +133,4 @@ resultado (`pr-review-guard`).
 - [ ] Pelo menos um sinal externo real foi consultado, quando havia um disponível.
 - [ ] Discordância entre construtor e crítico foi levada a decisão humana, não resolvida no voto.
 - [ ] Nenhuma conclusão se apoia apenas no relato de quem produziu.
+- [ ] Onde a pergunta era "isto se comporta assim?", o código foi **executado**, não só lido.
