@@ -62,3 +62,9 @@ docs/test/
 
 # Preferências locais do Claude Code: por máquina, não por repositório.
 .claude/settings.local.json
+
+# Adaptadores de skill: artefato gerado pelo instalador, não versionado (ADR 0015 do
+# framework de regramento). Versioná-los escreveria o NOME de cada skill no repositório —
+# e este é público (AGENTS.md §0.1). Quem clona roda o instalador uma vez.
+.claude/skills/
+.agents/skills/
