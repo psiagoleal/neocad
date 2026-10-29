@@ -23,8 +23,6 @@ UI começa pelo que não depende do ADR 0008.
       expor consulta e edição na fachada WebAssembly; fecha a fase K3.
 - [ ] [MT-HG-07](tickets/hg-higiene.md#mt-hg-07-varredura-de-segredos-local-antes-do-commit) —
       hook `gitleaks` — bloqueado por `gitleaks` não instalado na máquina.
-- [ ] [MT-K3-13](tickets/k3-geometria-2d-edicao.md#mt-k3-13-recusar-fator-de-escala-zero-negativo-ou-não-finito) —
-      fator ≤ 0 recusado, como no AutoCAD (spec 05, E1c).
 - [ ] [MT-QP-01](tickets/qp-provas-das-specs.md#mt-qp-01-ida-e-volta-dxf-por-variante-de-geometria-t5) —
       variante nova sem leitura e gravação não compila.
 - [ ] [MT-QP-02](tickets/qp-provas-das-specs.md#mt-qp-02-guarda-de-tolerância-e-de-licenças-do-kernel-t6-t7) —
@@ -66,6 +64,8 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-K3-13](tickets/k3-geometria-2d-edicao.md#mt-k3-13-recusar-fator-de-escala-zero-negativo-ou-não-finito) —
+      fator ≤ 0 recusado, como no AutoCAD (spec 05, E1c).
 - [x] [MT-HG-03](tickets/hg-higiene.md#mt-hg-03-atualizar-o-readme-e-consolidar-o-roteiro) —
       README de hoje; roteiro pelos ADRs 0003 e 0007.
 - [x] [MT-HG-06](tickets/hg-higiene.md#mt-hg-06-pôr-o-cabeçalho-de-caminho-relativo-nos-arquivos-que-faltam) —

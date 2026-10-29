@@ -37,6 +37,8 @@
 - MT-HG-04: mapa de arquitetura com as arestas reais e onde a GPL está de fato.
 - MT-HG-05: `.codex/` ignorado; CHANGELOG com uma linha por mudança.
 - MT-HG-06: cabeçalho de caminho relativo nos 15 arquivos que faltavam.
+- MT-K3-13: escala recusa fator zero, negativo ou não finito; teste escrito em contexto
+  limpo a partir do critério, visto falhando antes da correção.
 - `make dist-test` verde: pacotes Linux e Windows (MinGW, só para teste) em `dist-test/`.
 
 ## O que mudou de rumo
@@ -50,11 +52,11 @@
 
 ## Em andamento
 
-- Fechamento de K3 (MT-K3-10 a MT-K3-13).
+- Fechamento de K3 (MT-K3-10 a MT-K3-12).
 
 ## Próximo passo sugerido
 
-1. MT-K3-13 (recusar fator de escala inválido), depois MT-K3-10, 11 e 12.
+1. MT-K3-10 (aparar e estender), depois MT-K3-11 e MT-K3-12.
 2. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
 
 ## Impedimentos abertos

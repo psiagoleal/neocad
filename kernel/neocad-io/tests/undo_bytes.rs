@@ -115,7 +115,17 @@ fn operacoes() -> Vec<(
         ),
         (
             "Escalar",
-            Box::new(|editor, ids| commands::scale(editor, ids, Point2::new(-1.0, 2.0), 1.75)),
+            Box::new(|editor, ids| {
+                // A escala devolve o erro do comando, que pode recusar o fator;
+                // aqui o fator é válido, então o único erro possível é o do
+                // documento.
+                commands::scale(editor, ids, Point2::new(-1.0, 2.0), 1.75).map_err(
+                    |erro| match erro {
+                        CommandError::Document(erro) => erro,
+                        outro => panic!("fator válido recusado: {outro}"),
+                    },
+                )
+            }),
         ),
         (
             "Copiar",
@@ -264,4 +274,54 @@ fn texto_nao_tem_paralela_e_o_desenho_nao_muda() {
     );
     assert_eq!(bytes(&documento), antes, "a recusa não deixa rastro");
     assert!(!pilha.can_undo(), "recusa não vira passo de desfazer");
+}
+
+#[test]
+fn escalar_recusa_fator_zero_negativo_ou_nao_finito() {
+    for fator in [
+        0.0,
+        -0.0,
+        -1.0,
+        -2.5,
+        f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    ] {
+        let (mut documento, ids) = desenho();
+        let antes = bytes(&documento);
+        let mut pilha = CommandStack::new();
+        let resultado = pilha.edit(&mut documento, "Escalar", |editor| {
+            commands::scale(editor, &ids, Point2::new(0.0, 0.0), fator)
+        });
+        assert!(
+            resultado.is_err(),
+            "escalar com fator {fator} tinha de ser recusado"
+        );
+        assert_eq!(
+            bytes(&documento),
+            antes,
+            "escalar com fator {fator} não podia alterar o documento"
+        );
+        assert!(
+            matches!(pilha.undo(&mut documento), Ok(false)),
+            "escalar com fator {fator} não podia deixar nada para desfazer (undo devia devolver Ok(false))"
+        );
+    }
+
+    // Controle: um fator positivo válido continua sendo aceito e altera o documento.
+    let (mut documento, ids) = desenho();
+    let antes = bytes(&documento);
+    let mut pilha = CommandStack::new();
+    let resultado = pilha.edit(&mut documento, "Escalar", |editor| {
+        commands::scale(editor, &ids, Point2::new(0.0, 0.0), 2.0)
+    });
+    assert!(
+        resultado.is_ok(),
+        "escalar com fator 2.0 tinha de ser aceito"
+    );
+    assert_ne!(
+        bytes(&documento),
+        antes,
+        "escalar com fator 2.0 tinha de alterar os bytes do documento"
+    );
 }

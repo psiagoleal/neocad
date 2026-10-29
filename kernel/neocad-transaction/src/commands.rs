@@ -68,6 +68,11 @@ pub enum CommandError {
     NotACurve,
     /// Falha vinda da construção da paralela.
     Offset(OffsetError),
+    /// Fator de escala zero, negativo ou não finito.
+    ///
+    /// O AutoCAD exige fator positivo: zero colapsaria a geometria num ponto, e
+    /// o sinal negativo não tem leitura de escala que o usuário espere.
+    InvalidScaleFactor,
 }
 
 impl fmt::Display for CommandError {
@@ -76,6 +81,9 @@ impl fmt::Display for CommandError {
             Self::Document(error) => write!(formatter, "{error}"),
             Self::NotACurve => write!(formatter, "a entidade não é uma curva"),
             Self::Offset(error) => write!(formatter, "{error}"),
+            Self::InvalidScaleFactor => {
+                write!(formatter, "o fator de escala tem de ser positivo e finito")
+            }
         }
     }
 }
@@ -217,14 +225,23 @@ pub fn mirror(
 ///
 /// # Errors
 ///
-/// Ver [`transform`].
+/// [`CommandError::InvalidScaleFactor`] se o fator não for positivo e finito,
+/// antes de qualquer mudança; os demais casos, ver [`transform`].
 pub fn scale(
     editor: &mut DocumentEditor<'_>,
     entities: &[EntityId],
     pivot: Point2,
     factor: f64,
-) -> Result<(), DocumentError> {
-    transform(editor, entities, &Transform::scaling_around(pivot, factor))
+) -> Result<(), CommandError> {
+    if !(factor.is_finite() && factor > 0.0) {
+        return Err(CommandError::InvalidScaleFactor);
+    }
+
+    Ok(transform(
+        editor,
+        entities,
+        &Transform::scaling_around(pivot, factor),
+    )?)
 }
 
 /// Copia as entidades, deslocando as cópias.
