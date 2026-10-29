@@ -13,11 +13,19 @@
 - **Data:** 2026-10-29
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-K3-11)
+- **Commit:** o deste turno (MT-K3-12, parte Rust); `5728701` e este ainda **não publicados**
 - **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check` verde; CI do PR a conferir após o push
 
 ## Metas cumpridas neste turno
 
+- MT-K3-12, parte Rust: `CadSession` ganhou as dez operações da spec 05 (`moveEntities`,
+  `copyEntities`, `rotateEntities`, `mirrorEntities`, `scaleEntities`, `offsetEntity`,
+  `trimEntity`, `extendEntity`, `filletEntities`, `chamferEntities`), cada uma uma ação
+  nomeada no histórico, e as consultas `intersections`, `entitiesInBox`, `hitTest` e `snap`.
+  20 testes de host escritos em contexto limpo (subagente Sonnet, porque o gateway estava
+  fora do ar), 15 vistos falhando por asserção; os 5 de recusa já passavam com o corpo
+  provisório, que só recusava. Oito correções mecânicas de clippy nos testes (`clippy --fix`).
+  `.wasm` de release: **414 302 bytes** (limite W5: 465 000).
 - MT-K3-11: concordância (`fillet`, entre reta e arco) e chanfro (`chamfer`, entre retas),
   com `commands::fillet`/`commands::chamfer` (as duas curvas alteradas no lugar; a junção
   entra como entidade nova). Spec 05 vigente inteira (E1–E13). 18 testes escritos pelo
@@ -49,12 +57,18 @@
 
 ## Em andamento
 
-- Nada começado. MT-K3-12 é o próximo.
+- MT-K3-12: falta o lado TypeScript — tipos em `src/lib/types/cad.ts`, métodos no
+  `cad-document.ts` com erros tipados (W3), conversão validada (W4), envenenamento após
+  pânico/trap (W4b, com sessão simulada; o construtor de `CadDocument` precisa de uma
+  costura de teste), regra `no-restricted-imports` (W1b) e checagem de tamanho no
+  `scripts/build-kernel.mjs` (W5). Então `pnpm lint`, `pnpm test`, `pnpm check`, `make e2e`.
 
 ## Próximo passo sugerido
 
-1. MT-K3-12 (fachada WASM: consulta e edição), que fecha a fase K3.
-2. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
+1. Publicar `5728701` e o commit do MT-K3-12: a conta ativa do `gh` é a de trabalho; o
+   mantenedor troca com `gh auth switch -u psiagoleal`.
+2. Terminar o MT-K3-12 (lado TypeScript), que fecha a fase K3.
+3. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
 
 ## Impedimentos abertos
 
@@ -63,6 +77,8 @@
   só move o raciocínio para a resposta. Para escrever testes, usar `qwen3-coder:30b`
   (~1 mil tokens por lote, formato respeitado); para crítica, `GLM-5.2-FP8 --no-think`.
 
+- Gateway (10.0.35.2:4000) inacessível em 2026-10-29 à tarde (conexão expirou): sem VPN
+  ou rede da empresa, a delegação cai para subagente.
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
 - O mecanismo de KV (espelhar no upstream ou desenhar do kernel) só se decide depois dos
   spikes MT-KV-03 e MT-KV-04; até o ADR 0008, a interface não ganha edição.
