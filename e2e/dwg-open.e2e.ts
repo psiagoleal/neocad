@@ -4,7 +4,10 @@
 
 /**
  * \file e2e/dwg-open.e2e.ts
- * \brief Teste E2E para validar a abertura do desenho DWG de referência do projeto.
+ * \brief Teste E2E para validar a abertura de um desenho DWG de referência local.
+ *
+ * O desenho não é versionado: o caminho vem de `NEOCAD_REFERENCE_DWG`, e sem
+ * ele o teste é pulado.
  * \author Iago Leal
  * \date 2026-05-12
  */
@@ -13,11 +16,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
-const referenceDwgPath = path.join(process.cwd(), 'ANT.DS.L2.01.0001.01.02 - Básico.dwg');
+const referenceDwgPath = process.env.NEOCAD_REFERENCE_DWG ?? '';
+const referenceDwgName = path.basename(referenceDwgPath);
 
 test.skip(
-	!fs.existsSync(referenceDwgPath),
-	'Requer o arquivo DWG de referência disponível na raiz do repositório.'
+	!referenceDwgPath || !fs.existsSync(referenceDwgPath),
+	'Requer NEOCAD_REFERENCE_DWG apontando para um DWG local.'
 );
 
 test('abre o arquivo DWG de referência do NeoCAD', async ({ page }) => {
@@ -34,9 +38,7 @@ test('abre o arquivo DWG de referência do NeoCAD', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Fundo escuro' })).toBeVisible({
 		timeout: 120_000
 	});
-	await expect(
-		page.getByRole('heading', { name: 'ANT.DS.L2.01.0001.01.02 - Básico.dwg', exact: true })
-	).toBeVisible({
+	await expect(page.getByRole('heading', { name: referenceDwgName, exact: true })).toBeVisible({
 		timeout: 120_000
 	});
 	await expect(page.getByText('Falha ao carregar', { exact: false })).toHaveCount(0);

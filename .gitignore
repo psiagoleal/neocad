@@ -47,8 +47,11 @@ kernel/target
 kernel/neocad-wasm/pkg
 src/lib/kernel/pkg
 
-# Local CAD fixtures
-ANT.DS.L2.01.0001.01.02 - Básico.dwg
+# Desenhos locais de referência na raiz: nunca versionados (AGENTS.md §0.1).
+/*.dwg
+/*.DWG
+/*.dxf
+/*.DXF
 
 # Diretório de threads
 threads/
