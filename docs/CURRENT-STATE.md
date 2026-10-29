@@ -14,7 +14,7 @@
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
 - **Commit:** o deste turno (MT-HG-01 a 06)
-- **Estado da árvore:** limpa · **DoD:** CI do PR verde em Linux e Windows até `45ef5d7`
+- **Estado da árvore:** com alterações não commitadas do MT-K3-10 (ver Em andamento) · **DoD:** CI do PR verde em Linux e Windows até `45ef5d7`
 
 ## Metas cumpridas neste turno
 
@@ -52,14 +52,29 @@
 
 ## Em andamento
 
-- Fechamento de K3 (MT-K3-10 a MT-K3-12).
+- **MT-K3-10 (aparar e estender), começado e não commitado.** Na árvore:
+  `kernel/neocad-geometry/src/trim.rs` com a API final (`trim`, `extend`, `TrimError` com
+  `PickOffCurve`, `NoCuttingEdge`, `NoBoundary`, `NotExtendable`) e corpo-esboço que
+  devolve a curva intacta, para os testes falharem por asserção; `lib.rs` registra o
+  módulo; `sub_piece` e `polyline_from` de `offset.rs` passaram a `pub(crate)` para serem
+  reaproveitados. **Falta:** escrever `kernel/neocad-geometry/tests/aparar_e_estender.rs`
+  a partir dos critérios E7–E9 da spec 05 em contexto limpo e vê-lo falhar; implementar
+  (trechos por parâmetro global como em `Polyline`; circunferência e polilinha fechada
+  aparadas entre as duas interseções vizinhas ao ponto; extensão por raio ou pelo arco
+  complementar até a primeira fronteira); depois `commands::trim`/`commands::extend`
+  substituindo a entidade na mesma transação, com teste em `undo_bytes.rs`.
+- MT-K3-11 e MT-K3-12 em seguida.
 
 ## Próximo passo sugerido
 
-1. MT-K3-10 (aparar e estender), depois MT-K3-11 e MT-K3-12.
+1. Retomar o MT-K3-10 pelo teste (ver Em andamento), depois MT-K3-11 e MT-K3-12.
 2. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
 
 ## Impedimentos abertos
+
+- O GLM-5.3 no gateway esgota até 32 mil tokens raciocinando em pedidos longos, mesmo com
+  `{"thinking":{"type":"disabled"}}`; pedidos curtos funcionam. Para escrever testes,
+  dividir o pedido em lotes de 3–4 testes ou usar outro modelo do gateway.
 
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
 - O mecanismo de KV (espelhar no upstream ou desenhar do kernel) só se decide depois dos

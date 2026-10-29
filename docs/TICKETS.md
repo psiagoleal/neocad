@@ -15,8 +15,8 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Em aberto
 
-- [ ] [MT-K3-10](tickets/k3-geometria-2d-edicao.md#mt-k3-10-aparar-e-estender-trimextend) —
-      aparar contra arestas de corte e estender até uma fronteira.
+- [>] [MT-K3-10](tickets/k3-geometria-2d-edicao.md#mt-k3-10-aparar-e-estender-trimextend) —
+  aparar e estender · falta: testes (vermelho), implementação e o comando no `commands.rs`.
 - [ ] [MT-K3-11](tickets/k3-geometria-2d-edicao.md#mt-k3-11-concordância-e-chanfro-filletchamfer) —
       concordância e chanfro entre duas curvas.
 - [ ] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
