@@ -2,7 +2,7 @@
 
 # ADR 0007: Fase de prancha de engenharia antes do paramétrico e do 3D
 
-- **Status:** Proposed <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
+- **Status:** Accepted <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
 - **Data:** 2026-10-29
 - **Decisores:** Iago Leal
 - **Tags:** roadmap, kernel, anotação, plotagem, comandos, autocad
