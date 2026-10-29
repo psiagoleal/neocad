@@ -2,6 +2,11 @@
 
 # Guia de desenvolvimento
 
+> **Atualizado em 2026-10-29:** as menções a "Fase 2" e "Fase 3" abaixo são do roteiro
+> antigo. Os comandos vigentes estão no [`AGENTS.md`](../AGENTS.md) §3 e o roteiro nos
+> ADRs [0003](./adr/0003-kernel-cad-proprio.md) e
+> [0007](./adr/0007-fase-de-prancha-de-engenharia.md).
+
 ## Objetivo deste documento
 
 Este guia descreve como preparar o ambiente, validar a integração atual do viewer e continuar a evolução do NeoCAD após o início da Fase 2.

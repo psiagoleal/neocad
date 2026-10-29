@@ -13,7 +13,7 @@
 - **Data:** 2026-10-29
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-HG-01, 02, 04, 05 e 06)
+- **Commit:** o deste turno (MT-HG-01 a 06)
 - **Estado da árvore:** limpa · **DoD:** CI do PR verde em Linux e Windows até `45ef5d7`
 
 ## Metas cumpridas neste turno
@@ -32,6 +32,8 @@
 - Plano em micro-tickets (HG, QP, K3, KV, UI) — `ee7d5b5`.
 - MT-HG-01: ilhas do `AGENTS.md` com a stack e os comandos reais.
 - MT-HG-02: este handoff, com o histórico movido para o arquivo.
+- MT-HG-03: README descreve o NeoCAD de hoje; roteiro pelos ADRs 0003 e 0007; roteiros
+  antigos marcados como históricos.
 - MT-HG-04: mapa de arquitetura com as arestas reais e onde a GPL está de fato.
 - MT-HG-05: `.codex/` ignorado; CHANGELOG com uma linha por mudança.
 - MT-HG-06: cabeçalho de caminho relativo nos 15 arquivos que faltavam.
@@ -48,13 +50,12 @@
 
 ## Em andamento
 
-- Higiene (MT-HG-03 e MT-HG-07) e fechamento de K3 (MT-K3-10 a MT-K3-13).
+- Fechamento de K3 (MT-K3-10 a MT-K3-13).
 
 ## Próximo passo sugerido
 
-1. Terminar os tickets HG.
-2. MT-K3-13 (recusar fator de escala inválido), depois MT-K3-10, 11 e 12.
-3. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
+1. MT-K3-13 (recusar fator de escala inválido), depois MT-K3-10, 11 e 12.
+2. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
 
 ## Impedimentos abertos
 

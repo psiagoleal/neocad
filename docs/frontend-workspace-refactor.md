@@ -2,6 +2,10 @@
 
 # Plano de refatoração do workspace frontend
 
+> **Documento histórico.** Plano já executado; mantido para registro. O roteiro vigente
+> está nos ADRs [0003](./adr/0003-kernel-cad-proprio.md) e
+> [0007](./adr/0007-fase-de-prancha-de-engenharia.md) e em [`TICKETS.md`](./TICKETS.md).
+
 ## Objetivo
 
 Este documento descreve o plano de implementação que guiou a refatoração do frontend do NeoCAD, reduzindo a concentração de responsabilidades em `src/routes/+page.svelte` e centralizando os estilos CSS em uma estrutura mais previsível.
