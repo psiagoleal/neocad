@@ -7,8 +7,11 @@
 > Atualizado **sempre** que um ticket é criado, concluído ou abandonado — skill
 > `micro-ticket-planner`.
 
-As fases seguem o [ADR 0003](adr/0003-kernel-cad-proprio.md). K1, K2 e KL estão fechadas e
-são listadas por fase, não ticket a ticket; K3 está em curso e vai detalhada.
+As fases seguem os ADRs [0003](adr/0003-kernel-cad-proprio.md) e
+[0007](adr/0007-fase-de-prancha-de-engenharia.md); o aceite de cada ticket é a
+[spec](specs/README.md) correspondente. K1, K2 e KL estão fechadas e são listadas por fase;
+as demais vão ticket a ticket. Ordem: HG e QP em paralelo ao fechamento de K3; depois KV;
+UI começa pelo que não depende do ADR 0008.
 
 ## Em aberto
 
@@ -18,6 +21,60 @@ são listadas por fase, não ticket a ticket; K3 está em curso e vai detalhada.
       concordância e chanfro entre duas curvas.
 - [ ] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
       expor consulta e edição na fachada WebAssembly; fecha a fase K3.
+- [ ] [MT-HG-01](tickets/hg-higiene.md#mt-hg-01-corrigir-as-ilhas-do-agentsmd) —
+      stack e comandos reais; fragmento colado e numeração.
+- [ ] [MT-HG-02](tickets/hg-higiene.md#mt-hg-02-enxugar-o-handoff) —
+      estado corrente curto; histórico em `handoff-arquivo.md`.
+- [ ] [MT-HG-03](tickets/hg-higiene.md#mt-hg-03-atualizar-o-readme-e-consolidar-o-roteiro) —
+      README de hoje; roteiro pelos ADRs 0003 e 0007.
+- [ ] [MT-HG-04](tickets/hg-higiene.md#mt-hg-04-corrigir-o-mapa-de-arquitetura) —
+      arestas reais entre crates e onde a GPL está de fato.
+- [ ] [MT-HG-05](tickets/hg-higiene.md#mt-hg-05-decidir-o-codex-e-a-regra-do-changelog) —
+      ignorar `.codex/`; uma linha por mudança.
+- [ ] [MT-HG-06](tickets/hg-higiene.md#mt-hg-06-pôr-o-cabeçalho-de-caminho-relativo-nos-arquivos-que-faltam) —
+      15 arquivos sem o cabeçalho do §4.
+- [ ] [MT-HG-07](tickets/hg-higiene.md#mt-hg-07-varredura-de-segredos-local-antes-do-commit) —
+      hook `gitleaks` — bloqueado por `gitleaks` não instalado na máquina.
+- [ ] [MT-K3-13](tickets/k3-geometria-2d-edicao.md#mt-k3-13-recusar-fator-de-escala-zero-negativo-ou-não-finito) —
+      fator ≤ 0 recusado, como no AutoCAD (spec 05, E1c).
+- [ ] [MT-QP-01](tickets/qp-provas-das-specs.md#mt-qp-01-ida-e-volta-dxf-por-variante-de-geometria-t5) —
+      variante nova sem leitura e gravação não compila.
+- [ ] [MT-QP-02](tickets/qp-provas-das-specs.md#mt-qp-02-guarda-de-tolerância-e-de-licenças-do-kernel-t6-t7) —
+      script em `make kernel-check` e na CI.
+- [ ] [MT-QP-03](tickets/qp-provas-das-specs.md#mt-qp-03-origem-das-fixtures-t10) —
+      `ORIGEM.md` e teste que exige a linha.
+- [ ] [MT-QP-04](tickets/qp-provas-das-specs.md#mt-qp-04-e2e-do-aviso-de-perda-ao-salvar-t4) —
+      diálogo com tipos e quantidades; cancelar não grava.
+- [ ] [MT-QP-05](tickets/qp-provas-das-specs.md#mt-qp-05-teste-direto-da-ordem-das-abas-03-l1) —
+      `in_tab_order` com empate desfeito pelo nome.
+- [ ] [MT-QP-06](tickets/qp-provas-das-specs.md#mt-qp-06-gravar-dxf-ac1032-02-x7) —
+      versão gravada passa a 2018.
+- [ ] [MT-QP-07](tickets/qp-provas-das-specs.md#mt-qp-07-corpus-dxf-de-origem-pública-por-versão-02-x8-review-g4) —
+      R12 a AC1032 lidos em teste.
+- [ ] [MT-QP-08](tickets/qp-provas-das-specs.md#mt-qp-08-limite-de-tamanho-do-wasm-06-w5) —
+      build falha acima de 465 000 bytes.
+- [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
+      interseção, paralela e transformação.
+- [ ] [MT-KV-01](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-01-e2e-que-prova-a-perda-da-linha-desenhada-pelo-upstream) —
+      teste que falha hoje pelo motivo certo (V4).
+- [ ] [MT-KV-02](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-02-gerador-de-desenho-sintético-grande) —
+      100 mil entidades sem arquivo de terceiros.
+- [ ] [MT-KV-03](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-03-spike--espelhar-o-kernel-no-modelo-do-upstream) —
+      mede a opção de espelhamento.
+- [ ] [MT-KV-04](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-04-spike--desenhar-a-partir-do-kernel) —
+      mede a opção de desenho próprio.
+- [ ] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) —
+      escolhe com base nos dois relatórios.
+- [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
+      spec 09, S1, S2, S5.
+- [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —
+      spec 09, S3, S3b, S6.
+- [ ] [MT-UI-03](tickets/ui-interface.md#mt-ui-03-conferir-a-csp-no-app-empacotado) —
+      spec 09, S4, em Linux e Windows.
+- [ ] [MT-UI-04](tickets/ui-interface.md#mt-ui-04-resolvedor-de-comandos-bilíngue) —
+      nomes EN/PT, apelidos e prefixos (spec 08).
+- [ ] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —
+      `Ajuda > Comandos CAD` nos dois idiomas (C11).
 
 ## Concluídos
 
