@@ -13,11 +13,20 @@
 - **Data:** 2026-10-29
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-K3-10)
+- **Commit:** o deste turno (MT-K3-11)
 - **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check` verde; CI do PR a conferir após o push
 
 ## Metas cumpridas neste turno
 
+- MT-K3-11: concordância (`fillet`, entre reta e arco) e chanfro (`chamfer`, entre retas),
+  com `commands::fillet`/`commands::chamfer` (as duas curvas alteradas no lugar; a junção
+  entra como entidade nova). Spec 05 vigente inteira (E1–E13). 18 testes escritos pelo
+  `qwen3-coder:30b` e vistos falhando antes; a 1ª leva veio inutilizável e foi refeita com
+  auxiliares de asserção prontos. A crítica (GLM-5.2) achou um defeito real — concordância
+  que envolve o arco tocava do lado errado — reproduzido em teste e corrigido; os demais
+  achados foram refutados.
+- `1200f95`: tabela da spec 05 realinhada ao Prettier (o CI do frontend tinha falhado por
+  isso; agora rodo `pnpm lint` sempre que mexo em docs).
 - MT-K3-10: aparar e estender (`trim`, `extend`) para reta, arco, circunferência e
   polilinha, e os comandos `commands::trim`/`commands::extend` no editor transacional
   (um passo de desfazer cada; o primeiro pedaço mantém o identificador da entidade).
@@ -40,11 +49,11 @@
 
 ## Em andamento
 
-- Nada começado. MT-K3-11 é o próximo.
+- Nada começado. MT-K3-12 é o próximo.
 
 ## Próximo passo sugerido
 
-1. MT-K3-11 (concordância e chanfro), depois MT-K3-12 (fachada WASM).
+1. MT-K3-12 (fachada WASM: consulta e edição), que fecha a fase K3.
 2. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
 
 ## Impedimentos abertos

@@ -50,8 +50,9 @@
 use core::fmt;
 
 use neocad_geometry::{
-    extend as extend_curve, offset as parallel_to, trim as trim_curve, AnyCurve, OffsetError,
-    Point2, Tolerance, Transform, TrimError,
+    chamfer as chamfer_curves, extend as extend_curve, fillet as fillet_curves,
+    offset as parallel_to, trim as trim_curve, AnyCurve, Corner, CornerError, OffsetError, Point2,
+    Tolerance, Transform, TrimError,
 };
 use neocad_model::{DocumentEditor, DocumentError, Entity, EntityId, Geometry};
 
@@ -78,6 +79,8 @@ pub enum CommandError {
     InvalidScaleFactor,
     /// Falha vinda do aparo ou da extensão.
     Trim(TrimError),
+    /// Falha vinda da concordância ou do chanfro.
+    Corner(CornerError),
 }
 
 impl fmt::Display for CommandError {
@@ -87,6 +90,7 @@ impl fmt::Display for CommandError {
             Self::NotACurve => write!(formatter, "a entidade não é uma curva"),
             Self::Offset(error) => write!(formatter, "{error}"),
             Self::Trim(error) => write!(formatter, "{error}"),
+            Self::Corner(error) => write!(formatter, "{error}"),
             Self::InvalidScaleFactor => {
                 write!(formatter, "o fator de escala tem de ser positivo e finito")
             }
@@ -99,6 +103,12 @@ impl core::error::Error for CommandError {}
 impl From<DocumentError> for CommandError {
     fn from(error: DocumentError) -> Self {
         Self::Document(error)
+    }
+}
+
+impl From<CornerError> for CommandError {
+    fn from(error: CornerError) -> Self {
+        Self::Corner(error)
     }
 }
 
@@ -431,6 +441,120 @@ pub fn extend(
     )?;
 
     Ok(())
+}
+
+/// Concorda duas entidades com um arco de raio dado.
+///
+/// As duas são aparadas ou estendidas no lugar; o arco entra como entidade
+/// nova, com a camada e a cor da primeira. Devolve o identificador do arco, ou
+/// `None` com raio zero.
+///
+/// # Errors
+///
+/// [`CommandError::NotACurve`] se alguma não for curva;
+/// [`CommandError::Corner`] se a concordância for recusada; erro de documento
+/// se alguma entidade não existir.
+pub fn fillet(
+    editor: &mut DocumentEditor<'_>,
+    first: EntityId,
+    first_pick: Point2,
+    second: EntityId,
+    second_pick: Point2,
+    radius: f64,
+) -> Result<Option<EntityId>, CommandError> {
+    let (source, curve_a) = curve_of(editor, first)?;
+    let (_, curve_b) = curve_of(editor, second)?;
+    let corner = fillet_curves(
+        &curve_a,
+        first_pick,
+        &curve_b,
+        second_pick,
+        radius,
+        Tolerance::default(),
+    )?;
+
+    apply_corner(editor, first, &source, second, corner)
+}
+
+/// Chanfra duas entidades com as distâncias dadas, a partir do vértice.
+///
+/// As duas são aparadas ou estendidas no lugar; o segmento entra como entidade
+/// nova, com a camada e a cor da primeira. Devolve o identificador do segmento,
+/// ou `None` com as duas distâncias zero.
+///
+/// # Errors
+///
+/// [`CommandError::NotACurve`] se alguma não for curva;
+/// [`CommandError::Corner`] se o chanfro for recusado; erro de documento se
+/// alguma entidade não existir.
+pub fn chamfer(
+    editor: &mut DocumentEditor<'_>,
+    first: EntityId,
+    first_pick: Point2,
+    second: EntityId,
+    second_pick: Point2,
+    distances: (f64, f64),
+) -> Result<Option<EntityId>, CommandError> {
+    let (source, curve_a) = curve_of(editor, first)?;
+    let (_, curve_b) = curve_of(editor, second)?;
+    let corner = chamfer_curves(
+        &curve_a,
+        first_pick,
+        &curve_b,
+        second_pick,
+        distances.0,
+        distances.1,
+        Tolerance::default(),
+    )?;
+
+    apply_corner(editor, first, &source, second, corner)
+}
+
+/// Grava o canto: as duas curvas no lugar e a junção como entidade nova, na
+/// camada, cor e bloco da primeira.
+fn apply_corner(
+    editor: &mut DocumentEditor<'_>,
+    first: EntityId,
+    source: &Entity,
+    second: EntityId,
+    corner: Corner,
+) -> Result<Option<EntityId>, CommandError> {
+    let block = editor
+        .document()
+        .entity_placement(first)
+        .ok_or(DocumentError::UnknownEntity)?
+        .block;
+    let other = editor
+        .document()
+        .entity(second)
+        .ok_or(DocumentError::UnknownEntity)?
+        .clone();
+
+    editor.replace_entity(
+        first,
+        Entity {
+            geometry: as_geometry(corner.first),
+            ..source.clone()
+        },
+    )?;
+    editor.replace_entity(
+        second,
+        Entity {
+            geometry: as_geometry(corner.second),
+            ..other
+        },
+    )?;
+
+    let Some(joint) = corner.joint else {
+        return Ok(None);
+    };
+
+    let created = Entity {
+        geometry: as_geometry(joint),
+        ..source.clone()
+    };
+
+    Ok(Some(editor.insert_entity(created, block)?))
 }
 
 /// A entidade e a sua geometria como curva.

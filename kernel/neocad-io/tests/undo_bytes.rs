@@ -13,7 +13,9 @@
 //! necessariamente os mesmos bytes, e dois documentos diferentes em qualquer
 //! coisa que o formato carregue produzem bytes diferentes.
 
-use neocad_geometry::{Arc, Circle, Line, Point2, Polyline, PolylineVertex, TrimError};
+use neocad_geometry::{
+    point_on_circle, Arc, Circle, CornerError, Line, Point2, Polyline, PolylineVertex, TrimError,
+};
 use neocad_io::{write_dxf, DxfContents, EntitySpace, ReadEntity};
 use neocad_model::{Document, Entity, EntityId, Geometry, Text};
 use neocad_transaction::commands::CommandError;
@@ -598,4 +600,253 @@ fn aparar_texto_erro_nao_curva() {
     assert!(!pilha.can_undo());
     let bytes_apos_undo = bytes(&documento);
     assert_eq!(antes, bytes_apos_undo);
+}
+
+// Concordar e chanfrar (spec 05, E10–E13): testes escritos em contexto limpo a partir do contrato.
+
+fn confere_reta(geometria: &Geometry, inicio: Point2, fim: Point2) {
+    let Geometry::Line(line) = geometria else {
+        panic!("esperava reta, veio {geometria:?}");
+    };
+    assert!(
+        line.start.distance_to(inicio) < 1e-9 && line.end.distance_to(fim) < 1e-9,
+        "reta {line:?}, esperada {inicio:?} → {fim:?}"
+    );
+}
+
+fn confere_arco(geometria: &Geometry, centro: Point2, raio: f64, inicio: Point2, fim: Point2) {
+    let Geometry::Arc(arc) = geometria else {
+        panic!("esperava arco, veio {geometria:?}");
+    };
+    let a = point_on_circle(arc.center, arc.radius, arc.start_angle);
+    let b = point_on_circle(arc.center, arc.radius, arc.end_angle);
+    assert!(
+        arc.center.distance_to(centro) < 1e-9
+            && (arc.radius - raio).abs() < 1e-9
+            && a.distance_to(inicio) < 1e-9
+            && b.distance_to(fim) < 1e-9,
+        "arco {arc:?}, esperado centro {centro:?}, raio {raio}, {inicio:?} → {fim:?}"
+    );
+}
+
+#[test]
+fn concordar_com_raio_2() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_a = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 0.0),
+                end: Point2::new(10.0, 0.0),
+            }),
+        ))
+        .unwrap();
+    let id_b = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(10.0, 0.0),
+                end: Point2::new(10.0, 10.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let antes = bytes(&documento);
+    let mut pilha = CommandStack::new();
+    let resultado = pilha.edit(&mut documento, "Concordar", |editor| {
+        commands::fillet(
+            editor,
+            id_a,
+            Point2::new(2.0, 0.0),
+            id_b,
+            Point2::new(10.0, 8.0),
+            2.0,
+        )
+    });
+    assert!(resultado.is_ok());
+    let novo_id = resultado.unwrap().unwrap();
+
+    assert_eq!(documento.entity_count(), 3);
+    confere_reta(
+        &documento.entity(id_a).unwrap().geometry,
+        Point2::new(0.0, 0.0),
+        Point2::new(8.0, 0.0),
+    );
+    confere_reta(
+        &documento.entity(id_b).unwrap().geometry,
+        Point2::new(10.0, 2.0),
+        Point2::new(10.0, 10.0),
+    );
+    confere_arco(
+        &documento.entity(novo_id).unwrap().geometry,
+        Point2::new(8.0, 2.0),
+        2.0,
+        Point2::new(8.0, 0.0),
+        Point2::new(10.0, 2.0),
+    );
+
+    assert!(pilha.undo(&mut documento).unwrap());
+    assert_eq!(bytes(&documento), antes);
+}
+
+#[test]
+fn chanfrar_com_distancias_2_3() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_a = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 0.0),
+                end: Point2::new(10.0, 0.0),
+            }),
+        ))
+        .unwrap();
+    let id_b = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(10.0, 0.0),
+                end: Point2::new(10.0, 10.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let antes = bytes(&documento);
+    let mut pilha = CommandStack::new();
+    let resultado = pilha.edit(&mut documento, "Chanfrar", |editor| {
+        commands::chamfer(
+            editor,
+            id_a,
+            Point2::new(2.0, 0.0),
+            id_b,
+            Point2::new(10.0, 8.0),
+            (2.0, 3.0),
+        )
+    });
+    assert!(resultado.is_ok());
+    let novo_id = resultado.unwrap().unwrap();
+
+    assert_eq!(documento.entity_count(), 3);
+    confere_reta(
+        &documento.entity(id_a).unwrap().geometry,
+        Point2::new(0.0, 0.0),
+        Point2::new(8.0, 0.0),
+    );
+    confere_reta(
+        &documento.entity(id_b).unwrap().geometry,
+        Point2::new(10.0, 3.0),
+        Point2::new(10.0, 10.0),
+    );
+    confere_reta(
+        &documento.entity(novo_id).unwrap().geometry,
+        Point2::new(8.0, 0.0),
+        Point2::new(10.0, 3.0),
+    );
+
+    assert!(pilha.undo(&mut documento).unwrap());
+    assert_eq!(bytes(&documento), antes);
+}
+
+#[test]
+fn concordar_paralelas_erro_parallel_lines() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_a = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 0.0),
+                end: Point2::new(10.0, 0.0),
+            }),
+        ))
+        .unwrap();
+    let id_b = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 5.0),
+                end: Point2::new(10.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let antes = bytes(&documento);
+    let mut pilha = CommandStack::new();
+    let resultado = pilha.edit(&mut documento, "Concordar", |editor| {
+        commands::fillet(
+            editor,
+            id_a,
+            Point2::new(2.0, 0.0),
+            id_b,
+            Point2::new(2.0, 5.0),
+            1.0,
+        )
+    });
+    assert!(resultado.is_err());
+    assert!(matches!(
+        resultado.unwrap_err(),
+        TransactionError::Command(CommandError::Corner(CornerError::ParallelLines))
+    ));
+
+    assert_eq!(documento.entity_count(), 2);
+    assert!(!pilha.can_undo());
+    assert_eq!(bytes(&documento), antes);
+}
+
+#[test]
+fn concordar_texto_erro_not_a_curve() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_texto = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Text(Text {
+                position: Point2::new(0.0, 0.0),
+                content: "A".to_owned(),
+                height: 2.5,
+                rotation: 0.0,
+            }),
+        ))
+        .unwrap();
+    let id_reta = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(10.0, 0.0),
+                end: Point2::new(10.0, 10.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let antes = bytes(&documento);
+    let mut pilha = CommandStack::new();
+    let resultado = pilha.edit(&mut documento, "Concordar", |editor| {
+        commands::fillet(
+            editor,
+            id_texto,
+            Point2::new(0.0, 0.0),
+            id_reta,
+            Point2::new(10.0, 8.0),
+            1.0,
+        )
+    });
+    assert!(resultado.is_err());
+    assert!(matches!(
+        resultado.unwrap_err(),
+        TransactionError::Command(CommandError::NotACurve)
+    ));
+
+    assert_eq!(documento.entity_count(), 2);
+    assert!(!pilha.can_undo());
+    assert_eq!(bytes(&documento), antes);
 }

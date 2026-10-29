@@ -15,8 +15,6 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Em aberto
 
-- [ ] [MT-K3-11](tickets/k3-geometria-2d-edicao.md#mt-k3-11-concordância-e-chanfro-filletchamfer) —
-      concordância e chanfro entre duas curvas.
 - [ ] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
       expor consulta e edição na fachada WebAssembly; fecha a fase K3.
 - [ ] [MT-HG-07](tickets/hg-higiene.md#mt-hg-07-varredura-de-segredos-local-antes-do-commit) —
@@ -62,6 +60,8 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-K3-11](tickets/k3-geometria-2d-edicao.md#mt-k3-11-concordância-e-chanfro-filletchamfer) —
+      concordância (reta e arco) e chanfro (retas), pelos pontos indicados (spec 05, E10–E13).
 - [x] [MT-K3-10](tickets/k3-geometria-2d-edicao.md#mt-k3-10-aparar-e-estender-trimextend) —
       aparar e estender reta, arco, circunferência e polilinha (spec 05, E7–E9).
 - [x] [MT-K3-13](tickets/k3-geometria-2d-edicao.md#mt-k3-13-recusar-fator-de-escala-zero-negativo-ou-não-finito) —

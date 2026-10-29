@@ -16,6 +16,7 @@
 
 mod aabb;
 mod curve;
+mod fillet;
 mod intersect;
 mod offset;
 mod point;
@@ -30,6 +31,7 @@ pub use aabb::Aabb;
 pub use curve::{
     Arc, Circle, ClosestPoint, Curve, Line, Polyline, PolylineSegment, PolylineVertex,
 };
+pub use fillet::{chamfer, fillet, Corner, CornerError};
 pub use intersect::{intersect, AnyCurve, Intersections};
 pub use offset::{offset, OffsetError};
 pub use point::{point_on_circle, Point2};
