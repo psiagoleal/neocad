@@ -125,7 +125,9 @@ kernel/               # kernel CAD em Rust — workspace Cargo próprio, reaprov
 e2e/                  # testes Playwright ponta a ponta (+ fixtures sintéticas)
 cmake/ scripts/       # processo: empacotamento e release
 docs/adr/             # Registros de Decisão de Arquitetura — LEITURA OBRIGATÓRIA
+docs/specs/           # specs por feature: o contrato do resultado (skill spec-como-contrato)
 docs/tickets/         # micro-tickets por fase (skill micro-ticket-planner)
+docs/reviews/         # reviews datados do repositório (skill critico-independente); retratos, não atualizados
 docs/CURRENT-STATE.md # handoff entre turnos (skill handoff-updater)
 docs/TICKETS.md       # painel de tickets (skill micro-ticket-planner)
 skills/               # biblioteca de skills do framework de regramento
