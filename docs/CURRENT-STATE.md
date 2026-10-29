@@ -13,33 +13,21 @@
 - **Data:** 2026-10-29
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-HG-01 a 06)
-- **Estado da árvore:** com alterações não commitadas do MT-K3-10 (ver Em andamento) · **DoD:** CI do PR verde em Linux e Windows até `45ef5d7`
+- **Commit:** o deste turno (MT-K3-10)
+- **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check` verde; CI do PR a conferir após o push
 
 ## Metas cumpridas neste turno
 
-- Review do repositório inteiro, com critérios declarados antes e crítica por modelo de
-  outra família: [`docs/reviews/2026-10-29-review.md`](reviews/2026-10-29-review.md) —
-  `45ef5d7`.
-- Nome de desenho local retirado do repositório; o teste DWG lê `NEOCAD_REFERENCE_DWG` —
-  `218b1ab`.
-- Mensagens de 12 commits locais reescritas antes do primeiro envio (trailer de sessão
-  proibido pelo §7); tabela de hashes no arquivo.
-- [ADR 0007](adr/0007-fase-de-prancha-de-engenharia.md) aceito: fases **KV** (o kernel é o
-  que se vê) e **KP** (prancha de engenharia) antes de K4 e K7–K9 — `7dda2b7`.
-- Specs do projeto em [`docs/specs/`](specs/README.md), com provas conferidas e duas
-  rodadas de crítica — `7dda2b7`.
-- Plano em micro-tickets (HG, QP, K3, KV, UI) — `ee7d5b5`.
-- MT-HG-01: ilhas do `AGENTS.md` com a stack e os comandos reais.
-- MT-HG-02: este handoff, com o histórico movido para o arquivo.
-- MT-HG-03: README descreve o NeoCAD de hoje; roteiro pelos ADRs 0003 e 0007; roteiros
-  antigos marcados como históricos.
-- MT-HG-04: mapa de arquitetura com as arestas reais e onde a GPL está de fato.
-- MT-HG-05: `.codex/` ignorado; CHANGELOG com uma linha por mudança.
-- MT-HG-06: cabeçalho de caminho relativo nos 15 arquivos que faltavam.
-- MT-K3-13: escala recusa fator zero, negativo ou não finito; teste escrito em contexto
-  limpo a partir do critério, visto falhando antes da correção.
-- `make dist-test` verde: pacotes Linux e Windows (MinGW, só para teste) em `dist-test/`.
+- MT-K3-10: aparar e estender (`trim`, `extend`) para reta, arco, circunferência e
+  polilinha, e os comandos `commands::trim`/`commands::extend` no editor transacional
+  (um passo de desfazer cada; o primeiro pedaço mantém o identificador da entidade).
+  Spec 05 vigente até E9. Testes escritos em contexto limpo pelo `qwen3-coder:30b` do
+  gateway, vistos falhando por asserção (16 de geometria, 5 de comando) antes da
+  implementação; duas correções mecânicas declaradas (nome de variável que escondia o
+  auxiliar; bytes de "antes" capturados depois da edição). Crítica por GLM-5.2 e qwen:
+  todos os achados conferidos e refutados.
+- A rodada anterior (review, ADR 0007, specs, plano, HG-01..06, MT-K3-13) foi para o
+  [arquivo](handoff-arquivo.md#rodada-de-2026-10-29-review-e-reorganização).
 
 ## O que mudou de rumo
 
@@ -52,29 +40,19 @@
 
 ## Em andamento
 
-- **MT-K3-10 (aparar e estender), começado e não commitado.** Na árvore:
-  `kernel/neocad-geometry/src/trim.rs` com a API final (`trim`, `extend`, `TrimError` com
-  `PickOffCurve`, `NoCuttingEdge`, `NoBoundary`, `NotExtendable`) e corpo-esboço que
-  devolve a curva intacta, para os testes falharem por asserção; `lib.rs` registra o
-  módulo; `sub_piece` e `polyline_from` de `offset.rs` passaram a `pub(crate)` para serem
-  reaproveitados. **Falta:** escrever `kernel/neocad-geometry/tests/aparar_e_estender.rs`
-  a partir dos critérios E7–E9 da spec 05 em contexto limpo e vê-lo falhar; implementar
-  (trechos por parâmetro global como em `Polyline`; circunferência e polilinha fechada
-  aparadas entre as duas interseções vizinhas ao ponto; extensão por raio ou pelo arco
-  complementar até a primeira fronteira); depois `commands::trim`/`commands::extend`
-  substituindo a entidade na mesma transação, com teste em `undo_bytes.rs`.
-- MT-K3-11 e MT-K3-12 em seguida.
+- Nada começado. MT-K3-11 é o próximo.
 
 ## Próximo passo sugerido
 
-1. Retomar o MT-K3-10 pelo teste (ver Em andamento), depois MT-K3-11 e MT-K3-12.
+1. MT-K3-11 (concordância e chanfro), depois MT-K3-12 (fachada WASM).
 2. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream.
 
 ## Impedimentos abertos
 
-- O GLM-5.3 no gateway esgota até 32 mil tokens raciocinando em pedidos longos, mesmo com
-  `{"thinking":{"type":"disabled"}}`; pedidos curtos funcionam. Para escrever testes,
-  dividir o pedido em lotes de 3–4 testes ou usar outro modelo do gateway.
+- O GLM-5.3 no gateway esgota 16–32 mil tokens raciocinando mesmo em lotes de 4 testes:
+  `{"thinking":{"type":"disabled"}}` é ignorado e `chat_template_kwargs.enable_thinking=false`
+  só move o raciocínio para a resposta. Para escrever testes, usar `qwen3-coder:30b`
+  (~1 mil tokens por lote, formato respeitado); para crítica, `GLM-5.2-FP8 --no-think`.
 
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
 - O mecanismo de KV (espelhar no upstream ou desenhar do kernel) só se decide depois dos

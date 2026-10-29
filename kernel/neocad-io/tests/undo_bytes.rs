@@ -13,7 +13,7 @@
 //! necessariamente os mesmos bytes, e dois documentos diferentes em qualquer
 //! coisa que o formato carregue produzem bytes diferentes.
 
-use neocad_geometry::{Arc, Circle, Line, Point2, Polyline, PolylineVertex};
+use neocad_geometry::{Arc, Circle, Line, Point2, Polyline, PolylineVertex, TrimError};
 use neocad_io::{write_dxf, DxfContents, EntitySpace, ReadEntity};
 use neocad_model::{Document, Entity, EntityId, Geometry, Text};
 use neocad_transaction::commands::CommandError;
@@ -324,4 +324,278 @@ fn escalar_recusa_fator_zero_negativo_ou_nao_finito() {
         antes,
         "escalar com fator 2.0 tinha de alterar os bytes do documento"
     );
+}
+
+// Aparar e estender (spec 05, E7–E9): testes escritos em contexto limpo a partir do contrato.
+
+#[test]
+fn aparar_reta_entre_dois_cortes_e_desfazer() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_reta = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 0.0),
+                end: Point2::new(10.0, 0.0),
+            }),
+        ))
+        .unwrap();
+    let id_corte1 = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(3.0, -5.0),
+                end: Point2::new(3.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let id_corte2 = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(7.0, -5.0),
+                end: Point2::new(7.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let mut pilha = CommandStack::new();
+    let antes = bytes(&documento);
+    let result = pilha.edit(&mut documento, "Aparar", |editor| {
+        commands::trim(
+            editor,
+            id_reta,
+            &[id_corte1, id_corte2],
+            Point2::new(5.0, 0.0),
+            0.5,
+        )
+    });
+    assert!(result.is_ok());
+    let ids = result.unwrap();
+    assert_eq!(ids.len(), 2);
+    assert_eq!(ids[0], id_reta);
+
+    let entity1 = documento.entity(ids[0]).unwrap();
+    match &entity1.geometry {
+        Geometry::Line(line) => {
+            assert!((line.start.x - 0.0).abs() < 1e-9);
+            assert!((line.start.y - 0.0).abs() < 1e-9);
+            assert!((line.end.x - 3.0).abs() < 1e-9);
+            assert!((line.end.y - 0.0).abs() < 1e-9);
+        }
+        _ => panic!("Esperava Line"),
+    }
+
+    let entity2 = documento.entity(ids[1]).unwrap();
+    match &entity2.geometry {
+        Geometry::Line(line) => {
+            assert!((line.start.x - 7.0).abs() < 1e-9);
+            assert!((line.start.y - 0.0).abs() < 1e-9);
+            assert!((line.end.x - 10.0).abs() < 1e-9);
+            assert!((line.end.y - 0.0).abs() < 1e-9);
+        }
+        _ => panic!("Esperava Line"),
+    }
+
+    assert_eq!(documento.entity_count(), 4);
+
+    assert!(pilha.undo(&mut documento).unwrap());
+    let bytes_apos_undo = bytes(&documento);
+    assert_eq!(antes, bytes_apos_undo);
+}
+
+#[test]
+fn aparar_reta_fora_da_curva() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_reta = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 0.0),
+                end: Point2::new(10.0, 0.0),
+            }),
+        ))
+        .unwrap();
+    let id_corte1 = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(3.0, -5.0),
+                end: Point2::new(3.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let id_corte2 = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(7.0, -5.0),
+                end: Point2::new(7.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let mut pilha = CommandStack::new();
+    let antes = bytes(&documento);
+    let result = pilha.edit(&mut documento, "Aparar", |editor| {
+        commands::trim(
+            editor,
+            id_reta,
+            &[id_corte1, id_corte2],
+            Point2::new(5.0, 3.0),
+            0.5,
+        )
+    });
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        TransactionError::Command(CommandError::Trim(TrimError::PickOffCurve)) => {}
+        _ => panic!("Esperava PickOffCurve"),
+    }
+
+    assert_eq!(documento.entity_count(), 3);
+    assert!(!pilha.can_undo());
+    let bytes_apos_undo = bytes(&documento);
+    assert_eq!(antes, bytes_apos_undo);
+}
+
+#[test]
+fn estender_reta_com_fronteira() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_reta = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 0.0),
+                end: Point2::new(5.0, 0.0),
+            }),
+        ))
+        .unwrap();
+    let id_fronteira = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(10.0, -5.0),
+                end: Point2::new(10.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let mut pilha = CommandStack::new();
+    let antes = bytes(&documento);
+    let result = pilha.edit(&mut documento, "Estender", |editor| {
+        commands::extend(editor, id_reta, &[id_fronteira], Point2::new(4.0, 0.0), 0.5)
+    });
+    assert!(result.is_ok());
+
+    let entity = documento.entity(id_reta).unwrap();
+    match &entity.geometry {
+        Geometry::Line(line) => {
+            assert!((line.start.x - 0.0).abs() < 1e-9);
+            assert!((line.start.y - 0.0).abs() < 1e-9);
+            assert!((line.end.x - 10.0).abs() < 1e-9);
+            assert!((line.end.y - 0.0).abs() < 1e-9);
+        }
+        _ => panic!("Esperava Line"),
+    }
+
+    assert_eq!(documento.entity_count(), 2);
+
+    assert!(pilha.undo(&mut documento).unwrap());
+    let bytes_apos_undo = bytes(&documento);
+    assert_eq!(antes, bytes_apos_undo);
+}
+
+#[test]
+fn estender_reta_sem_fronteira() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_reta = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(0.0, 0.0),
+                end: Point2::new(5.0, 0.0),
+            }),
+        ))
+        .unwrap();
+    let id_fronteira = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(10.0, 1.0),
+                end: Point2::new(10.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let mut pilha = CommandStack::new();
+    let antes = bytes(&documento);
+    let result = pilha.edit(&mut documento, "Estender", |editor| {
+        commands::extend(editor, id_reta, &[id_fronteira], Point2::new(4.0, 0.0), 0.5)
+    });
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        TransactionError::Command(CommandError::Trim(TrimError::NoBoundary)) => {}
+        _ => panic!("Esperava NoBoundary"),
+    }
+
+    assert_eq!(documento.entity_count(), 2);
+    assert!(!pilha.can_undo());
+    let bytes_apos_undo = bytes(&documento);
+    assert_eq!(antes, bytes_apos_undo);
+}
+
+#[test]
+fn aparar_texto_erro_nao_curva() {
+    let mut documento = Document::new();
+    let camada = documento.layers().default_layer();
+    let mut editor = documento.edit();
+    let id_texto = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Text(Text {
+                position: Point2::new(0.0, 0.0),
+                content: "A".to_owned(),
+                height: 2.5,
+                rotation: 0.0,
+            }),
+        ))
+        .unwrap();
+    let id_corte = editor
+        .insert_in_model_space(Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::new(3.0, -5.0),
+                end: Point2::new(3.0, 5.0),
+            }),
+        ))
+        .unwrap();
+    let _ = editor.finish();
+
+    let mut pilha = CommandStack::new();
+    let antes = bytes(&documento);
+    let result = pilha.edit(&mut documento, "Aparar", |editor| {
+        commands::trim(editor, id_texto, &[id_corte], Point2::new(1.0, 0.0), 0.5)
+    });
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        TransactionError::Command(CommandError::NotACurve) => {}
+        _ => panic!("Esperava NotACurve"),
+    }
+
+    assert_eq!(documento.entity_count(), 2);
+    assert!(!pilha.can_undo());
+    let bytes_apos_undo = bytes(&documento);
+    assert_eq!(antes, bytes_apos_undo);
 }

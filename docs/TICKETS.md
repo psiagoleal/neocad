@@ -15,7 +15,6 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Em aberto
 
-- [>] [MT-K3-10](tickets/k3-geometria-2d-edicao.md#mt-k3-10-aparar-e-estender-trimextend) — aparar e estender · falta testes, implementação e comando
 - [ ] [MT-K3-11](tickets/k3-geometria-2d-edicao.md#mt-k3-11-concordância-e-chanfro-filletchamfer) —
       concordância e chanfro entre duas curvas.
 - [ ] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
@@ -63,6 +62,8 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-K3-10](tickets/k3-geometria-2d-edicao.md#mt-k3-10-aparar-e-estender-trimextend) —
+      aparar e estender reta, arco, circunferência e polilinha (spec 05, E7–E9).
 - [x] [MT-K3-13](tickets/k3-geometria-2d-edicao.md#mt-k3-13-recusar-fator-de-escala-zero-negativo-ou-não-finito) —
       fator ≤ 0 recusado, como no AutoCAD (spec 05, E1c).
 - [x] [MT-HG-03](tickets/hg-higiene.md#mt-hg-03-atualizar-o-readme-e-consolidar-o-roteiro) —

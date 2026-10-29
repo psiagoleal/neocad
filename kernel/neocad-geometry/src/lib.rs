@@ -24,6 +24,7 @@ mod snap;
 mod spatial;
 mod tolerance;
 mod transform;
+mod trim;
 
 pub use aabb::Aabb;
 pub use curve::{
@@ -37,3 +38,4 @@ pub use snap::{hit_test, snap, snap_candidates, SnapCandidate, SnapMode};
 pub use spatial::SpatialIndex;
 pub use tolerance::{Tolerance, BASE_ANGULAR, BASE_LINEAR};
 pub use transform::Transform;
+pub use trim::{extend, trim, TrimError};

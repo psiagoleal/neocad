@@ -464,7 +464,7 @@ fn split(piece: &PolylineSegment, cuts: &[f64], tolerance: Tolerance) -> Vec<Pol
 
 /// O pedaço do trecho entre dois parâmetros, ou nada se ele não tiver
 /// comprimento.
-fn sub_piece(
+pub(crate) fn sub_piece(
     piece: &PolylineSegment,
     from: f64,
     to: f64,
@@ -560,7 +560,7 @@ fn runs_around(run: &[PolylineSegment], tolerance: Tolerance) -> bool {
 }
 
 /// Monta a polilinha a partir dos pedaços, devolvendo o abaulamento a cada arco.
-fn polyline_from(run: &[PolylineSegment], closed: bool) -> Polyline {
+pub(crate) fn polyline_from(run: &[PolylineSegment], closed: bool) -> Polyline {
     let mut vertices = Vec::with_capacity(run.len() + 1);
 
     for piece in run {
