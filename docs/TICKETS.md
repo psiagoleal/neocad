@@ -21,18 +21,8 @@ UI começa pelo que não depende do ADR 0008.
       concordância e chanfro entre duas curvas.
 - [ ] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
       expor consulta e edição na fachada WebAssembly; fecha a fase K3.
-- [ ] [MT-HG-01](tickets/hg-higiene.md#mt-hg-01-corrigir-as-ilhas-do-agentsmd) —
-      stack e comandos reais; fragmento colado e numeração.
-- [ ] [MT-HG-02](tickets/hg-higiene.md#mt-hg-02-enxugar-o-handoff) —
-      estado corrente curto; histórico em `handoff-arquivo.md`.
 - [ ] [MT-HG-03](tickets/hg-higiene.md#mt-hg-03-atualizar-o-readme-e-consolidar-o-roteiro) —
       README de hoje; roteiro pelos ADRs 0003 e 0007.
-- [ ] [MT-HG-04](tickets/hg-higiene.md#mt-hg-04-corrigir-o-mapa-de-arquitetura) —
-      arestas reais entre crates e onde a GPL está de fato.
-- [ ] [MT-HG-05](tickets/hg-higiene.md#mt-hg-05-decidir-o-codex-e-a-regra-do-changelog) —
-      ignorar `.codex/`; uma linha por mudança.
-- [ ] [MT-HG-06](tickets/hg-higiene.md#mt-hg-06-pôr-o-cabeçalho-de-caminho-relativo-nos-arquivos-que-faltam) —
-      15 arquivos sem o cabeçalho do §4.
 - [ ] [MT-HG-07](tickets/hg-higiene.md#mt-hg-07-varredura-de-segredos-local-antes-do-commit) —
       hook `gitleaks` — bloqueado por `gitleaks` não instalado na máquina.
 - [ ] [MT-K3-13](tickets/k3-geometria-2d-edicao.md#mt-k3-13-recusar-fator-de-escala-zero-negativo-ou-não-finito) —
@@ -78,6 +68,16 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-HG-06](tickets/hg-higiene.md#mt-hg-06-pôr-o-cabeçalho-de-caminho-relativo-nos-arquivos-que-faltam) —
+      15 arquivos sem o cabeçalho do §4.
+- [x] [MT-HG-05](tickets/hg-higiene.md#mt-hg-05-decidir-o-codex-e-a-regra-do-changelog) —
+      ignorar `.codex/`; uma linha por mudança.
+- [x] [MT-HG-04](tickets/hg-higiene.md#mt-hg-04-corrigir-o-mapa-de-arquitetura) —
+      arestas reais entre crates e onde a GPL está de fato.
+- [x] [MT-HG-02](tickets/hg-higiene.md#mt-hg-02-enxugar-o-handoff) —
+      estado corrente curto; histórico em `handoff-arquivo.md`.
+- [x] [MT-HG-01](tickets/hg-higiene.md#mt-hg-01-corrigir-as-ilhas-do-agentsmd) —
+      stack e comandos reais; fragmento colado e numeração.
 - [x] [K1 — modelo, documento e transações](tickets/k1-modelo-documento-transacoes.md) —
       17 tickets: modelo de documento próprio, com toda mutação por transação reversível.
 - [x] [K2 — DXF nativo](tickets/k2-dxf-nativo.md) — leitura e gravação determinística.

@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/MessagesDock.svelte -->
 <script lang="ts">
 	import type { CadViewerMessage } from '$lib/types/cad';
 

@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/AppTopMenu.svelte -->
 <script lang="ts">
 	import type { CadHistoryState, CadRecentDocument } from '$lib/types/cad';
 	import type { WorkspaceView } from '$lib/components/workspace/types';

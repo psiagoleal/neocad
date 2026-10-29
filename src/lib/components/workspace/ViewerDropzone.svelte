@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/ViewerDropzone.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { CadViewerDocumentState } from '$lib/types/cad';

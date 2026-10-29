@@ -71,3 +71,6 @@ docs/test/
 # e este é público (AGENTS.md §0.1). Quem clona roda o instalador uma vez.
 .claude/skills/
 .agents/skills/
+
+# Configuração local do Codex CLI (preferência de cada máquina)
+.codex/

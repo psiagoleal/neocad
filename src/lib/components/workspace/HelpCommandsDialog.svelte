@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/HelpCommandsDialog.svelte -->
 <script lang="ts">
 	import {
 		CAD_COMMAND_CATEGORY_LABELS,

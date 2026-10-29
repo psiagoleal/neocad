@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/RecentDocumentsPanel.svelte -->
 <script lang="ts">
 	import type { CadRecentDocument } from '$lib/types/cad';
 

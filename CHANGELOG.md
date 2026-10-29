@@ -15,7 +15,10 @@ Maintenance rules:
 - every relevant functional change updates this file;
 - internal-only changes may be grouped when it makes sense;
 - significant documentation changes may also be recorded;
-- on release, items move from `[Unreleased]` to a dated version.
+- on release, items move from `[Unreleased]` to a dated version;
+- **one line per change**, saying what changed for the user; the long _why_ belongs in
+  the commit message, the ADR or the spec, linked from the line when useful (from
+  2026-10-29; older entries are kept as written).
 
 ## [Unreleased]
 

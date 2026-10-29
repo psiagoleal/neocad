@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/routes/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import AboutScreen from '$lib/components/workspace/AboutScreen.svelte';
