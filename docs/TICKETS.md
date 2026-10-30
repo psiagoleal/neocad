@@ -35,8 +35,6 @@ UI começa pelo que não depende do ADR 0008.
       build falha acima de 465 000 bytes.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-01](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-01-e2e-que-prova-a-perda-da-linha-desenhada-pelo-upstream) —
-      teste que falha hoje pelo motivo certo (V4).
 - [ ] [MT-KV-02](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-02-gerador-de-desenho-sintético-grande) —
       100 mil entidades sem arquivo de terceiros.
 - [ ] [MT-KV-03](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-03-spike--espelhar-o-kernel-no-modelo-do-upstream) —
@@ -58,6 +56,8 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-KV-01](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-01-e2e-que-prova-a-perda-da-linha-desenhada-pelo-upstream) —
+      `e2e/kernel-view.e2e.ts` prova a perda (V4), marcado `test.fail()` até KV.
 - [x] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
       consulta e edição na fachada WebAssembly e no serviço `cad-document`; fecha a fase K3 (spec 06).
 - [x] [MT-K3-11](tickets/k3-geometria-2d-edicao.md#mt-k3-11-concordância-e-chanfro-filletchamfer) —

@@ -8,12 +8,39 @@
 
 ## Índice
 
+- [Rodada de 2026-10-30: K3 fechada](#rodada-de-2026-10-30-k3-fechada) — MT-K3-12 (Rust e
+  TypeScript); CI de `e92a6bf` verde nos 8 jobs.
 - [Rodada de 2026-10-29: K3, aparar e concordar](#rodada-de-2026-10-29-k3-aparar-e-concordar) —
   MT-K3-10, MT-K3-11 e a correção da tabela da spec 05.
 - [Rodada de 2026-10-29: review e reorganização](#rodada-de-2026-10-29-review-e-reorganização) —
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-10-30: K3 fechada
+
+- **Fase K3 fechada.** MT-K3-12, lado TypeScript (`e92a6bf`): `CadDocument` expõe as dez operações e as
+  quatro consultas com tipos NeoCAD (`CadSnap`, `CadSnapMode`); toda chamada passa por um
+  guarda que converte recusa do kernel em `CadKernelOperationError` (W3), mantém o
+  `CadKernelContractError` nomeando o campo (W4) e, em `WebAssembly.RuntimeError`, marca o
+  documento como não confiável (`isTrusted`), de modo que toda chamada seguinte falha, menos
+  `toDxf` (W4b). Costura de teste `CadDocument.fromSession`. Regra ESLint
+  `no-restricted-imports` (W1b) e teto de 465 000 bytes no `scripts/build-kernel.mjs` (W5),
+  provado com teto artificial. 18 testes em `cad-document-sessao.spec.ts` escritos pelo
+  `qwen3-coder:30b`, 17 vistos falhando antes; correções mecânicas declaradas no commit.
+  Crítica GLM-5.2: cinco achados, todos refutados. Spec 06 vigente; a linha E6 da spec 05
+  ganhou a prova que estava deslocada para E6b.
+- MT-K3-12, parte Rust (`74169de`): `CadSession` ganhou as dez operações da spec 05 (`moveEntities`,
+  `copyEntities`, `rotateEntities`, `mirrorEntities`, `scaleEntities`, `offsetEntity`,
+  `trimEntity`, `extendEntity`, `filletEntities`, `chamferEntities`), cada uma uma ação
+  nomeada no histórico, e as consultas `intersections`, `entitiesInBox`, `hitTest` e `snap`.
+  20 testes de host escritos em contexto limpo (subagente Sonnet, porque o gateway estava
+  fora do ar), 15 vistos falhando por asserção; os 5 de recusa já passavam com o corpo
+  provisório, que só recusava. Oito correções mecânicas de clippy nos testes (`clippy --fix`).
+  `.wasm` de release: **414 302 bytes** (limite W5: 465 000).
+- MT-K3-10, MT-K3-11 e a rodada anterior (review, ADR 0007, specs, plano) estão no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-10-29-k3-aparar-e-concordar).
+- CI do `e92a6bf` (execução 41050455077): verde nos 8 jobs.
 
 ## Rodada de 2026-10-29: K3, aparar e concordar
 

@@ -13,33 +13,31 @@
 - **Data:** 2026-10-30
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-K3-12, lado TypeScript); `74169de` é a parte Rust
-- **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check`, `pnpm lint`,
-  `pnpm test` (98), `pnpm check` e `make e2e` (9) verdes; CI do PR a conferir após o push
+- **Commit:** o deste turno (MT-KV-01); antes dele, `e92a6bf` fechou K3 com a CI verde nos 8 jobs
+- **Estado da árvore:** limpa após o commit · **DoD:** `pnpm lint` e `make e2e` (10 passam,
+  1 ignorado — o DWG de referência, que é local) verdes
 
 ## Metas cumpridas neste turno
 
-- **Fase K3 fechada.** MT-K3-12, lado TypeScript: `CadDocument` expõe as dez operações e as
-  quatro consultas com tipos NeoCAD (`CadSnap`, `CadSnapMode`); toda chamada passa por um
-  guarda que converte recusa do kernel em `CadKernelOperationError` (W3), mantém o
-  `CadKernelContractError` nomeando o campo (W4) e, em `WebAssembly.RuntimeError`, marca o
-  documento como não confiável (`isTrusted`), de modo que toda chamada seguinte falha, menos
-  `toDxf` (W4b). Costura de teste `CadDocument.fromSession`. Regra ESLint
-  `no-restricted-imports` (W1b) e teto de 465 000 bytes no `scripts/build-kernel.mjs` (W5),
-  provado com teto artificial. 18 testes em `cad-document-sessao.spec.ts` escritos pelo
-  `qwen3-coder:30b`, 17 vistos falhando antes; correções mecânicas declaradas no commit.
-  Crítica GLM-5.2: cinco achados, todos refutados. Spec 06 vigente; a linha E6 da spec 05
-  ganhou a prova que estava deslocada para E6b.
-- MT-K3-12, parte Rust (`74169de`): `CadSession` ganhou as dez operações da spec 05 (`moveEntities`,
-  `copyEntities`, `rotateEntities`, `mirrorEntities`, `scaleEntities`, `offsetEntity`,
-  `trimEntity`, `extendEntity`, `filletEntities`, `chamferEntities`), cada uma uma ação
-  nomeada no histórico, e as consultas `intersections`, `entitiesInBox`, `hitTest` e `snap`.
-  20 testes de host escritos em contexto limpo (subagente Sonnet, porque o gateway estava
-  fora do ar), 15 vistos falhando por asserção; os 5 de recusa já passavam com o corpo
-  provisório, que só recusava. Oito correções mecânicas de clippy nos testes (`clippy --fix`).
-  `.wasm` de release: **414 302 bytes** (limite W5: 465 000).
-- MT-K3-10, MT-K3-11 e a rodada anterior (review, ADR 0007, specs, plano) estão no
-  [arquivo](handoff-arquivo.md#rodada-de-2026-10-29-k3-aparar-e-concordar).
+- **Fase KV aberta.** MT-KV-01: `e2e/kernel-view.e2e.ts` desenha uma linha de (0,0) a
+  (100,50) pela barra do upstream, salva, conta as `LINE` do DXF baixado e reabre. Sem o
+  `test.fail()`, o teste falha na contagem, depois de todos os prompts do comando passarem:
+
+  ```
+  Expected: 2
+  Received: 1
+  > 92 | 	expect(contarLinhas(await readFile(destino, 'utf-8'))).toBe(2);
+  ```
+
+  A linha aparece na tela e não vai para o arquivo: a barra edita o modelo do upstream, e
+  salvar grava o do kernel (achado C4). Na barra do upstream (`.ml-cli-text`) só entram nomes
+  de comando e palavras-chave; os pontos entram nas duas caixas flutuantes junto ao cursor.
+  O teste foi escrito pelo `qwen3-coder:30b`; quatro correções mecânicas (esperas que não
+  esperavam, `await` faltando, `setTimeout` fora do teste, prompts não conferidos) estão
+  declaradas no commit.
+
+- K3 (MT-K3-10 a 12) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-10-30-k3-fechada).
 
 ## O que mudou de rumo
 
@@ -56,8 +54,8 @@
 
 ## Próximo passo sugerido
 
-1. Conferir o CI do PR #2 depois do push.
-2. MT-KV-01: o E2E que prova a perda da linha desenhada pelo upstream (abre a fase KV).
+1. MT-KV-02: gerador de DXF sintético com 100 mil entidades (corpus dos spikes).
+2. MT-KV-03 e MT-KV-04: os dois spikes, depois o ADR 0008 (MT-KV-05).
 
 ## Impedimentos abertos
 
