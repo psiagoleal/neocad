@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Synthetic DXF generator, `scripts/gerar-dxf-sintetico.mjs` (MT-KV-02) — a seeded, reproducible drawing of N entities across layers, model space and two layouts, for measuring large files without third-party data; the kernel opens 100 000 entities in about 2.4 s.
+
 - Editing and queries through the WebAssembly facade and the `cad-document` service (MT-K3-12), closing phase K3 — the ten operations of spec 05 and the intersection, region, hit and snap queries, each operation one named undo step; kernel refusals become `CadKernelOperationError`, malformed answers `CadKernelContractError` naming the field, and a WebAssembly abort marks the document untrusted so every later call fails except saving a copy. Only the service may import the kernel (ESLint rule), and the release build fails above 465 000 bytes (now 414 302).
 
 - Fillet and chamfer — `fillet`/`chamfer` and `commands::fillet`/`commands::chamfer` (MT-K3-11) — fillet between lines and arcs, chamfer between lines; the picked points choose the corner regardless of argument order, radius or distances zero extend to the vertex, and parallel lines, a radius that does not fit or a distance past the line are refused without touching the drawing.

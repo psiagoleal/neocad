@@ -13,12 +13,26 @@
 - **Data:** 2026-10-30
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-KV-01); antes dele, `e92a6bf` fechou K3 com a CI verde nos 8 jobs
-- **Estado da árvore:** limpa após o commit · **DoD:** `pnpm lint` e `make e2e` (10 passam,
-  1 ignorado — o DWG de referência, que é local) verdes
+- **Commit:** o deste turno (MT-KV-02); `3e2e3e4` (MT-KV-01) passou na CI nos 8 jobs
+- **Estado da árvore:** limpa após o commit · **DoD:** `pnpm lint`, `pnpm check` e
+  `make e2e` (14 passam; 2 ignorados — o DWG de referência, que é local, e a medida em
+  escala, que só roda com `NEOCAD_SINTETICO_N`) verdes
 
 ## Metas cumpridas neste turno
 
+- MT-KV-02: `scripts/gerar-dxf-sintetico.mjs` gera, a partir de uma semente, um DXF
+  AC1015 com LINE, CIRCLE, ARC, LWPOLYLINE e TEXT em L camadas, 90% no espaço-modelo e 5%
+  em cada um de dois layouts, e imprime a contagem esperada
+  (`node scripts/gerar-dxf-sintetico.mjs --entidades 100000 --camadas 20 --saida x.dxf`).
+  `e2e/dxf-sintetico.e2e.ts` confere contagem, texto e determinismo, e que o kernel abre
+  2 000 entidades com a contagem exata e grava sem perda. **Medida:** com
+  `NEOCAD_SINTETICO_N=100000`, a mensagem do kernel aparece **2,4 s** após escolher o
+  arquivo (meta da spec 07: abrir em até 5 s). O desenho pelo upstream não foi medido; é
+  trabalho dos spikes. Teste do `qwen3-coder:30b`, visto falhando no esboço vazio; uma
+  premissa errada do pedido (o espaço-papel como perda ao salvar, que deixou de ser no
+  MT-KL-09) foi trocada por "grava sem perda". Crítica GLM-5.2: 5 achados; 4 refutados
+  (`$HANDSEED` confere, handles de `BLOCK` e de `BLOCK_RECORD` são distintos por norma,
+  layouts usam `*Paper_Space`/`*Paper_Space0`); 1 corrigido (semente inválida virava 0).
 - **Fase KV aberta.** MT-KV-01: `e2e/kernel-view.e2e.ts` desenha uma linha de (0,0) a
   (100,50) pela barra do upstream, salva, conta as `LINE` do DXF baixado e reabre. Sem o
   `test.fail()`, o teste falha na contagem, depois de todos os prompts do comando passarem:
@@ -54,8 +68,8 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-02: gerador de DXF sintético com 100 mil entidades (corpus dos spikes).
-2. MT-KV-03 e MT-KV-04: os dois spikes, depois o ADR 0008 (MT-KV-05).
+1. MT-KV-03 e MT-KV-04: os dois spikes, sobre o desenho de 100 mil entidades do gerador.
+2. MT-KV-05: o ADR 0008, com base nos dois relatórios.
 
 ## Impedimentos abertos
 
