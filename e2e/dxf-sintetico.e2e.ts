@@ -56,6 +56,22 @@ test('Texto bate com contagem', () => {
 	}
 });
 
+test('cada layout recebe os cinco tipos', () => {
+	const { texto } = gerarDxfSintetico({ entidades: 1000, camadas: 6, semente: 7 });
+
+	// O espaço-papel é medido pelos spikes de KV como o modelo: um layout só com
+	// polilinha e texto deixaria a medida cega para as demais primitivas.
+	for (const layout of ['Prancha A1', 'Prancha A2']) {
+		for (const tipo of ['LINE', 'CIRCLE', 'ARC', 'LWPOLYLINE', 'TEXT']) {
+			const regex = new RegExp(
+				`^\\s*0\\r?\\n${tipo}\\r?\\n\\s*5\\r?\\n[0-9A-F]+\\r?\\n\\s*100\\r?\\nAcDbEntity\\r?\\n\\s*67\\r?\\n1\\r?\\n\\s*410\\r?\\n${layout}\\r?$`,
+				'gm'
+			);
+			expect((texto.match(regex) ?? []).length, `${tipo} em ${layout}`).toBeGreaterThan(0);
+		}
+	}
+});
+
 test('Determinismo', () => {
 	const opcoes = { entidades: 1000, camadas: 6, semente: 7 };
 	const resultado1 = gerarDxfSintetico(opcoes);

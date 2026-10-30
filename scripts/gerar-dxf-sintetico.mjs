@@ -31,7 +31,12 @@ const LAYOUTS = [
 	{ nome: 'Prancha A2', bloco: '*Paper_Space0' }
 ];
 
-/** A cada 20 entidades, uma vai para cada layout; as demais ficam no espaço-modelo. */
+/**
+ * De cada 20 grupos de cinco entidades (uma de cada tipo), um vai para cada layout; os
+ * demais ficam no espaço-modelo. Contar por grupo, e não por entidade, é o que faz cada
+ * layout receber os cinco tipos: com `i % 20`, as posições do papel coincidiam sempre com
+ * os mesmos dois tipos.
+ */
 const CICLO_DE_ESPACO = 20;
 
 /** Lado do quadrado, em unidades de desenho, onde o espaço-modelo é preenchido. */
@@ -179,7 +184,7 @@ export function gerarDxfSintetico({ entidades, camadas, semente = 1 }) {
 
 	for (let i = 0; i < entidades; i++) {
 		const tipo = TIPOS[i % TIPOS.length];
-		const posicaoNoCiclo = i % CICLO_DE_ESPACO;
+		const posicaoNoCiclo = Math.floor(i / TIPOS.length) % CICLO_DE_ESPACO;
 		const layout =
 			posicaoNoCiclo >= CICLO_DE_ESPACO - LAYOUTS.length
 				? LAYOUTS[posicaoNoCiclo - (CICLO_DE_ESPACO - LAYOUTS.length)]

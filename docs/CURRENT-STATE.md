@@ -13,13 +13,29 @@
 - **Data:** 2026-10-30
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-KV-02); `3e2e3e4` (MT-KV-01) passou na CI nos 8 jobs
+- **Commit:** o deste turno (MT-KV-03/04 e ADR 0008 proposto); `0d1b4ce` (MT-KV-02) passou
+  na CI nos 8 jobs
 - **Estado da árvore:** limpa após o commit · **DoD:** `pnpm lint`, `pnpm check` e
-  `make e2e` (14 passam; 2 ignorados — o DWG de referência, que é local, e a medida em
+  `make e2e` (15 passam; 2 ignorados — o DWG de referência, que é local, e a medida em
   escala, que só roda com `NEOCAD_SINTETICO_N`) verdes
 
 ## Metas cumpridas neste turno
 
+- **Spikes de KV medidos** no desenho sintético de 100 mil entidades (protótipos nos ramos
+  locais `spike/kv-espelhamento` e `spike/kv-render-kernel`, fora de `master`):
+  - [espelhar no upstream](spikes/kv-espelhamento.md): abrir 8,9 s; cada edição ~2,2 s,
+    gastos dentro do upstream; esvaziar o modelo dele não terminou em 13 min. Não fecha.
+  - [desenhar do kernel](spikes/kv-render-kernel.md), canvas 2D com `Path2D` por camada:
+    abrir ~2,8 s; edição 115–122 ms (meta 100 ms); pan 5–6 quadros/s.
+  - Lacuna comum: a fachada não consulta entidade pelo id, e as operações não dizem o que
+    mudaram.
+- **[ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) proposto:** a tela passa a
+  ser desenhada do kernel; o upstream fica só com DWG e o não modelado, sem edição; meta
+  nova de pan a 30 quadros/s. Crítica GLM-5.2: passa, com quatro lacunas de redação, todas
+  incorporadas.
+- Gerador: o espaço-papel recebia só polilinha e texto (`i % 20` alinhado com `i % 5`);
+  agora conta por grupo de cinco. Teste novo visto falhando antes (`LINE em Prancha A1`,
+  recebido 0).
 - MT-KV-02: `scripts/gerar-dxf-sintetico.mjs` gera, a partir de uma semente, um DXF
   AC1015 com LINE, CIRCLE, ARC, LWPOLYLINE e TEXT em L camadas, 90% no espaço-modelo e 5%
   em cada um de dois layouts, e imprime a contagem esperada
@@ -64,12 +80,14 @@
 
 ## Em andamento
 
-- Nada começado.
+- MT-KV-05: o ADR 0008 aguarda o aceite do mantenedor. Aceito, falta pôr os não-funcionais
+  em EARS na spec 00 e na spec 07 e escrever os tickets do bloco B de KV.
 
 ## Próximo passo sugerido
 
-1. MT-KV-03 e MT-KV-04: os dois spikes, sobre o desenho de 100 mil entidades do gerador.
-2. MT-KV-05: o ADR 0008, com base nos dois relatórios.
+1. Mantenedor decide o ADR 0008 (aceitar, ajustar ou recusar).
+2. Aceito: specs 00 e 07 com as metas em EARS; tickets de implementação de KV (fachada
+   com ids alterados e consulta por id; desenhista; retirar a barra do upstream).
 
 ## Impedimentos abertos
 

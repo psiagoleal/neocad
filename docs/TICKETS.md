@@ -35,12 +35,8 @@ UI começa pelo que não depende do ADR 0008.
       build falha acima de 465 000 bytes.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-03](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-03-spike--espelhar-o-kernel-no-modelo-do-upstream) —
-      mede a opção de espelhamento.
-- [ ] [MT-KV-04](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-04-spike--desenhar-a-partir-do-kernel) —
-      mede a opção de desenho próprio.
-- [ ] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) —
-      escolhe com base nos dois relatórios.
+- [>] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) — falta o aceite do mantenedor;
+  [ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) proposto.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
       spec 09, S1, S2, S5.
 - [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —
@@ -54,6 +50,10 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-KV-04](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-04-spike--desenhar-a-partir-do-kernel) —
+      [relatório](spikes/kv-render-kernel.md): edição ~120 ms, abertura 2,8 s.
+- [x] [MT-KV-03](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-03-spike--espelhar-o-kernel-no-modelo-do-upstream) —
+      [relatório](spikes/kv-espelhamento.md): edição 2,2 s com 100 mil; não fecha.
 - [x] [MT-KV-02](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-02-gerador-de-desenho-sintético-grande) —
       `scripts/gerar-dxf-sintetico.mjs`; 100 mil entidades, kernel lê em 2,4 s.
 - [x] [MT-KV-01](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-01-e2e-que-prova-a-perda-da-linha-desenhada-pelo-upstream) —
