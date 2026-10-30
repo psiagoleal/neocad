@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildDocumentSnapshot,
 	CadKernelContractError,
+	toCadChange,
 	toCadBounds,
 	toCadColorFromUpstream,
 	toCadGeometryFromUpstream,
@@ -669,5 +670,39 @@ describe('geometria de viewport', () => {
 	it('falha alto quando a forma do kernel não bate', () => {
 		expect(() => toCadGeometry({ ...bruta, isOn: 'sim' })).toThrow(CadKernelContractError);
 		expect(() => toCadGeometry({ ...bruta, viewCenter: null })).toThrow(CadKernelContractError);
+	});
+});
+
+// Rascunho do qwen3-coder:30b a partir do critério de aceite (MT-KV-06).
+describe('toCadChange', () => {
+	it('converte objeto válido corretamente', () => {
+		const raw = { created: ['1'], modified: ['2', '3'], removed: [], layers: ['9'] };
+		expect(toCadChange(raw)).toEqual(raw);
+	});
+
+	it('lança CadKernelContractError quando raw é null', () => {
+		expect(() => toCadChange(null)).toThrow(CadKernelContractError);
+	});
+
+	it('lança CadKernelContractError quando raw é string', () => {
+		expect(() => toCadChange('x')).toThrow(CadKernelContractError);
+	});
+
+	it('lança CadKernelContractError quando falta removed', () => {
+		expect(() => toCadChange({ created: ['1'], modified: ['2'], layers: [] })).toThrow(
+			CadKernelContractError
+		);
+	});
+
+	it('lança CadKernelContractError quando created não é array', () => {
+		expect(() => toCadChange({ created: '1', modified: ['2'], removed: [], layers: [] })).toThrow(
+			CadKernelContractError
+		);
+	});
+
+	it('lança CadKernelContractError quando um item de modified não é string', () => {
+		expect(() => toCadChange({ created: ['1'], modified: [2], removed: [], layers: [] })).toThrow(
+			CadKernelContractError
+		);
 	});
 });

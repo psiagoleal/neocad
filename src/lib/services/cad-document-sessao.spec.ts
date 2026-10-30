@@ -433,3 +433,53 @@ describe('CadDocument: erros (W3, W4, W4b)', () => {
 		expect(sessao.toDxf).toHaveBeenCalled();
 	});
 });
+
+// Rascunho do qwen3-coder:30b a partir do critério de aceite (MT-KV-06); o teste da
+// consulta foi corrigido para não supor a forma de CadEntity e conferir os ids repassados.
+describe('CadDocument: o que mudou e consulta pelo id (MT-KV-06)', () => {
+	it('lastChange chama sessao.lastChange e converte', () => {
+		const sessao = sessaoFalsa({
+			lastChange: vi.fn(() => ({ created: ['5'], modified: [], removed: ['6'], layers: [] }))
+		});
+		const doc = documentoSobre(sessao);
+		expect(doc.lastChange()).toEqual({ created: ['5'], modified: [], removed: ['6'], layers: [] });
+	});
+
+	it('lastChange lança CadKernelContractError quando sessão devolve objeto inválido', () => {
+		const sessao = sessaoFalsa({
+			lastChange: vi.fn(() => ({ created: 5 }))
+		});
+		const doc = documentoSobre(sessao);
+		expect(() => doc.lastChange()).toThrow(CadKernelContractError);
+	});
+
+	it('getEntitiesById chama sessao.entitiesById e converte', () => {
+		const ENTIDADE = {
+			id: '1',
+			layer: '7',
+			geometry: { kind: 'line', start: { x: 0, y: 0 }, end: { x: 3, y: 4 } },
+			bounds: { minX: 0, minY: 0, maxX: 3, maxY: 4 }
+		};
+		const sessao = sessaoFalsa({
+			entitiesById: vi.fn(() => [ENTIDADE, null])
+		});
+		const doc = documentoSobre(sessao);
+		const achadas = doc.getEntitiesById([id('1'), id('2')]);
+
+		expect(sessao.entitiesById).toHaveBeenCalledWith(['1', '2']);
+		expect(achadas).toHaveLength(2);
+		expect(achadas[0]?.id).toBe('1');
+		expect(achadas[0]?.geometry.kind).toBe('line');
+		expect(achadas[1]).toBeNull();
+	});
+
+	it('getEntitiesById lança CadKernelOperationError quando sessão lança erro', () => {
+		const sessao = sessaoFalsa({
+			entitiesById: vi.fn(() => {
+				throw new Error('identificador de entidade inválido');
+			})
+		});
+		const doc = documentoSobre(sessao);
+		expect(() => doc.getEntitiesById([id('x')])).toThrow(CadKernelOperationError);
+	});
+});

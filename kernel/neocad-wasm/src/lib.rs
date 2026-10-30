@@ -501,6 +501,23 @@ pub struct EntityView {
     pub bounds: BoundsView,
 }
 
+/// O que a última operação mudou, na forma que atravessa a ponte.
+///
+/// É o que deixa a tela atualizar só o que mudou (ADR 0008). Os identificadores
+/// vêm em texto decimal, em ordem crescente.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeView {
+    /// Entidades que passaram a existir.
+    pub created: Vec<String>,
+    /// Entidades que continuam existindo com conteúdo ou posição novos.
+    pub modified: Vec<String>,
+    /// Entidades que deixaram de existir.
+    pub removed: Vec<String>,
+    /// Camadas cujo registro mudou.
+    pub layers: Vec<String>,
+}
+
 /// Estado da pilha de comandos, na forma que atravessa a ponte.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -767,6 +784,28 @@ impl CadSession {
             undo_depth: self.stack.undo_depth(),
             redo_depth: self.stack.redo_depth(),
         })
+    }
+
+    /// O que a última operação mudou: ids criados, alterados e removidos, e
+    /// camadas alteradas. Vazio depois de abrir, de carregar e de operação recusada.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a serialização para JavaScript falhar.
+    #[wasm_bindgen(js_name = lastChange)]
+    pub fn last_change(&self) -> Result<JsValue, JsError> {
+        to_js(&self.try_last_change())
+    }
+
+    /// Entidades pelos ids, de qualquer espaço, na ordem pedida; `null` para id
+    /// que não existe mais.
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum identificador for malformado.
+    #[wasm_bindgen(js_name = entitiesById)]
+    pub fn entities_by_id(&self, ids: Vec<String>) -> Result<JsValue, JsError> {
+        to_js(&self.try_entities_by_id(&ids).map_err(js_error)?)
     }
 }
 
@@ -1249,6 +1288,31 @@ impl CadSession {
             blocks: &blocos,
             layouts: &declarados,
         })
+    }
+
+    fn try_last_change(&self) -> ChangeView {
+        let effect = self.stack.last_effect();
+        let entities = |ids: &[EntityId]| ids.iter().copied().map(encode_entity).collect();
+
+        ChangeView {
+            created: entities(&effect.created),
+            modified: entities(&effect.modified),
+            removed: entities(&effect.removed),
+            layers: effect.layers.iter().copied().map(encode_layer).collect(),
+        }
+    }
+
+    fn try_entities_by_id(&self, ids: &[String]) -> Result<Vec<Option<EntityView>>, String> {
+        let ids = decode_entities(ids)?;
+
+        Ok(ids
+            .into_iter()
+            .map(|id| {
+                self.document
+                    .entity(id)
+                    .map(|entity| entity_view(id, entity))
+            })
+            .collect())
     }
 
     fn try_undo(&mut self) -> Result<bool, String> {
@@ -2542,5 +2606,189 @@ mod tests {
         assert_eq!(s.try_to_dxf(), antes);
         assert_eq!(s.try_redo(), Ok(false));
         assert_eq!(s.try_to_dxf(), antes);
+    }
+
+    // -- O que mudou e consulta pelo id (MT-KV-06) ---------------------------
+
+    fn so_entidades(
+        mudanca: &ChangeView,
+        criadas: &[String],
+        alteradas: &[String],
+        removidas: &[String],
+    ) {
+        assert_eq!(mudanca.created, criadas, "criadas");
+        assert_eq!(mudanca.modified, alteradas, "alteradas");
+        assert_eq!(mudanca.removed, removidas, "removidas");
+        assert!(mudanca.layers.is_empty(), "camadas: {:?}", mudanca.layers);
+    }
+
+    fn camada_zero(s: &CadSession) -> String {
+        encode_layer(s.document.layers().default_layer())
+    }
+
+    fn linha_desenhada(s: &mut CadSession) -> String {
+        let zero = camada_zero(s);
+        s.try_add_line(&zero, 0.0, 0.0, 10.0, 0.0).expect("desenha")
+    }
+
+    #[test]
+    fn sessao_nova_nao_mudou_nada() {
+        so_entidades(&sessao().try_last_change(), &[], &[], &[]);
+    }
+
+    #[test]
+    fn desenhar_informa_a_criada() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        so_entidades(&s.try_last_change(), &[id], &[], &[]);
+    }
+
+    #[test]
+    fn mover_informa_a_alterada() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        s.try_move(std::slice::from_ref(&id), 1.0, 2.0)
+            .expect("move");
+
+        so_entidades(&s.try_last_change(), &[], &[id], &[]);
+    }
+
+    #[test]
+    fn apagar_desfazer_e_refazer_informam_o_que_mudou() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        s.try_remove_entity(&id).expect("apaga");
+        so_entidades(&s.try_last_change(), &[], &[], std::slice::from_ref(&id));
+
+        assert_eq!(s.try_undo(), Ok(true));
+        so_entidades(&s.try_last_change(), std::slice::from_ref(&id), &[], &[]);
+
+        assert_eq!(s.try_redo(), Ok(true));
+        so_entidades(&s.try_last_change(), &[], &[], &[id]);
+    }
+
+    #[test]
+    fn copiar_informa_as_copias() {
+        let mut s = sessao();
+        let a = linha_desenhada(&mut s);
+        let b = circulo_em(&mut s, 5.0, 5.0, 1.0);
+
+        let mut copias = s.try_copy(&[a, b], 20.0, 0.0).expect("copia");
+        copias.sort_by_key(|id| id.parse::<u64>().expect("decimal"));
+
+        so_entidades(&s.try_last_change(), &copias, &[], &[]);
+    }
+
+    #[test]
+    fn desligar_camada_informa_a_camada() {
+        let mut s = sessao();
+        let zero = camada_zero(&s);
+
+        s.try_set_layer_off(&zero, true).expect("desliga");
+
+        let mudanca = s.try_last_change();
+        assert_eq!(mudanca.layers, vec![zero]);
+        assert!(
+            mudanca.created.is_empty() && mudanca.modified.is_empty() && mudanca.removed.is_empty()
+        );
+    }
+
+    #[test]
+    fn operacao_recusada_nao_informa_mudanca() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        assert!(s.try_scale(&[id], 0.0, 0.0, 0.0).is_err());
+
+        so_entidades(&s.try_last_change(), &[], &[], &[]);
+    }
+
+    #[test]
+    fn abrir_dxf_nao_informa_mudanca() {
+        let mut s = sessao();
+        linha_desenhada(&mut s);
+
+        s.try_open_dxf(&fixture("minimal.dxf")).expect("abre");
+
+        so_entidades(&s.try_last_change(), &[], &[], &[]);
+    }
+
+    #[test]
+    fn consulta_pelo_id_devolve_na_ordem_e_nulo_para_apagada() {
+        let mut s = sessao();
+        let a = linha_em(&mut s, 0.0, 0.0, 3.0, 4.0);
+        let apagada = linha_em(&mut s, 1.0, 1.0, 2.0, 2.0);
+        let b = circulo_em(&mut s, 7.0, 7.0, 2.0);
+        s.try_remove_entity(&apagada).expect("apaga");
+
+        let achadas = s
+            .try_entities_by_id(&[b.clone(), apagada, a.clone()])
+            .expect("consulta");
+
+        assert_eq!(achadas.len(), 3);
+        let primeira = achadas[0].as_ref().expect("b existe");
+        assert_eq!(primeira.id, b);
+        assert!(
+            matches!(primeira.geometry, GeometryView::Circle { radius, .. } if perto(radius, 2.0))
+        );
+        assert!(achadas[1].is_none(), "apagada vem nula");
+        let terceira = achadas[2].as_ref().expect("a existe");
+        assert_eq!(terceira.id, a);
+        assert!(
+            matches!(terceira.geometry, GeometryView::Line { end, .. } if perto(end.x, 3.0) && perto(end.y, 4.0))
+        );
+    }
+
+    #[test]
+    fn consulta_pelo_id_acha_entidade_do_espaco_papel() {
+        let mut s = sessao();
+        s.try_open_dxf(&fixture("two-layouts.dxf")).expect("abre");
+        let papel = s
+            .document
+            .entities()
+            .find(|(id, _)| {
+                s.document
+                    .entity_placement(*id)
+                    .is_some_and(|lugar| lugar.block != s.document.model_space())
+            })
+            .map(|(id, _)| encode_entity(id))
+            .expect("o arquivo tem entidade no papel");
+
+        let achadas = s
+            .try_entities_by_id(std::slice::from_ref(&papel))
+            .expect("consulta");
+
+        assert_eq!(achadas[0].as_ref().map(|e| e.id.clone()), Some(papel));
+    }
+
+    #[test]
+    fn consulta_pelo_id_recusa_id_malformado() {
+        assert!(sessao().try_entities_by_id(&[String::from("abc")]).is_err());
+    }
+
+    /// Medida para o handoff: `cargo test -p neocad-wasm --release -- --ignored --nocapture medida_`.
+    #[test]
+    #[ignore = "medida de desempenho, roda à mão"]
+    fn medida_da_consulta_de_um_id_com_cem_mil() {
+        let mut s = sessao();
+        let ids: Vec<String> = (0..100_000)
+            .map(|i| {
+                let x = f64::from(i);
+                linha_em(&mut s, x, 0.0, x + 1.0, 1.0)
+            })
+            .collect();
+        let alvo = std::slice::from_ref(&ids[73_219]);
+
+        let inicio = std::time::Instant::now();
+        let voltas = 1_000;
+        for _ in 0..voltas {
+            assert!(s.try_entities_by_id(alvo).expect("consulta")[0].is_some());
+        }
+        let media = inicio.elapsed() / voltas;
+
+        println!("consulta de 1 id entre 100 mil: {media:?} por chamada");
     }
 }

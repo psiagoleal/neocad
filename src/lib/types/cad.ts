@@ -158,6 +158,19 @@ export interface CadHistoryState {
 	redoDepth: number;
 }
 
+/**
+ * O que a última operação do kernel mudou (ADR 0008).
+ *
+ * É o que permite à tela atualizar só o que mudou. Vazio depois de abrir um
+ * arquivo e depois de operação recusada.
+ */
+export interface CadChange {
+	created: CadEntityId[];
+	modified: CadEntityId[];
+	removed: CadEntityId[];
+	layers: CadLayerId[];
+}
+
 /** Camada de um documento a carregar no kernel. Referenciada por nome. */
 export interface CadLayerSnapshot {
 	name: string;

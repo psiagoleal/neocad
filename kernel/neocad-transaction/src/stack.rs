@@ -8,6 +8,7 @@ use std::collections::VecDeque;
 
 use neocad_model::{Document, DocumentEditor};
 
+use crate::effect::Effect;
 use crate::transaction::{Transaction, TransactionError};
 
 /// Profundidade padrão do histórico de desfazer.
@@ -73,6 +74,8 @@ pub struct CommandStack {
     /// Transações que refazem, da mais antiga para a mais recente.
     redoable: Vec<Transaction>,
     limit: usize,
+    /// O que a última operação fez ao documento.
+    effect: Effect,
 }
 
 impl CommandStack {
@@ -89,7 +92,15 @@ impl CommandStack {
             undoable: VecDeque::new(),
             redoable: Vec::new(),
             limit,
+            effect: Effect::default(),
         }
+    }
+
+    /// O que a última operação (`commit`, `edit`, `undo`, `redo`, `clear`) fez ao
+    /// documento.
+    #[must_use]
+    pub const fn last_effect(&self) -> &Effect {
+        &self.effect
     }
 
     /// Profundidade máxima do histórico.
@@ -120,12 +131,15 @@ impl CommandStack {
         document: &mut Document,
         transaction: Transaction,
     ) -> Result<(), TransactionError> {
+        self.effect = Effect::default();
+
         if transaction.is_empty() {
             return Ok(());
         }
 
         let undo = transaction.apply(document)?;
 
+        self.effect = Effect::from_inverse(undo.changes());
         self.redoable.clear();
         self.undoable.push_back(undo);
         self.enforce_limit();
@@ -186,11 +200,13 @@ impl CommandStack {
         F: FnOnce(&mut DocumentEditor<'_>) -> Result<T, E>,
         E: Into<TransactionError>,
     {
+        self.effect = Effect::default();
         let mut editor = document.edit();
 
         match build(&mut editor) {
             Ok(value) => {
                 let undo = editor.finish();
+                self.effect = Effect::from_inverse(&undo);
 
                 if !undo.is_empty() {
                     self.redoable.clear();
@@ -219,12 +235,14 @@ impl CommandStack {
     /// Propaga a falha da transação. A transação permanece no histórico para que
     /// o estado da pilha continue refletindo o do documento.
     pub fn undo(&mut self, document: &mut Document) -> Result<bool, TransactionError> {
+        self.effect = Effect::default();
         let Some(transaction) = self.undoable.pop_back() else {
             return Ok(false);
         };
 
         match transaction.clone().apply(document) {
             Ok(redo) => {
+                self.effect = Effect::from_inverse(redo.changes());
                 self.redoable.push(redo);
                 Ok(true)
             }
@@ -243,12 +261,14 @@ impl CommandStack {
     ///
     /// Propaga a falha da transação, preservando o histórico.
     pub fn redo(&mut self, document: &mut Document) -> Result<bool, TransactionError> {
+        self.effect = Effect::default();
         let Some(transaction) = self.redoable.pop() else {
             return Ok(false);
         };
 
         match transaction.clone().apply(document) {
             Ok(undo) => {
+                self.effect = Effect::from_inverse(undo.changes());
                 self.undoable.push_back(undo);
                 Ok(true)
             }
@@ -302,6 +322,7 @@ impl CommandStack {
     /// Usado ao abrir ou salvar um documento, quando o histórico anterior deixa
     /// de fazer sentido.
     pub fn clear(&mut self) {
+        self.effect = Effect::default();
         self.undoable.clear();
         self.redoable.clear();
     }
@@ -711,5 +732,264 @@ mod tests {
     #[test]
     fn default_equivale_a_new() {
         assert_eq!(CommandStack::default().limit(), DEFAULT_UNDO_LIMIT);
+    }
+
+    // -- O que a última chamada fez ao documento (MT-KV-06) -----------------
+    //
+    // Rascunho do `qwen3-coder:30b` a partir só do critério de aceite; corrigidos à
+    // mão os erros mecânicos (ids fora do escopo da closure, assinatura inventada).
+
+    fn insere(stack: &mut CommandStack, document: &mut Document, x: f64) -> EntityId {
+        let zero = document.layers().default_layer();
+
+        stack
+            .edit(document, "Inserir", |editor| {
+                editor.insert_in_model_space(line(zero, x))
+            })
+            .expect("insere")
+    }
+
+    fn so_entidades(
+        efeito: &Effect,
+        criadas: &[EntityId],
+        alteradas: &[EntityId],
+        removidas: &[EntityId],
+    ) {
+        assert_eq!(efeito.created, criadas, "criadas");
+        assert_eq!(efeito.modified, alteradas, "alteradas");
+        assert_eq!(efeito.removed, removidas, "removidas");
+        assert!(efeito.layers.is_empty(), "camadas: {:?}", efeito.layers);
+    }
+
+    #[test]
+    fn efeito_de_pilha_nova_e_vazio() {
+        assert!(CommandStack::new().last_effect().is_empty());
+    }
+
+    #[test]
+    fn efeito_de_insercao_lista_a_criada() {
+        let (mut document, _) = documento();
+        let mut stack = CommandStack::new();
+
+        let id = insere(&mut stack, &mut document, 10.0);
+
+        so_entidades(stack.last_effect(), &[id], &[], &[]);
+    }
+
+    #[test]
+    fn efeito_de_commit_que_apaga_lista_a_removida() {
+        let (mut document, ids) = documento();
+        let mut stack = CommandStack::new();
+
+        stack
+            .commit(&mut document, apagar("Apagar", ids[0]))
+            .expect("aplica");
+
+        so_entidades(stack.last_effect(), &[], &[], &[ids[0]]);
+    }
+
+    #[test]
+    fn efeito_de_substituicao_lista_a_alterada() {
+        let (mut document, ids) = documento();
+        let zero = document.layers().default_layer();
+        let mut stack = CommandStack::new();
+
+        stack
+            .edit(&mut document, "Substituir", |editor| {
+                editor.replace_entity(ids[0], line(zero, 50.0))
+            })
+            .expect("substitui");
+
+        so_entidades(stack.last_effect(), &[], &[ids[0]], &[]);
+    }
+
+    #[test]
+    fn efeito_de_mudanca_de_camada_lista_a_camada() {
+        let (mut document, _) = documento();
+        let zero = document.layers().default_layer();
+        let mut record = document.layers().get(zero).expect("camada").clone();
+        record.set_off(true);
+        let mut stack = CommandStack::new();
+
+        stack
+            .edit(&mut document, "Desligar camada", |editor| {
+                editor.set_layer_record(zero, record)
+            })
+            .expect("altera");
+
+        let efeito = stack.last_effect();
+        assert_eq!(efeito.layers, vec![zero]);
+        assert!(
+            efeito.created.is_empty() && efeito.modified.is_empty() && efeito.removed.is_empty()
+        );
+    }
+
+    #[test]
+    fn efeito_de_desfazer_e_refazer_uma_insercao() {
+        let (mut document, _) = documento();
+        let mut stack = CommandStack::new();
+        let id = insere(&mut stack, &mut document, 10.0);
+
+        assert!(stack.undo(&mut document).expect("desfaz"));
+        so_entidades(stack.last_effect(), &[], &[], &[id]);
+
+        assert!(stack.redo(&mut document).expect("refaz"));
+        so_entidades(stack.last_effect(), &[id], &[], &[]);
+    }
+
+    #[test]
+    fn efeito_de_desfazer_uma_remocao_lista_a_criada() {
+        let (mut document, ids) = documento();
+        let mut stack = CommandStack::new();
+        stack
+            .edit(&mut document, "Apagar", |editor| {
+                editor.remove_entity(ids[1])
+            })
+            .expect("apaga");
+
+        assert!(stack.undo(&mut document).expect("desfaz"));
+
+        so_entidades(stack.last_effect(), &[ids[1]], &[], &[]);
+    }
+
+    #[test]
+    fn efeito_de_desfazer_e_refazer_uma_substituicao() {
+        let (mut document, ids) = documento();
+        let zero = document.layers().default_layer();
+        let mut stack = CommandStack::new();
+        stack
+            .edit(&mut document, "Substituir", |editor| {
+                editor.replace_entity(ids[0], line(zero, 50.0))
+            })
+            .expect("substitui");
+
+        assert!(stack.undo(&mut document).expect("desfaz"));
+        so_entidades(stack.last_effect(), &[], &[ids[0]], &[]);
+
+        assert!(stack.redo(&mut document).expect("refaz"));
+        so_entidades(stack.last_effect(), &[], &[ids[0]], &[]);
+    }
+
+    #[test]
+    fn efeito_liquido_dentro_de_uma_edicao() {
+        let (mut document, _) = documento();
+        let zero = document.layers().default_layer();
+        let mut stack = CommandStack::new();
+
+        let a = stack
+            .edit(&mut document, "Várias", |editor| {
+                let a = editor.insert_in_model_space(line(zero, 10.0))?;
+                editor.replace_entity(a, line(zero, 20.0))?;
+                let b = editor.insert_in_model_space(line(zero, 30.0))?;
+                editor.remove_entity(b)?;
+                Ok::<_, DocumentError>(a)
+            })
+            .expect("edita");
+
+        so_entidades(stack.last_effect(), &[a], &[], &[]);
+    }
+
+    #[test]
+    fn efeito_de_edicao_sem_mudanca_e_vazio() {
+        let (mut document, _) = documento();
+        let mut stack = CommandStack::new();
+        insere(&mut stack, &mut document, 10.0);
+
+        stack
+            .edit(&mut document, "Nada", |_| Ok::<_, DocumentError>(()))
+            .expect("edita");
+
+        assert!(stack.last_effect().is_empty());
+    }
+
+    #[test]
+    fn efeito_de_edicao_que_falha_e_vazio() {
+        let (mut document, ids) = documento();
+        let zero = document.layers().default_layer();
+        let mut stack = CommandStack::new();
+        stack
+            .edit(&mut document, "Apagar", |editor| {
+                editor.remove_entity(ids[3])
+            })
+            .expect("apaga");
+
+        let falha = stack.edit(&mut document, "Falha", |editor| {
+            editor.insert_in_model_space(line(zero, 40.0))?;
+            editor.remove_entity(ids[3])
+        });
+
+        assert!(falha.is_err());
+        assert!(stack.last_effect().is_empty());
+    }
+
+    #[test]
+    fn efeito_de_commit_que_falha_e_vazio() {
+        let (mut document, ids) = documento();
+        let mut stack = CommandStack::new();
+        stack
+            .commit(&mut document, apagar("Apagar", ids[2]))
+            .expect("aplica");
+
+        assert!(stack
+            .commit(&mut document, apagar("De novo", ids[2]))
+            .is_err());
+
+        assert!(stack.last_effect().is_empty());
+    }
+
+    #[test]
+    fn efeito_de_limpar_e_vazio() {
+        let (mut document, _) = documento();
+        let mut stack = CommandStack::new();
+        insere(&mut stack, &mut document, 10.0);
+
+        stack.clear();
+
+        assert!(stack.last_effect().is_empty());
+    }
+
+    #[test]
+    fn efeito_de_desfazer_sem_nada_e_vazio() {
+        let (mut document, _) = documento();
+        let mut stack = CommandStack::new();
+        insere(&mut stack, &mut document, 10.0);
+        stack.clear();
+        insere(&mut stack, &mut document, 20.0);
+        assert!(stack.undo(&mut document).expect("desfaz"));
+
+        assert!(!stack.undo(&mut document).expect("nada a desfazer"));
+
+        assert!(stack.last_effect().is_empty());
+    }
+
+    #[test]
+    fn efeito_de_refazer_sem_nada_e_vazio() {
+        let (mut document, _) = documento();
+        let mut stack = CommandStack::new();
+        insere(&mut stack, &mut document, 10.0);
+
+        assert!(!stack.redo(&mut document).expect("nada a refazer"));
+
+        assert!(stack.last_effect().is_empty());
+    }
+
+    #[test]
+    fn efeito_lista_as_criadas_em_ordem_crescente() {
+        let (mut document, _) = documento();
+        let zero = document.layers().default_layer();
+        let mut stack = CommandStack::new();
+
+        let mut esperado = stack
+            .edit(&mut document, "Três", |editor| {
+                Ok::<_, DocumentError>(vec![
+                    editor.insert_in_model_space(line(zero, 20.0))?,
+                    editor.insert_in_model_space(line(zero, 0.0))?,
+                    editor.insert_in_model_space(line(zero, 10.0))?,
+                ])
+            })
+            .expect("insere");
+        esperado.sort();
+
+        so_entidades(stack.last_effect(), &esperado, &[], &[]);
     }
 }

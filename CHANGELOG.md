@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- What each edit changed, and entities by id (MT-KV-06) — `CommandStack::last_effect`, the facade's `lastChange`/`entitiesById` and the service's `lastChange`/`getEntitiesById`: every edit, undo and redo reports the created, modified and removed entity ids and the changed layers, so the screen can redraw only what changed (ADR 0008); looking up one id among 100 000 entities takes about 0.2 µs natively.
+
 - Synthetic DXF generator, `scripts/gerar-dxf-sintetico.mjs` (MT-KV-02) — a seeded, reproducible drawing of N entities across layers, model space and two layouts, for measuring large files without third-party data; the kernel opens 100 000 entities in about 2.4 s.
 
 - Editing and queries through the WebAssembly facade and the `cad-document` service (MT-K3-12), closing phase K3 — the ten operations of spec 05 and the intersection, region, hit and snap queries, each operation one named undo step; kernel refusals become `CadKernelOperationError`, malformed answers `CadKernelContractError` naming the field, and a WebAssembly abort marks the document untrusted so every later call fails except saving a copy. Only the service may import the kernel (ESLint rule), and the release build fails above 465 000 bytes (now 414 302).

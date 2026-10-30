@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       build falha acima de 465 000 bytes.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-06](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-06-fachada-informa-o-que-cada-operação-mudou-e-consulta-pelo-id) —
-      ids mudados por operação e consulta pelo id.
 - [ ] [MT-KV-07](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-07-prova-local-de-desempenho-n1n3) —
       E2E de 100 mil entidades contra N1–N3.
 - [ ] [MT-KV-08](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-08-preparo-para-a-tela-no-kernel) —
@@ -68,6 +66,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-06](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-06-fachada-informa-o-que-cada-operação-mudou-e-consulta-pelo-id) —
+      `lastChange` e `getEntitiesById`; um id entre 100 mil em ~0,2 µs (nativo).
 - [x] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) —
       [ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito: tela pelo kernel, GPU com reserva 2D.
 - [x] [MT-KV-04](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-04-spike--desenhar-a-partir-do-kernel) —

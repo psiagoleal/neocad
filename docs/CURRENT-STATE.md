@@ -13,13 +13,26 @@
 - **Data:** 2026-10-30
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (ADR 0008 aceito, MT-KV-05); `bfc864f` passou na CI nos 8
-  jobs
-- **Estado da árvore:** limpa após o commit · **DoD:** só documentação; `pnpm lint`,
-  `checar-painel.py` e `checar-links.py` verdes
+- **Commit:** o deste turno (MT-KV-06); antes, `35f0641` e `7d62dbd` (ADR 0008 aceito,
+  só documentação)
+- **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check`, `make
+kernel-wasm` (426 369 bytes, teto 465 000), `pnpm lint`, `pnpm check`, `pnpm test` (108)
+  e `make e2e` (15 passam; 2 pulados de propósito) verdes
 
 ## Metas cumpridas neste turno
 
+- **MT-KV-06:** cada edição, desfazer e refazer informa o que mudou, e a fachada busca
+  entidades pelo id (spec 06, W6 e W7).
+  - Onde: `neocad_transaction::Effect` e `CommandStack::last_effect`, deduzidos das
+    mudanças que desfazem a operação (a pilha já as guardava); fachada `lastChange` e
+    `entitiesById`; serviço `lastChange()` e `getEntitiesById()`.
+  - Medida: buscar 1 id entre 100 mil leva ~174 ns em Rust nativo, release
+    (`cargo test -p neocad-wasm --lib --release -- --ignored --nocapture medida_`). No
+    navegador soma a travessia da ponte; não medido.
+  - Teste-primeiro: rascunhos do `qwen3-coder:30b` só com o critério; erros mecânicos
+    corrigidos (assinaturas inventadas, ids fora da closure, forma de `CadEntity`
+    suposta). Vermelho visto nas asserções com esboços: 9 (pilha), 8 (fachada) e 10
+    (serviço) testes falhando antes da implementação.
 - **[ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito pelo mantenedor**,
   com dois acréscimos pedidos por ele:
   - **GPU:** desenho por WebGL2, independente de fabricante (AMD, NVIDIA, Intel) pela
@@ -50,13 +63,12 @@
 
 ## Em andamento
 
-- Nada em andamento; o bloco B de KV começa pelo MT-KV-06.
+- Nada em andamento; o bloco B de KV segue pelo MT-KV-07.
 
 ## Próximo passo sugerido
 
-1. MT-KV-06: a fachada devolve os ids criados, alterados e removidos por operação e
-   ganha a consulta pelo id (teste primeiro).
-2. MT-KV-07: E2E de desempenho com 100 mil entidades (N1–N3), visto falhando.
+1. MT-KV-07: E2E de desempenho com 100 mil entidades (N1–N3), visto falhando.
+2. Depois, MT-KV-08: preparo da geometria para a tela no kernel.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos

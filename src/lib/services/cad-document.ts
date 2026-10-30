@@ -16,6 +16,7 @@
 
 import type {
 	CadBounds,
+	CadChange,
 	CadColor,
 	CadDocumentSnapshot,
 	CadEntity,
@@ -48,6 +49,8 @@ export interface CadKernelSession {
 	entityCount(): number;
 	boundingBox(): unknown;
 	history(): unknown;
+	lastChange(): unknown;
+	entitiesById(ids: string[]): unknown;
 	createLayer(name: string): string;
 	addLine(layer: string, startX: number, startY: number, endX: number, endY: number): string;
 	removeEntity(entity: string): void;
@@ -435,6 +438,20 @@ export function toCadEntityIds(raw: unknown, context = 'ids'): CadEntityId[] {
 	return asArray(raw, context).map(
 		(id, index) => asString(id, `${context}[${index}]`) as CadEntityId
 	);
+}
+
+/** Converte o que a última operação mudou. */
+export function toCadChange(raw: unknown, context = 'mudança'): CadChange {
+	const record = asRecord(raw, context);
+
+	return {
+		created: toCadEntityIds(record.created, `${context}.created`),
+		modified: toCadEntityIds(record.modified, `${context}.modified`),
+		removed: toCadEntityIds(record.removed, `${context}.removed`),
+		layers: asArray(record.layers, `${context}.layers`).map(
+			(layer, index) => asString(layer, `${context}.layers[${index}]`) as CadLayerId
+		)
+	};
 }
 
 /** Identificador opcional: `undefined` ou `null` viram `null`. */
@@ -923,6 +940,20 @@ export class CadDocument {
 	}
 
 	/** Entidades cuja caixa envolvente toca a região, na ordem de desenho. */
+	/** O que a última operação mudou: ids criados, alterados e removidos, e camadas. */
+	lastChange(): CadChange {
+		return this.call(() => toCadChange(this.session.lastChange()));
+	}
+
+	/** Entidades pelos ids, de qualquer espaço, na ordem pedida; `null` para id que não existe. */
+	getEntitiesById(ids: CadEntityId[]): (CadEntity | null)[] {
+		return this.call(() =>
+			asArray(this.session.entitiesById(ids), 'entidades pelo id').map((entity, index) =>
+				entity === null ? null : toCadEntity(entity, `entidade pelo id[${index}]`)
+			)
+		);
+	}
+
 	findEntitiesInBox(area: CadBounds): CadEntityId[] {
 		return this.call(() =>
 			toCadEntityIds(this.session.entitiesInBox(area.minX, area.minY, area.maxX, area.maxY))
