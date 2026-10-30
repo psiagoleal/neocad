@@ -53,8 +53,8 @@ UI começa pelo que não depende de KV.
       V5, V6; sai a barra do upstream.
 - [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
       V4, V5b, V7 — depende do MT-UI-04.
-- [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-em-amd-nvidia-e-intel) —
-      N5 — depende de máquinas AMD e Intel.
+- [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
+      N5 na NVIDIA; AMD e Intel presumidas.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
       spec 09, S1, S2, S5.
 - [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —

@@ -180,12 +180,15 @@ verificação por fabricante (15).
 - **Fora de escopo:** comandos de anotação (fase KP).
 - **Depende de:** MT-KV-13, MT-UI-04.
 
-### MT-KV-15: Verificação em AMD, NVIDIA e Intel
+### MT-KV-15: Verificação na NVIDIA
 
 - **Objetivo:** roteiro manual que abre o desenho sintético, faz pan, zoom e uma edição
-  no app empacotado, em Linux e Windows, com resultado registrado por fabricante.
+  no app empacotado, em Linux e Windows, na placa NVIDIA do mantenedor. O registro diz
+  que AMD e Intel são presumidas compatíveis, por o código usar só WebGL2 e canvas 2D, e
+  pede relato de quem as tiver.
 - **Arquivos no escopo:** `docs/verificacao-gpu.md` (novo).
-- **Critério de aceite:** spec 00, N5: registro das três marcas nos dois sistemas,
-  incluindo a NVIDIA com WebKitGTK.
-- **Fora de escopo:** correções que o roteiro revelar (viram tickets).
-- **Depende de:** MT-KV-12; máquinas AMD e Intel além da do mantenedor.
+- **Critério de aceite:** spec 00, N5: registro da NVIDIA nos dois sistemas, incluindo
+  o WebKitGTK no Linux.
+- **Fora de escopo:** correções que o roteiro revelar, e relatos futuros de AMD ou Intel
+  (viram tickets).
+- **Depende de:** MT-KV-12.

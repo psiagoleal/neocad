@@ -55,7 +55,7 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 
 Em EARS, com prova, na [spec 00](00-transversal.md) (N1–N5): abrir 100 mil entidades em
 até 5 s, refletir uma edição em até 100 ms, pan e zoom a 30 quadros por segundo pela GPU,
-reserva em canvas 2D e funcionamento em AMD, NVIDIA e Intel.
+reserva em canvas 2D e APIs independentes de fabricante, verificadas na NVIDIA.
 
 ## Questões em aberto
 

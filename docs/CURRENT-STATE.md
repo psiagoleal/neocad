@@ -29,7 +29,9 @@
     à GPU com a matriz da vista. A camada da GPU (WebGL2 direto ou `wgpu` em Rust) se
     escolhe por medida no MT-KV-09; three.js descartado.
 - Spec 00 com os não-funcionais N1–N5 em EARS (abrir ≤ 5 s, editar ≤ 100 ms, pan ≥ 30
-  quadros/s, reserva 2D, três fabricantes); spec 07 aponta para eles.
+  quadros/s, reserva 2D, APIs independentes de fabricante); spec 07 aponta para eles.
+  Por decisão do mantenedor, a verificação é só na NVIDIA dele; AMD e Intel ficam
+  presumidas compatíveis até haver relato em contrário.
 - Bloco B de KV escrito: MT-KV-06 a 15. Crítica GLM-5.2 (duas execuções): uma correção
   incorporada (no Linux o WebGL do WebKitGTK passa pelo ANGLE); as demais refutadas — o
   MT-KV-07 falhar antes do desenhista é o teste-primeiro de propósito, as dependências
@@ -67,6 +69,5 @@
 - O gateway só responde com a rede da empresa ou a VPN; fora dela, a delegação cai para
   subagente (como na parte Rust do MT-K3-12).
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
-- MT-KV-15 (N5) precisa de máquinas AMD e Intel além da do mantenedor, que é NVIDIA.
 
 > Painel de tickets (o que existe e o que falta): [`docs/TICKETS.md`](TICKETS.md).
