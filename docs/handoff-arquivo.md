@@ -8,6 +8,8 @@
 
 ## Índice
 
+- [Rodada de 2026-10-30: KV, prova e medida](#rodada-de-2026-10-30-kv-prova-e-medida) —
+  MT-KV-01 a 04: a perda provada, o gerador sintético e os dois spikes.
 - [Rodada de 2026-10-30: K3 fechada](#rodada-de-2026-10-30-k3-fechada) — MT-K3-12 (Rust e
   TypeScript); CI de `e92a6bf` verde nos 8 jobs.
 - [Rodada de 2026-10-29: K3, aparar e concordar](#rodada-de-2026-10-29-k3-aparar-e-concordar) —
@@ -16,6 +18,56 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-10-30: KV, prova e medida
+
+Commits `3e2e3e4` (MT-KV-01), `0d1b4ce` (MT-KV-02) e `bfc864f` (MT-KV-03/04, ADR 0008
+proposto), todos verdes na CI nos 8 jobs (execução 41067898361 para o `bfc864f`).
+
+- **Spikes de KV medidos** no desenho sintético de 100 mil entidades (protótipos nos ramos
+  locais `spike/kv-espelhamento` e `spike/kv-render-kernel`, fora de `master`):
+  - [espelhar no upstream](spikes/kv-espelhamento.md): abrir 8,9 s; cada edição ~2,2 s,
+    gastos dentro do upstream; esvaziar o modelo dele não terminou em 13 min. Não fecha.
+  - [desenhar do kernel](spikes/kv-render-kernel.md), canvas 2D com `Path2D` por camada:
+    abrir ~2,8 s; edição 115–122 ms (meta 100 ms); pan 5–6 quadros/s.
+  - Lacuna comum: a fachada não consulta entidade pelo id, e as operações não dizem o que
+    mudaram.
+- **[ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) proposto:** a tela passa a
+  ser desenhada do kernel; o upstream fica só com DWG e o não modelado, sem edição; meta
+  nova de pan a 30 quadros/s. Crítica GLM-5.2: passa, com quatro lacunas de redação, todas
+  incorporadas.
+- Gerador: o espaço-papel recebia só polilinha e texto (`i % 20` alinhado com `i % 5`);
+  agora conta por grupo de cinco. Teste novo visto falhando antes (`LINE em Prancha A1`,
+  recebido 0).
+- MT-KV-02: `scripts/gerar-dxf-sintetico.mjs` gera, a partir de uma semente, um DXF
+  AC1015 com LINE, CIRCLE, ARC, LWPOLYLINE e TEXT em L camadas, 90% no espaço-modelo e 5%
+  em cada um de dois layouts, e imprime a contagem esperada
+  (`node scripts/gerar-dxf-sintetico.mjs --entidades 100000 --camadas 20 --saida x.dxf`).
+  `e2e/dxf-sintetico.e2e.ts` confere contagem, texto e determinismo, e que o kernel abre
+  2 000 entidades com a contagem exata e grava sem perda. **Medida:** com
+  `NEOCAD_SINTETICO_N=100000`, a mensagem do kernel aparece **2,4 s** após escolher o
+  arquivo (meta da spec 07: abrir em até 5 s). O desenho pelo upstream não foi medido; é
+  trabalho dos spikes. Teste do `qwen3-coder:30b`, visto falhando no esboço vazio; uma
+  premissa errada do pedido (o espaço-papel como perda ao salvar, que deixou de ser no
+  MT-KL-09) foi trocada por "grava sem perda". Crítica GLM-5.2: 5 achados; 4 refutados
+  (`$HANDSEED` confere, handles de `BLOCK` e de `BLOCK_RECORD` são distintos por norma,
+  layouts usam `*Paper_Space`/`*Paper_Space0`); 1 corrigido (semente inválida virava 0).
+- **Fase KV aberta.** MT-KV-01: `e2e/kernel-view.e2e.ts` desenha uma linha de (0,0) a
+  (100,50) pela barra do upstream, salva, conta as `LINE` do DXF baixado e reabre. Sem o
+  `test.fail()`, o teste falha na contagem, depois de todos os prompts do comando passarem:
+
+  ```
+  Expected: 2
+  Received: 1
+  > 92 | 	expect(contarLinhas(await readFile(destino, 'utf-8'))).toBe(2);
+  ```
+
+  A linha aparece na tela e não vai para o arquivo: a barra edita o modelo do upstream, e
+  salvar grava o do kernel (achado C4). Na barra do upstream (`.ml-cli-text`) só entram nomes
+  de comando e palavras-chave; os pontos entram nas duas caixas flutuantes junto ao cursor.
+  O teste foi escrito pelo `qwen3-coder:30b`; quatro correções mecânicas (esperas que não
+  esperavam, `await` faltando, `setTimeout` fora do teste, prompts não conferidos) estão
+  declaradas no commit.
 
 ## Rodada de 2026-10-30: K3 fechada
 

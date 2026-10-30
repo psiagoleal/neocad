@@ -3,7 +3,7 @@
 # 00 — Requisitos transversais
 
 - **Estado:** Vigente
-- **Fase:** todas · **ADRs:** 0002, 0003, 0006, 0007
+- **Fase:** todas · **ADRs:** 0002, 0003, 0006, 0007, 0008
 
 Requisitos que valem para toda feature. As demais specs citam este documento em vez de
 repetir.
@@ -27,9 +27,18 @@ Duas regras são convenção conferida na revisão de PR, e não critério com p
 automática: a interface fica em português do Brasil, e nenhum dado de projeto de
 terceiros entra no repositório (AGENTS.md §0.1).
 
-## Requisitos não-funcionais de referência
+## Requisitos não-funcionais (EARS)
 
-Valores a confirmar por medição no spike de KV (spec 07) e depois fixados aqui:
+Fixados pelo [ADR 0008](../adr/0008-tela-desenhada-a-partir-do-kernel.md) a partir dos
+spikes de KV. Valem para o desenho sintético de 100 mil entidades
+(`scripts/gerar-dxf-sintetico.mjs --entidades 100000 --camadas 20 --semente 1`). A prova
+roda localmente, numa máquina de desenvolvimento comum, não na CI; o resultado é citado no
+PR que mexe no desenhista.
 
-- abrir um DXF de 100 mil entidades em até 5 s numa máquina de desenvolvimento comum;
-- refletir na tela a edição de uma entidade em até 100 ms nesse mesmo desenho.
+| id  | critério                                                                                                                                                     | prova                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| N1  | QUANDO o desenho de 100 mil entidades é aberto, a tela DEVE exibi-lo inteiro em até 5 s, contados da escolha do arquivo.                                     | `NEOCAD_SINTETICO_N=100000 pnpm test:e2e -- desempenho` (a criar)                |
+| N2  | QUANDO o kernel cria, altera ou remove uma entidade nesse desenho, a tela DEVE refletir a mudança em até 100 ms.                                             | `NEOCAD_SINTETICO_N=100000 pnpm test:e2e -- desempenho` (a criar)                |
+| N3  | ENQUANTO o desenho é desenhado pela GPU, pan e zoom DEVEM manter pelo menos 30 quadros por segundo, pela mediana do tempo entre quadros.                     | `NEOCAD_SINTETICO_N=100000 pnpm test:e2e -- desempenho` (a criar)                |
+| N4  | SE o WebGL2 não está disponível, ENTÃO a tela DEVE ser desenhada pelo caminho de reserva em canvas 2D, sem ação do usuário, com N1 e N2 valendo também nele. | `pnpm test:e2e -- kernel-view` com o WebGL2 desligado no navegador (a criar)     |
+| N5  | O desenho pela GPU DEVE funcionar em placas AMD, NVIDIA e Intel, em Linux e Windows.                                                                         | roteiro de verificação manual por fabricante, com resultado registrado (a criar) |

@@ -2,8 +2,8 @@
 
 # 07 — O kernel é o que se vê
 
-- **Estado:** Aprovada (o mecanismo depende de ADR posterior ao spike)
-- **Fase:** KV · **ADRs:** 0001, 0003, 0007 · **Transversais:** 00 (T4)
+- **Estado:** Aprovada; mecanismo no [ADR 0008](../adr/0008-tela-desenhada-a-partir-do-kernel.md)
+- **Fase:** KV · **ADRs:** 0001, 0003, 0007, 0008 · **Transversais:** 00 (T4, N1–N5)
 
 ## Problema e resultado esperado
 
@@ -34,9 +34,9 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 
 - ADR 0001: componentes não falam com kernel nem upstream diretamente.
 - ADR 0007: a fase de UI/UX não cria edição pela interface antes de KV.
-- O mecanismo — espelhar o kernel no modelo do upstream ou desenhar a partir do kernel —
-  é decisão de ADR, tomada depois de um spike que meça as duas opções contra os
-  não-funcionais abaixo.
+- ADR 0008: a tela é desenhada a partir do kernel, pela GPU (WebGL2) com reserva em
+  canvas 2D; o kernel prepara a geometria para a tela e o TypeScript só a repassa; o
+  upstream fica só com a leitura e o desenho do que o kernel não modela.
 
 ## Critérios de aceite (EARS)
 
@@ -53,13 +53,11 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 
 ## Requisitos não-funcionais
 
-Metas a confirmar no spike; o ADR de KV as transforma em critério EARS com prova de
-desempenho, fixado em 00:
-
-- refletir a edição de uma entidade em até 100 ms num desenho de 100 mil entidades;
-- abrir esse desenho em até 5 s.
+Em EARS, com prova, na [spec 00](00-transversal.md) (N1–N5): abrir 100 mil entidades em
+até 5 s, refletir uma edição em até 100 ms, pan e zoom a 30 quadros por segundo pela GPU,
+reserva em canvas 2D e funcionamento em AMD, NVIDIA e Intel.
 
 ## Questões em aberto
 
-- Corpus para medir os não-funcionais: desenho sintético gerado por script, para não
-  depender de arquivo de terceiros (T10).
+Nenhuma. O corpus dos não-funcionais é o desenho sintético de
+`scripts/gerar-dxf-sintetico.mjs` (MT-KV-02).

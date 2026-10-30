@@ -11,7 +11,7 @@ As fases seguem os ADRs [0003](adr/0003-kernel-cad-proprio.md) e
 [0007](adr/0007-fase-de-prancha-de-engenharia.md); o aceite de cada ticket é a
 [spec](specs/README.md) correspondente. K1, K2 e KL estão fechadas e são listadas por fase;
 as demais vão ticket a ticket. Ordem: HG e QP em paralelo ao fechamento de K3; depois KV;
-UI começa pelo que não depende do ADR 0008.
+UI começa pelo que não depende de KV.
 
 ## Em aberto
 
@@ -35,8 +35,26 @@ UI começa pelo que não depende do ADR 0008.
       build falha acima de 465 000 bytes.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [>] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) — falta o aceite do mantenedor;
-  [ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) proposto.
+- [ ] [MT-KV-06](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-06-fachada-informa-o-que-cada-operação-mudou-e-consulta-pelo-id) —
+      ids mudados por operação e consulta pelo id.
+- [ ] [MT-KV-07](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-07-prova-local-de-desempenho-n1n3) —
+      E2E de 100 mil entidades contra N1–N3.
+- [ ] [MT-KV-08](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-08-preparo-para-a-tela-no-kernel) —
+      blocos `Float32Array` e índice espacial no kernel.
+- [ ] [MT-KV-09](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-09-escolher-a-camada-da-gpu--webgl2-em-typescript-ou-wgpu-em-rust) —
+      spike WebGL2 × `wgpu`.
+- [ ] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) —
+      V1 sem texto, N1, N3, N4.
+- [ ] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
+      V1 completo.
+- [ ] [MT-KV-12](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-12-refletir-edição-desfazer-e-refazer) —
+      V2, V3, N2.
+- [ ] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) —
+      V5, V6; sai a barra do upstream.
+- [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
+      V4, V5b, V7 — depende do MT-UI-04.
+- [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-em-amd-nvidia-e-intel) —
+      N5 — depende de máquinas AMD e Intel.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
       spec 09, S1, S2, S5.
 - [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —
@@ -50,6 +68,8 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) —
+      [ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito: tela pelo kernel, GPU com reserva 2D.
 - [x] [MT-KV-04](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-04-spike--desenhar-a-partir-do-kernel) —
       [relatório](spikes/kv-render-kernel.md): edição ~120 ms, abertura 2,8 s.
 - [x] [MT-KV-03](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-03-spike--espelhar-o-kernel-no-modelo-do-upstream) —
