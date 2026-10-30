@@ -278,6 +278,30 @@ export interface CadDxfOpenReport {
 	summary: string;
 }
 
+/**
+ * Modo de prendimento, na ordem de prioridade do kernel.
+ *
+ * Os nomes são os da ponte, não os do AutoCAD: a linha de comando (spec 08) traduz
+ * `END`/`FIM`, `MID`/`MED` e os demais para estes.
+ */
+export type CadSnapMode =
+	| 'endpoint'
+	| 'midpoint'
+	| 'center'
+	| 'quadrant'
+	| 'intersection'
+	| 'perpendicular'
+	| 'tangent'
+	| 'nearest';
+
+/** Ponto notável escolhido pelo prendimento. */
+export interface CadSnap {
+	mode: CadSnapMode;
+	point: CadPoint;
+	/** Entidade que produziu o ponto. */
+	entityId: CadEntityId;
+}
+
 /** Categorias de apresentação para os comandos CAD no catálogo do menu `Ajuda`. */
 export type CadCommandCategory = 'navigation' | 'draw' | 'modify' | 'layer' | 'system' | 'other';
 

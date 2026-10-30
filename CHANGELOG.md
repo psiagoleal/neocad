@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Editing and queries through the WebAssembly facade and the `cad-document` service (MT-K3-12), closing phase K3 — the ten operations of spec 05 and the intersection, region, hit and snap queries, each operation one named undo step; kernel refusals become `CadKernelOperationError`, malformed answers `CadKernelContractError` naming the field, and a WebAssembly abort marks the document untrusted so every later call fails except saving a copy. Only the service may import the kernel (ESLint rule), and the release build fails above 465 000 bytes (now 414 302).
+
 - Fillet and chamfer — `fillet`/`chamfer` and `commands::fillet`/`commands::chamfer` (MT-K3-11) — fillet between lines and arcs, chamfer between lines; the picked points choose the corner regardless of argument order, radius or distances zero extend to the vertex, and parallel lines, a radius that does not fit or a distance past the line are refused without touching the drawing.
 
 - Trim and extend — `trim`/`extend` and `commands::trim`/`commands::extend` (MT-K3-10) — for line, arc, circle and polyline; the picked point chooses the piece removed or the end extended, and each refusal (point off the curve, no cutting edge, no boundary, closed curve) is its own error and leaves the drawing untouched.

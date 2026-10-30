@@ -8,10 +8,32 @@
 
 ## Índice
 
+- [Rodada de 2026-10-29: K3, aparar e concordar](#rodada-de-2026-10-29-k3-aparar-e-concordar) —
+  MT-K3-10, MT-K3-11 e a correção da tabela da spec 05.
 - [Rodada de 2026-10-29: review e reorganização](#rodada-de-2026-10-29-review-e-reorganização) —
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-10-29: K3, aparar e concordar
+
+- MT-K3-11: concordância (`fillet`, entre reta e arco) e chanfro (`chamfer`, entre retas),
+  com `commands::fillet`/`commands::chamfer` (as duas curvas alteradas no lugar; a junção
+  entra como entidade nova). Spec 05 vigente inteira (E1–E13). 18 testes escritos pelo
+  `qwen3-coder:30b` e vistos falhando antes; a 1ª leva veio inutilizável e foi refeita com
+  auxiliares de asserção prontos. A crítica (GLM-5.2) achou um defeito real — concordância
+  que envolve o arco tocava do lado errado — reproduzido em teste e corrigido; os demais
+  achados foram refutados.
+- `1200f95`: tabela da spec 05 realinhada ao Prettier (o CI do frontend tinha falhado por
+  isso; agora rodo `pnpm lint` sempre que mexo em docs).
+- MT-K3-10: aparar e estender (`trim`, `extend`) para reta, arco, circunferência e
+  polilinha, e os comandos `commands::trim`/`commands::extend` no editor transacional
+  (um passo de desfazer cada; o primeiro pedaço mantém o identificador da entidade).
+  Spec 05 vigente até E9. Testes escritos em contexto limpo pelo `qwen3-coder:30b` do
+  gateway, vistos falhando por asserção (16 de geometria, 5 de comando) antes da
+  implementação; duas correções mecânicas declaradas (nome de variável que escondia o
+  auxiliar; bytes de "antes" capturados depois da edição). Crítica por GLM-5.2 e qwen:
+  todos os achados conferidos e refutados.
 
 ## Rodada de 2026-10-29: review e reorganização
 

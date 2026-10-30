@@ -15,8 +15,6 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Em aberto
 
-- [>] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) — falta o lado TypeScript (W1–W5) ·
-  expor consulta e edição na fachada WebAssembly; fecha a fase K3.
 - [ ] [MT-HG-07](tickets/hg-higiene.md#mt-hg-07-varredura-de-segredos-local-antes-do-commit) —
       hook `gitleaks` — bloqueado por `gitleaks` não instalado na máquina.
 - [ ] [MT-QP-01](tickets/qp-provas-das-specs.md#mt-qp-01-ida-e-volta-dxf-por-variante-de-geometria-t5) —
@@ -60,6 +58,8 @@ UI começa pelo que não depende do ADR 0008.
 
 ## Concluídos
 
+- [x] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
+      consulta e edição na fachada WebAssembly e no serviço `cad-document`; fecha a fase K3 (spec 06).
 - [x] [MT-K3-11](tickets/k3-geometria-2d-edicao.md#mt-k3-11-concordância-e-chanfro-filletchamfer) —
       concordância (reta e arco) e chanfro (retas), pelos pontos indicados (spec 05, E10–E13).
 - [x] [MT-K3-10](tickets/k3-geometria-2d-edicao.md#mt-k3-10-aparar-e-estender-trimextend) —
