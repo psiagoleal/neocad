@@ -76,6 +76,8 @@ pub struct CommandStack {
     limit: usize,
     /// O que a última operação fez ao documento.
     effect: Effect,
+    /// Operações que mudaram o documento.
+    revision: u64,
 }
 
 impl CommandStack {
@@ -93,6 +95,7 @@ impl CommandStack {
             redoable: Vec::new(),
             limit,
             effect: Effect::default(),
+            revision: 0,
         }
     }
 
@@ -101,6 +104,23 @@ impl CommandStack {
     #[must_use]
     pub const fn last_effect(&self) -> &Effect {
         &self.effect
+    }
+
+    /// Quantas operações mudaram o documento desde a criação da pilha.
+    ///
+    /// Quem acompanha o documento pelo [`last_effect`](Self::last_effect) usa a
+    /// revisão para saber se perdeu alguma operação no meio do caminho.
+    #[must_use]
+    pub const fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Registra o efeito de uma operação que deu certo.
+    fn record(&mut self, effect: Effect) {
+        if !effect.is_empty() {
+            self.revision += 1;
+        }
+        self.effect = effect;
     }
 
     /// Profundidade máxima do histórico.
@@ -139,7 +159,7 @@ impl CommandStack {
 
         let undo = transaction.apply(document)?;
 
-        self.effect = Effect::from_inverse(undo.changes());
+        self.record(Effect::from_inverse(undo.changes()));
         self.redoable.clear();
         self.undoable.push_back(undo);
         self.enforce_limit();
@@ -206,7 +226,7 @@ impl CommandStack {
         match build(&mut editor) {
             Ok(value) => {
                 let undo = editor.finish();
-                self.effect = Effect::from_inverse(&undo);
+                self.record(Effect::from_inverse(&undo));
 
                 if !undo.is_empty() {
                     self.redoable.clear();
@@ -242,7 +262,7 @@ impl CommandStack {
 
         match transaction.clone().apply(document) {
             Ok(redo) => {
-                self.effect = Effect::from_inverse(redo.changes());
+                self.record(Effect::from_inverse(redo.changes()));
                 self.redoable.push(redo);
                 Ok(true)
             }
@@ -268,7 +288,7 @@ impl CommandStack {
 
         match transaction.clone().apply(document) {
             Ok(undo) => {
-                self.effect = Effect::from_inverse(undo.changes());
+                self.record(Effect::from_inverse(undo.changes()));
                 self.undoable.push_back(undo);
                 Ok(true)
             }
@@ -991,5 +1011,47 @@ mod tests {
         esperado.sort();
 
         so_entidades(stack.last_effect(), &esperado, &[], &[]);
+    }
+
+    // -- Revisão (MT-KV-08) ----------------------------------------------------
+
+    #[test]
+    fn revisao_conta_so_as_operacoes_que_mudam_o_documento() {
+        let (mut document, ids) = documento();
+        let mut stack = CommandStack::new();
+        assert_eq!(stack.revision(), 0);
+
+        insere(&mut stack, &mut document, 10.0);
+        assert_eq!(stack.revision(), 1, "edição");
+
+        assert!(stack.undo(&mut document).expect("desfaz"));
+        assert_eq!(stack.revision(), 2, "desfazer");
+
+        assert!(stack.redo(&mut document).expect("refaz"));
+        assert_eq!(stack.revision(), 3, "refazer");
+
+        let mut transacao = Transaction::new("Apagar", Vec::new());
+        transacao.push(Change::RemoveEntity { entity: ids[0] });
+        stack.commit(&mut document, transacao).expect("commit");
+        assert_eq!(stack.revision(), 4, "commit");
+    }
+
+    #[test]
+    fn revisao_nao_muda_sem_efeito() {
+        let (mut document, _) = documento();
+        let mut stack = CommandStack::new();
+        insere(&mut stack, &mut document, 10.0);
+        let antes = stack.revision();
+
+        let recusada: Result<(), TransactionError> = stack.edit(&mut document, "Nada", |editor| {
+            editor.remove_entity(EntityId::from_bits(999_999).expect("id"))?;
+            Ok::<(), DocumentError>(())
+        });
+        assert!(recusada.is_err());
+        assert!(!stack.redo(&mut document).expect("nada a refazer"));
+        stack.clear();
+        assert!(!stack.undo(&mut document).expect("nada a desfazer"));
+
+        assert_eq!(stack.revision(), antes);
     }
 }

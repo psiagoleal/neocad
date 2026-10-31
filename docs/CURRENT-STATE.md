@@ -13,25 +13,32 @@
 - **Data:** 2026-10-31
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-KV-07); antes, `86506c7` (MT-KV-06, CI verde nos 8 jobs)
-- **Estado da árvore:** limpa após o commit · **DoD:** `pnpm lint`, `pnpm check` e o
-  E2E novo pulado sem a variável; só teste e documentação mudaram
+- **Commit:** o deste turno (MT-KV-08); antes, `878a7da` (MT-KV-07, CI verde nos 8 jobs)
+- **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check`, `make
+kernel-wasm` (463 233 bytes, teto 465 000), `pnpm lint`, `pnpm check`, `pnpm test` (117)
+  e `make e2e` (15 passam; 5 pulados de propósito) verdes
 
 ## Metas cumpridas neste turno
 
-- **MT-KV-07:** `e2e/desempenho.e2e.ts` mede N1 (abrir), N2 (refletir uma linha) e N3
-  (mediana entre quadros no pan e zoom) contra a tela própria; pulado sem
-  `NEOCAD_SINTETICO_N`, então a CI não o roda.
-  - Vermelho visto com `VITE_NEOCAD_SONDA=1 NEOCAD_SINTETICO_N=100000 pnpm exec playwright
-test desempenho`: os três falham em `locator('canvas[data-tela="kernel"]')` —
-    `element(s) not found` (esperava `data-entidades="90000"`). É o motivo certo: a tela
-    desenhada pelo kernel chega no MT-KV-10.
-  - O que o teste observa ficou escrito na spec 07 ("O que os testes observam na tela"):
-    atributos `data-caminho`, `data-entidades`, `data-quadros` e a sonda
-    `window.__neocadSonda`, que só existe no build com `VITE_NEOCAD_SONDA=1`, porque
-    ainda não há edição pela interface que passe pelo kernel.
-  - Escrito sem o gateway: ele não respondeu (fora da VPN).
-- **MT-KV-06** está no [arquivo](handoff-arquivo.md#rodada-de-2026-10-30-kv-prova-e-medida).
+- **MT-KV-08:** o kernel prepara a tela (spec 06, W8).
+  - `neocad_geometry::tessellate` divide arco, círculo e polilinha com abaulamento pelo
+    erro de corda: nenhuma corda se afasta do arco mais que o erro, e as pontas são
+    exatas. O ADR 0006 não fixa erro de corda; quem o escolhe é a vista (≈ um pixel).
+  - `neocad-wasm/src/tela.rs`: blocos `x1, y1, x2, y2` em `f32` por espaço e camada,
+    **relativos a uma origem do espaço em `f64`** (em `f32` puro uma coordenada UTM
+    perde 25 cm), índice espacial do recorte pela vista e atualização só dos ids da
+    operação. A pilha ganhou `revision()`: se a tela perde uma operação, refaz tudo.
+  - Fachada `prepareScreen`, `screenSpaces`, `screenOrigin`, `screenLayers`,
+    `screenBlock`, `updateScreen`, `screenQuery`; serviço com os mesmos nomes em
+    `CadDocument` (o bloco chega como o próprio `Float32Array`, sem cópia).
+  - Medida (nativo, release, 100 mil entidades, 240 mil segmentos): preparar tudo
+    52 ms; uma linha nova até o bloco refeito 6,4 ms
+    (`cargo test -p neocad-wasm --lib --release -- --ignored --nocapture medida_da_tela`).
+  - Teste-primeiro sem o gateway (fim de semana, por decisão do mantenedor): vermelho
+    visto em asserção — 11 (segmentação), 1 (revisão), 12 (tela), 5 (fachada) e 9
+    (serviço) — antes de cada implementação.
+- **MT-KV-07** (`878a7da`) e **MT-KV-06** estão no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-10-30-kv-prova-e-medida).
 - **[ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito pelo mantenedor**,
   com dois acréscimos pedidos por ele:
   - **GPU:** desenho por WebGL2, independente de fabricante (AMD, NVIDIA, Intel) pela
@@ -62,12 +69,12 @@ test desempenho`: os três falham em `locator('canvas[data-tela="kernel"]')` —
 
 ## Em andamento
 
-- Nada em andamento; o bloco B de KV segue pelo MT-KV-08.
+- Nada em andamento; o bloco B de KV segue pelo MT-KV-09.
 
 ## Próximo passo sugerido
 
-1. MT-KV-08: preparo da geometria para a tela no kernel.
-2. Depois, MT-KV-09: spike WebGL2 × `wgpu`, medido com o MT-KV-07.
+1. MT-KV-09: spike WebGL2 × `wgpu` sobre os blocos do MT-KV-08, medido com o MT-KV-07.
+2. Antes do MT-KV-10, decidir o teto do `.wasm` (ver impedimentos).
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos
@@ -79,6 +86,10 @@ test desempenho`: os três falham em `locator('canvas[data-tela="kernel"]')` —
 
 - O gateway só responde com a rede da empresa ou a VPN; fora dela, a delegação cai para
   subagente (como na parte Rust do MT-K3-12).
+- **Teto do `.wasm` quase esgotado:** 463 233 de 465 000 bytes depois do MT-KV-08 (o
+  preparo da tela somou ~37 KB, já sem `HashMap`). O desenhista e o texto do kernel
+  (MT-KV-10, 11) não cabem. O teto só sobe por ADR (spec 06, W5); a opção `wgpu` do
+  MT-KV-09 pesaria muito mais. Decisão do mantenedor.
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
 
 > Painel de tickets (o que existe e o que falta): [`docs/TICKETS.md`](TICKETS.md).

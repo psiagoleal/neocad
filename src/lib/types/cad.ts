@@ -171,6 +171,16 @@ export interface CadChange {
 	layers: CadLayerId[];
 }
 
+/**
+ * Bloco de segmentos da tela que mudou e precisa ser enviado de novo à GPU.
+ *
+ * `space` é `Model` ou o nome do layout.
+ */
+export interface CadScreenBlock {
+	space: string;
+	layer: CadLayerId;
+}
+
 /** Camada de um documento a carregar no kernel. Referenciada por nome. */
 export interface CadLayerSnapshot {
 	name: string;

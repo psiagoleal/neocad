@@ -21,6 +21,19 @@
 
 ## Rodada de 2026-10-30: KV, prova e medida
 
+- **MT-KV-07** (`878a7da`): `e2e/desempenho.e2e.ts` mede N1 (abrir), N2 (refletir uma linha) e N3
+  (mediana entre quadros no pan e zoom) contra a tela própria; pulado sem
+  `NEOCAD_SINTETICO_N`, então a CI não o roda.
+  - Vermelho visto com `VITE_NEOCAD_SONDA=1 NEOCAD_SINTETICO_N=100000 pnpm exec playwright
+test desempenho`: os três falham em `locator('canvas[data-tela="kernel"]')` —
+    `element(s) not found` (esperava `data-entidades="90000"`). É o motivo certo: a tela
+    desenhada pelo kernel chega no MT-KV-10.
+  - O que o teste observa ficou escrito na spec 07 ("O que os testes observam na tela"):
+    atributos `data-caminho`, `data-entidades`, `data-quadros` e a sonda
+    `window.__neocadSonda`, que só existe no build com `VITE_NEOCAD_SONDA=1`, porque
+    ainda não há edição pela interface que passe pelo kernel.
+  - Escrito sem o gateway: ele não respondeu (fora da VPN).
+
 - **MT-KV-06:** cada edição, desfazer e refazer informa o que mudou, e a fachada busca
   entidades pelo id (spec 06, W6 e W7).
   - Onde: `neocad_transaction::Effect` e `CommandStack::last_effect`, deduzidos das

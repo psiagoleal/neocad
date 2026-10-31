@@ -31,6 +31,7 @@ import type {
 	CadPaperSpaceLayout,
 	CadPoint,
 	CadSaveLoss,
+	CadScreenBlock,
 	CadSnap,
 	CadSnapMode,
 	CadUnsupportedCount
@@ -104,6 +105,13 @@ export interface CadKernelSession {
 	entitiesInBox(minX: number, minY: number, maxX: number, maxY: number): string[];
 	hitTest(x: number, y: number, radius: number): string[];
 	snap(x: number, y: number, radius: number, modes: string[]): unknown;
+	prepareScreen(chordError: number): void;
+	screenSpaces(): string[];
+	screenOrigin(space: string): ArrayLike<number>;
+	screenLayers(space: string): string[];
+	screenBlock(space: string, layer: string): Float32Array;
+	updateScreen(): unknown;
+	screenQuery(space: string, minX: number, minY: number, maxX: number, maxY: number): string[];
 }
 
 let kernelModule: Promise<CadKernelModule> | null = null;
@@ -452,6 +460,47 @@ export function toCadChange(raw: unknown, context = 'mudança'): CadChange {
 			(layer, index) => asString(layer, `${context}.layers[${index}]`) as CadLayerId
 		)
 	};
+}
+
+/** Converte a origem de um espaço da tela, `[x, y]`. */
+function toScreenOrigin(raw: unknown): CadPoint {
+	const values = ArrayBuffer.isView(raw) ? Array.from(raw as Float64Array) : raw;
+	const pair = asArray(values, 'origem da tela');
+
+	if (pair.length !== 2) {
+		throw new CadKernelContractError('origem da tela deveria ter dois números.');
+	}
+
+	return {
+		x: asNumber(pair[0], 'origem da tela[0]'),
+		y: asNumber(pair[1], 'origem da tela[1]')
+	};
+}
+
+/** Confere um bloco de segmentos da tela, sem copiá-lo. */
+function toScreenBlock(raw: unknown): Float32Array {
+	if (!(raw instanceof Float32Array)) {
+		throw new CadKernelContractError('bloco da tela deveria ser um Float32Array.');
+	}
+	if (raw.length % 4 !== 0) {
+		throw new CadKernelContractError(
+			`bloco da tela deveria ter segmentos inteiros (4 números cada), tem ${raw.length}.`
+		);
+	}
+
+	return raw;
+}
+
+/** Converte a lista de blocos da tela que mudaram. */
+export function toCadScreenBlocks(raw: unknown, context = 'blocos da tela'): CadScreenBlock[] {
+	return asArray(raw, context).map((item, index) => {
+		const record = asRecord(item, `${context}[${index}]`);
+
+		return {
+			space: asString(record.space, `${context}[${index}].space`),
+			layer: asString(record.layer, `${context}[${index}].layer`) as CadLayerId
+		};
+	});
 }
 
 /** Identificador opcional: `undefined` ou `null` viram `null`. */
@@ -950,6 +999,61 @@ export class CadDocument {
 		return this.call(() =>
 			asArray(this.session.entitiesById(ids), 'entidades pelo id').map((entity, index) =>
 				entity === null ? null : toCadEntity(entity, `entidade pelo id[${index}]`)
+			)
+		);
+	}
+
+	/**
+	 * Prepara a geometria da tela no kernel, com o erro de corda da vista
+	 * (ADR 0008). Depois de cada operação, `updateScreen` diz o que buscar de novo.
+	 */
+	prepareScreen(chordError: number): void {
+		this.call(() => this.session.prepareScreen(chordError));
+	}
+
+	/** Espaços da tela: `Model` primeiro, depois os layouts na ordem das abas. */
+	getScreenSpaces(): string[] {
+		return this.call(() =>
+			asArray(this.session.screenSpaces(), 'espaços da tela').map((space, index) =>
+				asString(space, `espaços da tela[${index}]`)
+			)
+		);
+	}
+
+	/** Origem dos segmentos do espaço, a somar na matriz da vista. */
+	getScreenOrigin(space: string): CadPoint {
+		return this.call(() => toScreenOrigin(this.session.screenOrigin(space)));
+	}
+
+	/** Camadas visíveis com segmentos no espaço. */
+	getScreenLayers(space: string): CadLayerId[] {
+		return this.call(() =>
+			asArray(this.session.screenLayers(space), 'camadas da tela').map(
+				(layer, index) => asString(layer, `camadas da tela[${index}]`) as CadLayerId
+			)
+		);
+	}
+
+	/**
+	 * Segmentos `x1, y1, x2, y2` da camada no espaço, relativos à origem.
+	 *
+	 * É o próprio `Float32Array` do kernel: vai à GPU sem cópia nem conversão.
+	 */
+	getScreenBlock(space: string, layer: CadLayerId): Float32Array {
+		return this.call(() => toScreenBlock(this.session.screenBlock(space, layer)));
+	}
+
+	/** Blocos que mudaram desde a última chamada. */
+	updateScreen(): CadScreenBlock[] {
+		return this.call(() => toCadScreenBlocks(this.session.updateScreen()));
+	}
+
+	/** Entidades do espaço cuja caixa envolvente toca a área: o recorte pela vista. */
+	findEntitiesInView(space: string, area: CadBounds): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(
+				this.session.screenQuery(space, area.minX, area.minY, area.maxX, area.maxY),
+				'recorte da tela'
 			)
 		);
 	}

@@ -20,6 +20,10 @@
 //! complica comparação e serialização sem nenhum ganho — o identificador é
 //! opaco de qualquer modo.
 
+mod tela;
+
+use tela::Screen;
+
 use neocad_geometry::{
     hit_test, intersect, snap, Aabb, AnyCurve, Point2, SnapMode, SpatialIndex, Tolerance,
 };
@@ -564,6 +568,9 @@ pub struct CadSession {
     /// Guardado na sessão porque a pergunta "o que eu perco ao salvar?" é feita
     /// no momento de salvar, não no de abrir.
     loss: SaveLossView,
+    /// Geometria pronta para a tela; `None` até a primeira preparação e depois
+    /// de abrir ou carregar outro desenho.
+    screen: Option<Screen>,
 }
 
 #[wasm_bindgen]
@@ -576,6 +583,7 @@ impl CadSession {
             document: Document::new(),
             stack: CommandStack::new(),
             loss: SaveLossView::default(),
+            screen: None,
         }
     }
 
@@ -1163,6 +1171,7 @@ impl CadSession {
 
         self.document = document;
         self.stack = CommandStack::new();
+        self.screen = None;
 
         Ok(LoadReport {
             layer_count,
@@ -1193,6 +1202,7 @@ impl CadSession {
 
         self.loss = loss.clone();
         self.stack = CommandStack::new();
+        self.screen = None;
 
         let report = DxfOpenReport {
             layer_count: document.layers().len(),
@@ -1722,6 +1732,199 @@ fn loss_view(leitura: &neocad_io::DxfReading, montagem: &DocumentBuild) -> SaveL
         // referências externas.
         is_lossless: unsupported_count == 0 && xref_count == 0,
     }
+}
+
+/// Um bloco de segmentos que mudou, na forma que atravessa a ponte.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenBlockView {
+    /// Nome do espaço: `Model` ou o nome do layout.
+    pub space: String,
+    /// Identificador da camada, em texto decimal.
+    pub layer: String,
+}
+
+/// Geometria pronta para a tela (ADR 0008, MT-KV-08).
+///
+/// O fluxo é: `prepareScreen` uma vez, com o erro de corda da vista; para cada
+/// espaço, `screenOrigin`, `screenLayers` e `screenBlock`; depois de cada
+/// operação, `updateScreen`, que diz quais blocos buscar de novo.
+#[wasm_bindgen]
+impl CadSession {
+    /// Prepara os blocos de segmentos de todos os espaços.
+    ///
+    /// # Errors
+    ///
+    /// Falha se o erro de corda não for finito e positivo.
+    #[wasm_bindgen(js_name = prepareScreen)]
+    pub fn prepare_screen(&mut self, chord_error: f64) -> Result<(), JsError> {
+        self.try_prepare_screen(chord_error).map_err(js_error)
+    }
+
+    /// Espaços, o modelo primeiro e os layouts na ordem das abas.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada.
+    #[wasm_bindgen(js_name = screenSpaces)]
+    pub fn screen_spaces(&self) -> Result<Vec<String>, JsError> {
+        self.try_screen_spaces().map_err(js_error)
+    }
+
+    /// Origem dos segmentos do espaço, `[x, y]`, a somar na matriz da vista.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenOrigin)]
+    pub fn screen_origin(&self, space: &str) -> Result<Vec<f64>, JsError> {
+        self.try_screen_origin(space)
+            .map(Vec::from)
+            .map_err(js_error)
+    }
+
+    /// Camadas visíveis com segmentos no espaço.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenLayers)]
+    pub fn screen_layers(&self, space: &str) -> Result<Vec<String>, JsError> {
+        self.try_screen_layers(space).map_err(js_error)
+    }
+
+    /// Segmentos `x1, y1, x2, y2` da camada no espaço, relativos à origem.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada, o espaço não existe ou a camada é
+    /// malformada.
+    #[wasm_bindgen(js_name = screenBlock)]
+    pub fn screen_block(&self, space: &str, layer: &str) -> Result<Vec<f32>, JsError> {
+        self.try_screen_block(space, layer).map_err(js_error)
+    }
+
+    /// Acompanha as operações feitas desde a última chamada e diz quais blocos
+    /// mudaram.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada.
+    #[wasm_bindgen(js_name = updateScreen)]
+    pub fn update_screen(&mut self) -> Result<JsValue, JsError> {
+        to_js(&self.try_update_screen().map_err(js_error)?)
+    }
+
+    /// Entidades do espaço cuja caixa envolvente toca a área: o recorte pela
+    /// vista.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenQuery)]
+    pub fn screen_query(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_screen_query(space, min_x, min_y, max_x, max_y)
+            .map_err(js_error)
+    }
+}
+
+impl CadSession {
+    fn try_prepare_screen(&mut self, chord_error: f64) -> Result<(), String> {
+        let screen = Screen::prepare(&self.document, self.stack.revision(), chord_error)
+            .ok_or_else(|| format!("erro de corda inválido: {chord_error}"))?;
+        self.screen = Some(screen);
+
+        Ok(())
+    }
+
+    fn screen(&self) -> Result<&Screen, String> {
+        self.screen
+            .as_ref()
+            .ok_or_else(|| String::from("tela não preparada"))
+    }
+
+    fn try_screen_spaces(&self) -> Result<Vec<String>, String> {
+        Ok(self.screen()?.spaces())
+    }
+
+    fn try_screen_origin(&self, space: &str) -> Result<[f64; 2], String> {
+        let origin = self
+            .screen()?
+            .origin(space)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok([origin.x, origin.y])
+    }
+
+    fn try_screen_layers(&self, space: &str) -> Result<Vec<String>, String> {
+        let layers = self
+            .screen()?
+            .layers(&self.document, space)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(layers.into_iter().map(encode_layer).collect())
+    }
+
+    fn try_screen_block(&self, space: &str, layer: &str) -> Result<Vec<f32>, String> {
+        let screen = self.screen()?;
+        let layer = decode_layer(layer)?;
+
+        screen
+            .block(space, layer)
+            .ok_or_else(|| unknown_space(space))
+    }
+
+    fn try_update_screen(&mut self) -> Result<Vec<ScreenBlockView>, String> {
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let dirty = screen.update(
+            &self.document,
+            self.stack.revision(),
+            self.stack.last_effect(),
+        );
+
+        Ok(dirty
+            .into_iter()
+            .map(|(space, layer)| ScreenBlockView {
+                space,
+                layer: encode_layer(layer),
+            })
+            .collect())
+    }
+
+    fn try_screen_query(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Result<Vec<String>, String> {
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let area = Aabb::new(Point2::new(min_x, min_y), Point2::new(max_x, max_y));
+        let found = screen
+            .query(&self.document, space, area)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(found.into_iter().map(encode_entity).collect())
+    }
+}
+
+/// Mensagem de espaço que a tela não conhece.
+fn unknown_space(space: &str) -> String {
+    format!("espaço desconhecido: {space}")
 }
 
 /// Converte uma mensagem em erro do lado JavaScript.
@@ -2790,5 +2993,161 @@ mod tests {
         let media = inicio.elapsed() / voltas;
 
         println!("consulta de 1 id entre 100 mil: {media:?} por chamada");
+    }
+
+    // -- Tela (MT-KV-08) -------------------------------------------------------
+
+    #[test]
+    fn tela_sem_preparar_recusa_toda_consulta() {
+        let mut s = sessao();
+        let zero = encode_layer(s.document.layers().default_layer());
+
+        let erros = [
+            s.try_screen_spaces().err(),
+            s.try_screen_origin("Model").err(),
+            s.try_screen_layers("Model").err(),
+            s.try_screen_block("Model", &zero).err(),
+            s.try_update_screen().err(),
+            s.try_screen_query("Model", 0.0, 0.0, 1.0, 1.0).err(),
+        ];
+
+        for erro in erros {
+            assert_eq!(erro.as_deref(), Some("tela não preparada"));
+        }
+    }
+
+    #[test]
+    fn tela_recusa_erro_de_corda_invalido() {
+        let mut s = sessao();
+
+        let erro = s.try_prepare_screen(0.0).expect_err("erro zero");
+
+        assert!(erro.contains("erro de corda"), "{erro}");
+    }
+
+    #[test]
+    fn tela_acompanha_a_linha_desenhada() {
+        let mut s = sessao();
+        let zero = encode_layer(s.document.layers().default_layer());
+        linha_em(&mut s, 0.0, 0.0, 4.0, 0.0);
+        s.try_prepare_screen(1e-3).expect("prepara");
+        assert_eq!(
+            s.try_screen_spaces().expect("espaços"),
+            vec!["Model".to_owned()]
+        );
+        assert_eq!(
+            s.try_screen_layers("Model").expect("camadas"),
+            vec![zero.clone()]
+        );
+        assert_eq!(s.try_screen_origin("Model").expect("origem"), [2.0, 0.0]);
+        assert_eq!(
+            s.try_screen_block("Model", &zero).expect("bloco"),
+            vec![-2.0, 0.0, 2.0, 0.0]
+        );
+
+        let id = s.try_add_line(&zero, 0.0, 1.0, 4.0, 1.0).expect("linha");
+        let sujos = s.try_update_screen().expect("atualiza");
+
+        assert_eq!(
+            sujos,
+            vec![ScreenBlockView {
+                space: "Model".to_owned(),
+                layer: zero.clone()
+            }]
+        );
+        assert_eq!(s.try_screen_block("Model", &zero).expect("bloco").len(), 8);
+        let achadas = s
+            .try_screen_query("Model", -1.0, 0.5, 5.0, 1.5)
+            .expect("recorte");
+        assert_eq!(achadas, vec![id]);
+    }
+
+    #[test]
+    fn tela_recusa_espaco_desconhecido_e_camada_malformada() {
+        let mut s = sessao();
+        s.try_prepare_screen(1e-3).expect("prepara");
+
+        assert_eq!(
+            s.try_screen_origin("Nenhum").err().as_deref(),
+            Some("espaço desconhecido: Nenhum")
+        );
+        assert_eq!(
+            s.try_screen_block("Model", "abc").err().as_deref(),
+            Some("identificador de camada inválido")
+        );
+    }
+
+    #[test]
+    fn abrir_outro_desenho_descarta_a_tela() {
+        let mut s = sessao();
+        s.try_prepare_screen(1e-3).expect("prepara");
+
+        s.try_open_dxf(&fixture("minimal.dxf")).expect("abre");
+
+        assert_eq!(
+            s.try_screen_spaces().err().as_deref(),
+            Some("tela não preparada")
+        );
+    }
+
+    /// Medida para o handoff: `cargo test -p neocad-wasm --release -- --ignored --nocapture medida_`.
+    #[test]
+    #[ignore = "medida de desempenho, roda à mão"]
+    fn medida_da_tela_com_cem_mil() {
+        use neocad_geometry::PolylineVertex;
+
+        let mut s = sessao();
+        let zero = encode_layer(s.document.layers().default_layer());
+        // Um quinto de cada tipo segmentado: reta, círculo, arco, polilinha com
+        // abaulamento e reta de novo, espalhados numa área de 2 km.
+        for i in 0..100_000_u32 {
+            let x = f64::from(i % 400) * 5.0;
+            let y = f64::from(i / 400) * 8.0;
+            let geometria = match i % 5 {
+                1 => Geometry::Circle(Circle {
+                    center: Point2::new(x, y),
+                    radius: 1.5,
+                }),
+                2 => Geometry::Arc(Arc {
+                    center: Point2::new(x, y),
+                    radius: 2.0,
+                    start_angle: 0.0,
+                    end_angle: 2.0,
+                }),
+                3 => Geometry::Polyline(Polyline {
+                    vertices: vec![
+                        PolylineVertex::new(Point2::new(x, y), 0.5),
+                        PolylineVertex::straight(Point2::new(x + 3.0, y)),
+                        PolylineVertex::straight(Point2::new(x + 3.0, y + 2.0)),
+                    ],
+                    closed: true,
+                }),
+                _ => Geometry::Line(Line {
+                    start: Point2::new(x, y),
+                    end: Point2::new(x + 4.0, y + 3.0),
+                }),
+            };
+            poe(&mut s, geometria);
+        }
+        // Vista de 2 000 unidades em 2 000 pixels: meio pixel de erro.
+        let erro = 0.5;
+
+        let inicio = std::time::Instant::now();
+        s.try_prepare_screen(erro).expect("prepara");
+        let preparo = inicio.elapsed();
+        let floats = s.try_screen_block("Model", &zero).expect("bloco").len();
+
+        let inicio = std::time::Instant::now();
+        s.try_add_line(&zero, 0.0, 0.0, 10.0, 10.0).expect("linha");
+        s.try_update_screen().expect("atualiza");
+        let bloco = s.try_screen_block("Model", &zero).expect("bloco");
+        let edicao = inicio.elapsed();
+
+        println!(
+            "tela de 100 mil: preparo {preparo:?}; {} segmentos; uma linha nova até o bloco \
+             refeito {edicao:?}",
+            floats / 4
+        );
+        assert_eq!(bloco.len(), floats + 4);
     }
 }

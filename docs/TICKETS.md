@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       build falha acima de 465 000 bytes.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-08](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-08-preparo-para-a-tela-no-kernel) —
-      blocos `Float32Array` e índice espacial no kernel.
 - [ ] [MT-KV-09](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-09-escolher-a-camada-da-gpu--webgl2-em-typescript-ou-wgpu-em-rust) —
       spike WebGL2 × `wgpu`.
 - [ ] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) —
@@ -64,6 +62,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-08](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-08-preparo-para-a-tela-no-kernel) —
+      blocos `Float32Array` e índice no kernel; 100 mil em 52 ms, uma edição em 6 ms (nativo).
 - [x] [MT-KV-07](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-07-prova-local-de-desempenho-n1n3) —
       `e2e/desempenho.e2e.ts`; falha hoje porque a tela própria não existe.
 - [x] [MT-KV-06](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-06-fachada-informa-o-que-cada-operação-mudou-e-consulta-pelo-id) —

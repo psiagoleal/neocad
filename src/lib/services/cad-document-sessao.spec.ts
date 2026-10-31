@@ -20,7 +20,7 @@ import {
 	CadKernelOperationError,
 	type CadKernelSession
 } from './cad-document';
-import type { CadEntityId, CadSnapMode } from '$lib/types/cad';
+import type { CadEntityId, CadLayerId, CadSnapMode } from '$lib/types/cad';
 
 type SessaoFalsa = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -55,7 +55,14 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		intersections: () => [],
 		entitiesInBox: () => [],
 		hitTest: () => [],
-		snap: () => null
+		snap: () => null,
+		prepareScreen: () => undefined,
+		screenSpaces: () => [],
+		screenOrigin: () => new Float64Array([0, 0]),
+		screenLayers: () => [],
+		screenBlock: () => new Float32Array(),
+		updateScreen: () => [],
+		screenQuery: () => []
 	};
 	const sessao: SessaoFalsa = {};
 
@@ -481,5 +488,94 @@ describe('CadDocument: o que mudou e consulta pelo id (MT-KV-06)', () => {
 		});
 		const doc = documentoSobre(sessao);
 		expect(() => doc.getEntitiesById([id('x')])).toThrow(CadKernelOperationError);
+	});
+});
+
+describe('CadDocument: geometria da tela (MT-KV-08)', () => {
+	it('prepareScreen repassa o erro de corda', () => {
+		const sessao = sessaoFalsa();
+
+		documentoSobre(sessao).prepareScreen(0.25);
+
+		expect(sessao.prepareScreen).toHaveBeenCalledWith(0.25);
+	});
+
+	it('prepareScreen recusado vira CadKernelOperationError', () => {
+		const sessao = sessaoFalsa({
+			prepareScreen: vi.fn(() => {
+				throw new Error('erro de corda inválido: 0');
+			})
+		});
+
+		expect(() => documentoSobre(sessao).prepareScreen(0)).toThrow(CadKernelOperationError);
+	});
+
+	it('espaços, origem e camadas vêm do kernel', () => {
+		const sessao = sessaoFalsa({
+			screenSpaces: vi.fn(() => ['Model', 'Prancha A1']),
+			screenOrigin: vi.fn(() => new Float64Array([5_000_000.5, 7_500_000.25])),
+			screenLayers: vi.fn(() => ['3', '9'])
+		});
+		const doc = documentoSobre(sessao);
+
+		expect(doc.getScreenSpaces()).toEqual(['Model', 'Prancha A1']);
+		expect(doc.getScreenOrigin('Prancha A1')).toEqual({ x: 5_000_000.5, y: 7_500_000.25 });
+		expect(sessao.screenOrigin).toHaveBeenCalledWith('Prancha A1');
+		expect(doc.getScreenLayers('Model')).toEqual(['3', '9']);
+		expect(sessao.screenLayers).toHaveBeenCalledWith('Model');
+	});
+
+	it('origem que não tem dois números é erro de contrato', () => {
+		const sessao = sessaoFalsa({ screenOrigin: vi.fn(() => new Float64Array([1])) });
+
+		expect(() => documentoSobre(sessao).getScreenOrigin('Model')).toThrow(CadKernelContractError);
+	});
+
+	it('o bloco é o mesmo Float32Array do kernel, sem cópia', () => {
+		const bloco = new Float32Array([0, 0, 1, 1, 2, 2, 3, 3]);
+		const sessao = sessaoFalsa({ screenBlock: vi.fn(() => bloco) });
+
+		const recebido = documentoSobre(sessao).getScreenBlock('Model', '3' as CadLayerId);
+
+		expect(recebido).toBe(bloco);
+		expect(sessao.screenBlock).toHaveBeenCalledWith('Model', '3');
+	});
+
+	it('bloco que não é Float32Array de segmentos inteiros é erro de contrato', () => {
+		for (const ruim of [[0, 0, 1, 1], new Float32Array([0, 0, 1])]) {
+			const sessao = sessaoFalsa({ screenBlock: vi.fn(() => ruim) });
+
+			expect(() => documentoSobre(sessao).getScreenBlock('Model', '3' as CadLayerId)).toThrow(
+				CadKernelContractError
+			);
+		}
+	});
+
+	it('updateScreen converte os blocos que mudaram', () => {
+		const sessao = sessaoFalsa({
+			updateScreen: vi.fn(() => [{ space: 'Model', layer: '3' }])
+		});
+
+		expect(documentoSobre(sessao).updateScreen()).toEqual([{ space: 'Model', layer: '3' }]);
+	});
+
+	it('updateScreen com bloco malformado é erro de contrato', () => {
+		const sessao = sessaoFalsa({ updateScreen: vi.fn(() => [{ space: 'Model' }]) });
+
+		expect(() => documentoSobre(sessao).updateScreen()).toThrow(CadKernelContractError);
+	});
+
+	it('findEntitiesInView repassa espaço e área', () => {
+		const sessao = sessaoFalsa({ screenQuery: vi.fn(() => ['7']) });
+
+		const achadas = documentoSobre(sessao).findEntitiesInView('Model', {
+			minX: -1,
+			minY: -2,
+			maxX: 3,
+			maxY: 4
+		});
+
+		expect(achadas).toEqual(['7']);
+		expect(sessao.screenQuery).toHaveBeenCalledWith('Model', -1, -2, 3, 4);
 	});
 });
