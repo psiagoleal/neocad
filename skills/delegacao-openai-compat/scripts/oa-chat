@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# skills/delegacao-openai-compat/scripts/oa-chat
+# Uma chamada a qualquer endpoint OpenAI-compatible (/v1/chat/completions):
+# LiteLLM, vLLM, Ollama (/v1), LM Studio, OpenRouter, a própria OpenAI...
+#
+#   oa-chat "pergunta curta"
+#   oa-chat -f pedido.md                       # corpo vindo de arquivo
+#   git diff | oa-chat -s "voce e revisor" -   # corpo via stdin
+#   oa-chat -m <modelo> --json -f pedido.md    # exige JSON (response_format)
+#   oa-chat --models                           # lista modelos do endpoint
+#   oa-chat --no-think -m <modelo> "..."       # desliga raciocínio (vLLM/SGLang)
+#   oa-chat --extra '{"top_p":0.9}' "..."      # campos extras no corpo, sem validação
+#
+# Configuração — nada fixo no script (ver SKILL.md):
+#   OPENAI_COMPAT_BASE_URL   com ou sem /v1           (fallback: AGENTRY_LITELLM_BASE_URL)
+#   OPENAI_COMPAT_API_KEY    chave; vazia = sem auth   (fallback: AGENTRY_LITELLM_API_KEY)
+#   OPENAI_COMPAT_KEY_CMD    comando que imprime a chave (cofre: op read ..., pass ...)
+#   OPENAI_COMPAT_KEY_FILE   arquivo com a chave (1ª linha)
+#   OPENAI_COMPAT_MODEL      modelo padrão; sem ele, -m é obrigatório
+#   OPENAI_COMPAT_MAX_TOKENS (8000)  OPENAI_COMPAT_TEMPERATURE (0.2)  OPENAI_COMPAT_TIMEOUT (900)
+#
+# Saída: só o conteúdo da resposta em stdout. Uso de tokens e avisos em stderr.
+# Códigos: 0 ok · 1 erro do endpoint · 2 uso/configuração · 3 resposta vazia/truncada
+set -euo pipefail
+
+die() { local c="$1"; shift; printf 'oa-chat: %s\n' "$*" >&2; exit "$c"; }
+command -v curl >/dev/null || die 2 "curl ausente"
+command -v jq   >/dev/null || die 2 "jq ausente"
+
+BASE="${OPENAI_COMPAT_BASE_URL:-${AGENTRY_LITELLM_BASE_URL:-}}"
+MODEL="${OPENAI_COMPAT_MODEL:-}"
+MAXTOK="${OPENAI_COMPAT_MAX_TOKENS:-8000}"
+TEMP="${OPENAI_COMPAT_TEMPERATURE:-0.2}"
+TIMEOUT="${OPENAI_COMPAT_TIMEOUT:-900}"
+SYSTEM=""; PROMPT=""; JSON=0; LIST=0; tem_prompt=0; EXTRA="{}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -s|--system)      SYSTEM="$2"; shift 2 ;;
+    -m|--model)       MODEL="$2"; shift 2 ;;
+    -t|--temperature) TEMP="$2"; shift 2 ;;
+    --max-tokens)     MAXTOK="$2"; shift 2 ;;
+    -f|--file)        [[ -r "$2" ]] || die 2 "arquivo ilegível: $2"
+                      PROMPT+="${PROMPT:+$'\n\n'}$(<"$2")"; tem_prompt=1; shift 2 ;;
+    -)                PROMPT+="${PROMPT:+$'\n\n'}$(cat)"; tem_prompt=1; shift ;;
+    --json)           JSON=1; shift ;;
+    --no-think)       EXTRA="$(jq -c '. * {chat_template_kwargs:{enable_thinking:false}}' <<<"$EXTRA")"; shift ;;
+    --extra)          jq -e 'type=="object"' <<<"$2" >/dev/null 2>&1 || die 2 "--extra exige objeto JSON"
+                      EXTRA="$(jq -c --argjson x "$2" '. * $x' <<<"$EXTRA")"; shift 2 ;;
+    --models)         LIST=1; shift ;;
+    -h|--help)        sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*)               die 2 "opção desconhecida: $1" ;;
+    *)                PROMPT+="${PROMPT:+ }$1"; tem_prompt=1; shift ;;
+  esac
+done
+
+[[ -n "$BASE" ]] || die 2 "defina OPENAI_COMPAT_BASE_URL (ex.: http://host:4000)"
+BASE="${BASE%/}"; [[ "$BASE" == */v1 ]] || BASE="$BASE/v1"
+
+# Chave: nunca em argv (ps), nunca ecoada. Vazia é válido (endpoint interno sem auth).
+KEY="${OPENAI_COMPAT_API_KEY:-${AGENTRY_LITELLM_API_KEY:-}}"
+if [[ -z "$KEY" && -n "${OPENAI_COMPAT_KEY_CMD:-}" ]]; then
+  KEY="$(bash -c "$OPENAI_COMPAT_KEY_CMD" 2>/dev/null | head -n1)" || die 2 "OPENAI_COMPAT_KEY_CMD falhou"
+fi
+if [[ -z "$KEY" && -n "${OPENAI_COMPAT_KEY_FILE:-}" ]]; then
+  [[ -r "$OPENAI_COMPAT_KEY_FILE" ]] || die 2 "OPENAI_COMPAT_KEY_FILE ilegível"
+  KEY="$(head -n1 "$OPENAI_COMPAT_KEY_FILE")"
+fi
+
+tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+# Cabeçalhos via config do curl lida de stdin: fora de argv e fora do disco.
+curl_cfg() {
+  [[ -n "$KEY" ]] && printf 'header = "Authorization: Bearer %s"\n' "$KEY"
+  printf 'header = "Content-Type: application/json"\n'
+}
+chamar() {  # $1 método/url, $2 corpo opcional (arquivo) → grava $tmp/resp, ecoa http_code
+  local url="$1" corpo="${2:-}"
+  curl_cfg | curl -sS -K - --max-time "$TIMEOUT" ${corpo:+--data-binary "@$corpo"} \
+    -o "$tmp/resp" -w '%{http_code}' "$url" 2>"$tmp/curl.err" || {
+      die 1 "falha de conexão com $BASE: $(tr -d '\n' < "$tmp/curl.err")"; }
+}
+checa_http() {
+  local code="$1"
+  jq -e . "$tmp/resp" >/dev/null 2>&1 || die 1 "HTTP $code, resposta não-JSON: $(head -c 200 "$tmp/resp")"
+  if [[ "$code" != 2* ]] || jq -e '.error' "$tmp/resp" >/dev/null 2>&1; then
+    die 1 "HTTP $code: $(jq -r '.error.message // .error // .detail // .' "$tmp/resp" | head -c 400)"
+  fi
+}
+
+if [[ $LIST -eq 1 ]]; then
+  code="$(chamar "$BASE/models")"; checa_http "$code"
+  jq -r '.data[].id' "$tmp/resp"; exit 0
+fi
+
+[[ -n "$MODEL" ]] || die 2 "sem modelo: use -m <modelo> ou OPENAI_COMPAT_MODEL (veja --models)"
+[[ $tem_prompt -eq 1 ]] || { [[ -t 0 ]] && die 2 "sem pedido (argumento, -f ou -)"; PROMPT="$(cat)"; }
+[[ -n "$PROMPT" ]] || die 2 "pedido vazio"
+
+printf '%s' "$PROMPT" > "$tmp/prompt"
+jq -n --arg m "$MODEL" --arg s "$SYSTEM" --rawfile p "$tmp/prompt" \
+      --argjson t "$TEMP" --argjson mt "$MAXTOK" --argjson js "$JSON" --argjson x "$EXTRA" '
+  {model:$m, temperature:$t, max_tokens:$mt,
+   messages: (if $s == "" then [] else [{role:"system",content:$s}] end)
+             + [{role:"user",content:$p}]}
+  + (if $js == 1 then {response_format:{type:"json_object"}} else {} end)
+  + $x' > "$tmp/body"
+
+code="$(chamar "$BASE/chat/completions" "$tmp/body")"; checa_http "$code"
+
+jq -r --arg m "$MODEL" '"[uso] modelo=\($m) entrada=\(.usage.prompt_tokens // "?") saida=\(.usage.completion_tokens // "?") fim=\(.choices[0].finish_reason // "?")"' \
+  "$tmp/resp" >&2
+
+conteudo="$(jq -r '.choices[0].message.content // empty' "$tmp/resp")"
+fim="$(jq -r '.choices[0].finish_reason // ""' "$tmp/resp")"
+if [[ -z "$conteudo" ]]; then
+  if [[ "$fim" == "length" ]]; then
+    die 3 "resposta vazia com finish_reason=length: modelo de raciocínio esgotou max_tokens=$MAXTOK antes de responder. Aumente --max-tokens."
+  fi
+  die 3 "resposta vazia (finish_reason=${fim:-?})"
+fi
+printf '%s\n' "$conteudo"
+[[ "$fim" == "length" ]] && { printf 'oa-chat: aviso: resposta TRUNCADA (finish_reason=length)\n' >&2; exit 3; }
+exit 0

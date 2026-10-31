@@ -20,7 +20,13 @@
 //! complica comparação e serialização sem nenhum ganho — o identificador é
 //! opaco de qualquer modo.
 
-use neocad_geometry::{Aabb, Point2};
+mod tela;
+
+use tela::Screen;
+
+use neocad_geometry::{
+    hit_test, intersect, snap, Aabb, AnyCurve, Point2, SnapMode, SpatialIndex, Tolerance,
+};
 use neocad_io::{
     build_document, read_dxf, write_dxf, BlockDefinition, DocumentBuild, DxfContents, EntitySpace,
     LayoutDefinition, ReadEntity,
@@ -29,7 +35,7 @@ use neocad_model::{
     Arc, Circle, Color, Document, Entity, EntityId, Geometry, LayerId, LayerRecord, Line, Polyline,
     Text, Viewport, ViewportClip,
 };
-use neocad_transaction::CommandStack;
+use neocad_transaction::{commands, CommandStack};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -229,8 +235,13 @@ impl From<&Geometry> for GeometryView {
                 start_angle: arc.start_angle,
                 end_angle: arc.end_angle,
             },
+            // O abaulamento não atravessa para o JavaScript nesta fase: a
+            // interface ainda não desenha nem edita polilinha, e a gravação DXF
+            // sai do documento sem passar por aqui, então a ida e volta o
+            // preserva. Quem cria polilinha pelo JavaScript cria toda reta.
+            // Fechar isso é do MT-K3-12, que expõe K3 à fachada.
             Geometry::Polyline(polyline) => Self::Polyline {
-                vertices: polyline.vertices.iter().copied().map(Into::into).collect(),
+                vertices: polyline.points().map(Into::into).collect(),
                 closed: polyline.closed,
             },
             Geometry::Text(text) => Self::Text {
@@ -298,10 +309,10 @@ impl From<GeometryView> for Geometry {
                 start_angle,
                 end_angle,
             }),
-            GeometryView::Polyline { vertices, closed } => Self::Polyline(Polyline {
-                vertices: vertices.into_iter().map(Into::into).collect(),
+            GeometryView::Polyline { vertices, closed } => Self::Polyline(Polyline::from_points(
+                vertices.into_iter().map(Into::into),
                 closed,
-            }),
+            )),
             GeometryView::Text {
                 position,
                 content,
@@ -494,6 +505,23 @@ pub struct EntityView {
     pub bounds: BoundsView,
 }
 
+/// O que a última operação mudou, na forma que atravessa a ponte.
+///
+/// É o que deixa a tela atualizar só o que mudou (ADR 0008). Os identificadores
+/// vêm em texto decimal, em ordem crescente.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeView {
+    /// Entidades que passaram a existir.
+    pub created: Vec<String>,
+    /// Entidades que continuam existindo com conteúdo ou posição novos.
+    pub modified: Vec<String>,
+    /// Entidades que deixaram de existir.
+    pub removed: Vec<String>,
+    /// Camadas cujo registro mudou.
+    pub layers: Vec<String>,
+}
+
 /// Estado da pilha de comandos, na forma que atravessa a ponte.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -540,6 +568,9 @@ pub struct CadSession {
     /// Guardado na sessão porque a pergunta "o que eu perco ao salvar?" é feita
     /// no momento de salvar, não no de abrir.
     loss: SaveLossView,
+    /// Geometria pronta para a tela; `None` até a primeira preparação e depois
+    /// de abrir ou carregar outro desenho.
+    screen: Option<Screen>,
 }
 
 #[wasm_bindgen]
@@ -552,6 +583,7 @@ impl CadSession {
             document: Document::new(),
             stack: CommandStack::new(),
             loss: SaveLossView::default(),
+            screen: None,
         }
     }
 
@@ -761,6 +793,262 @@ impl CadSession {
             redo_depth: self.stack.redo_depth(),
         })
     }
+
+    /// O que a última operação mudou: ids criados, alterados e removidos, e
+    /// camadas alteradas. Vazio depois de abrir, de carregar e de operação recusada.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a serialização para JavaScript falhar.
+    #[wasm_bindgen(js_name = lastChange)]
+    pub fn last_change(&self) -> Result<JsValue, JsError> {
+        to_js(&self.try_last_change())
+    }
+
+    /// Entidades pelos ids, de qualquer espaço, na ordem pedida; `null` para id
+    /// que não existe mais.
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum identificador for malformado.
+    #[wasm_bindgen(js_name = entitiesById)]
+    pub fn entities_by_id(&self, ids: Vec<String>) -> Result<JsValue, JsError> {
+        to_js(&self.try_entities_by_id(&ids).map_err(js_error)?)
+    }
+}
+
+#[wasm_bindgen]
+impl CadSession {
+    /// Move as entidades, como uma ação desfazível.
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum identificador for inválido; nada é movido.
+    #[wasm_bindgen(js_name = moveEntities)]
+    pub fn move_entities(
+        &mut self,
+        entities: Vec<String>,
+        dx: f64,
+        dy: f64,
+    ) -> Result<(), JsError> {
+        self.try_move(&entities, dx, dy).map_err(js_error)
+    }
+
+    /// Copia as entidades deslocadas e devolve os identificadores das cópias.
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum identificador for inválido; nada é copiado.
+    #[wasm_bindgen(js_name = copyEntities)]
+    pub fn copy_entities(
+        &mut self,
+        entities: Vec<String>,
+        dx: f64,
+        dy: f64,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_copy(&entities, dx, dy).map_err(js_error)
+    }
+
+    /// Gira as entidades em torno do pivô, em radianos no sentido anti-horário.
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum identificador for inválido; nada é girado.
+    #[wasm_bindgen(js_name = rotateEntities)]
+    pub fn rotate_entities(
+        &mut self,
+        entities: Vec<String>,
+        pivot_x: f64,
+        pivot_y: f64,
+        angle: f64,
+    ) -> Result<(), JsError> {
+        self.try_rotate(&entities, pivot_x, pivot_y, angle)
+            .map_err(js_error)
+    }
+
+    /// Espelha as entidades pelo eixo que passa pelo ponto, com o ângulo dado.
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum identificador for inválido; nada é espelhado.
+    #[wasm_bindgen(js_name = mirrorEntities)]
+    pub fn mirror_entities(
+        &mut self,
+        entities: Vec<String>,
+        through_x: f64,
+        through_y: f64,
+        angle: f64,
+    ) -> Result<(), JsError> {
+        self.try_mirror(&entities, through_x, through_y, angle)
+            .map_err(js_error)
+    }
+
+    /// Escala as entidades em torno do pivô.
+    ///
+    /// # Errors
+    ///
+    /// Falha se o fator for zero, negativo ou não finito, ou se algum
+    /// identificador for inválido; nada muda.
+    #[wasm_bindgen(js_name = scaleEntities)]
+    pub fn scale_entities(
+        &mut self,
+        entities: Vec<String>,
+        pivot_x: f64,
+        pivot_y: f64,
+        factor: f64,
+    ) -> Result<(), JsError> {
+        self.try_scale(&entities, pivot_x, pivot_y, factor)
+            .map_err(js_error)
+    }
+
+    /// Cria a paralela da entidade do lado do ponto e devolve os identificadores criados.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a distância for inválida ou se a paralela não existir do lado pedido.
+    #[wasm_bindgen(js_name = offsetEntity)]
+    pub fn offset_entity(
+        &mut self,
+        entity: &str,
+        distance: f64,
+        side_x: f64,
+        side_y: f64,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_offset(entity, distance, side_x, side_y)
+            .map_err(js_error)
+    }
+
+    /// Apara o trecho clicado e devolve os identificadores do que resta.
+    ///
+    /// # Errors
+    ///
+    /// Falha se o clique estiver longe da curva ou se nenhuma aresta a cortar.
+    #[wasm_bindgen(js_name = trimEntity)]
+    pub fn trim_entity(
+        &mut self,
+        entity: &str,
+        cutting_edges: Vec<String>,
+        pick_x: f64,
+        pick_y: f64,
+        capture: f64,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_trim(entity, &cutting_edges, pick_x, pick_y, capture)
+            .map_err(js_error)
+    }
+
+    /// Estende a ponta mais perto do clique até a fronteira.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a extensão não alcançar fronteira alguma.
+    #[wasm_bindgen(js_name = extendEntity)]
+    pub fn extend_entity(
+        &mut self,
+        entity: &str,
+        boundaries: Vec<String>,
+        pick_x: f64,
+        pick_y: f64,
+        capture: f64,
+    ) -> Result<(), JsError> {
+        self.try_extend(entity, &boundaries, pick_x, pick_y, capture)
+            .map_err(js_error)
+    }
+
+    /// Concorda duas curvas com o raio dado e devolve o arco criado, se houver.
+    ///
+    /// # Errors
+    ///
+    /// Falha se as curvas forem paralelas ou se o raio não couber.
+    #[wasm_bindgen(js_name = filletEntities)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "a fronteira com o JavaScript recebe números soltos"
+    )]
+    pub fn fillet_entities(
+        &mut self,
+        first: &str,
+        first_x: f64,
+        first_y: f64,
+        second: &str,
+        second_x: f64,
+        second_y: f64,
+        radius: f64,
+    ) -> Result<Option<String>, JsError> {
+        self.try_fillet(first, first_x, first_y, second, second_x, second_y, radius)
+            .map_err(js_error)
+    }
+
+    /// Chanfra duas retas e devolve o segmento criado, se houver.
+    ///
+    /// # Errors
+    ///
+    /// Falha se as retas forem paralelas ou se uma distância for inválida.
+    #[wasm_bindgen(js_name = chamferEntities)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "a fronteira com o JavaScript recebe números soltos"
+    )]
+    pub fn chamfer_entities(
+        &mut self,
+        first: &str,
+        first_x: f64,
+        first_y: f64,
+        second: &str,
+        second_x: f64,
+        second_y: f64,
+        first_distance: f64,
+        second_distance: f64,
+    ) -> Result<Option<String>, JsError> {
+        self.try_chamfer(
+            first,
+            first_x,
+            first_y,
+            second,
+            second_x,
+            second_y,
+            first_distance,
+            second_distance,
+        )
+        .map_err(js_error)
+    }
+
+    /// Pontos em que as duas entidades se cruzam ou se tocam.
+    ///
+    /// # Errors
+    ///
+    /// Falha se alguma entidade não existir ou não for curva.
+    pub fn intersections(&self, first: &str, second: &str) -> Result<JsValue, JsError> {
+        to_js(&self.try_intersections(first, second).map_err(js_error)?)
+    }
+
+    /// Entidades do espaço-modelo cuja caixa toca a região, na ordem de desenho.
+    #[wasm_bindgen(js_name = entitiesInBox)]
+    #[must_use]
+    pub fn entities_in_box(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Vec<String> {
+        self.try_entities_in_box(min_x, min_y, max_x, max_y)
+    }
+
+    /// Curvas do espaço-modelo cujo traço passa a até `radius` do ponto.
+    #[wasm_bindgen(js_name = hitTest)]
+    #[must_use]
+    pub fn hit_test(&self, x: f64, y: f64, radius: f64) -> Vec<String> {
+        self.try_hit_test(x, y, radius)
+    }
+
+    /// O ponto notável a que o cursor prende, ou `null`.
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum modo for desconhecido.
+    pub fn snap(
+        &self,
+        x: f64,
+        y: f64,
+        radius: f64,
+        modes: Vec<String>,
+    ) -> Result<JsValue, JsError> {
+        to_js(&self.try_snap(x, y, radius, &modes).map_err(js_error)?)
+    }
 }
 
 /// Operações sem contato com o runtime JavaScript.
@@ -883,6 +1171,7 @@ impl CadSession {
 
         self.document = document;
         self.stack = CommandStack::new();
+        self.screen = None;
 
         Ok(LoadReport {
             layer_count,
@@ -913,6 +1202,7 @@ impl CadSession {
 
         self.loss = loss.clone();
         self.stack = CommandStack::new();
+        self.screen = None;
 
         let report = DxfOpenReport {
             layer_count: document.layers().len(),
@@ -1010,6 +1300,31 @@ impl CadSession {
         })
     }
 
+    fn try_last_change(&self) -> ChangeView {
+        let effect = self.stack.last_effect();
+        let entities = |ids: &[EntityId]| ids.iter().copied().map(encode_entity).collect();
+
+        ChangeView {
+            created: entities(&effect.created),
+            modified: entities(&effect.modified),
+            removed: entities(&effect.removed),
+            layers: effect.layers.iter().copied().map(encode_layer).collect(),
+        }
+    }
+
+    fn try_entities_by_id(&self, ids: &[String]) -> Result<Vec<Option<EntityView>>, String> {
+        let ids = decode_entities(ids)?;
+
+        Ok(ids
+            .into_iter()
+            .map(|id| {
+                self.document
+                    .entity(id)
+                    .map(|entity| entity_view(id, entity))
+            })
+            .collect())
+    }
+
     fn try_undo(&mut self) -> Result<bool, String> {
         self.stack
             .undo(&mut self.document)
@@ -1021,6 +1336,346 @@ impl CadSession {
             .redo(&mut self.document)
             .map_err(|error| error.to_string())
     }
+}
+
+/// Ponto notável escolhido pelo prendimento, na forma que atravessa a ponte.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapView {
+    /// Modo que o produziu: `endpoint`, `midpoint`, `center`, `quadrant`,
+    /// `intersection`, `perpendicular`, `tangent` ou `nearest`.
+    pub mode: String,
+    /// O ponto ao qual prender.
+    pub point: PointView,
+    /// Entidade que o produziu, em texto decimal.
+    pub entity: String,
+}
+
+/// Consultas e operações de edição da fase K3, sem contato com o runtime
+/// JavaScript (ver o bloco `try_` acima).
+///
+/// Cada operação é uma transação nomeada na pilha: dá certo inteira e vira um
+/// passo de desfazer, ou é recusada e o documento fica como estava.
+impl CadSession {
+    fn try_move(&mut self, entities: &[String], dx: f64, dy: f64) -> Result<(), String> {
+        let ids = decode_entities(entities)?;
+
+        self.stack
+            .edit(&mut self.document, "Mover", |editor| {
+                commands::move_by(editor, &ids, dx, dy)
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_copy(&mut self, entities: &[String], dx: f64, dy: f64) -> Result<Vec<String>, String> {
+        let ids = decode_entities(entities)?;
+
+        self.stack
+            .edit(&mut self.document, "Copiar", |editor| {
+                commands::copy(editor, &ids, dx, dy)
+            })
+            .map(encode_entities)
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_rotate(
+        &mut self,
+        entities: &[String],
+        pivot_x: f64,
+        pivot_y: f64,
+        angle: f64,
+    ) -> Result<(), String> {
+        let ids = decode_entities(entities)?;
+        let pivot = Point2::new(pivot_x, pivot_y);
+
+        self.stack
+            .edit(&mut self.document, "Girar", |editor| {
+                commands::rotate(editor, &ids, pivot, angle)
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_mirror(
+        &mut self,
+        entities: &[String],
+        through_x: f64,
+        through_y: f64,
+        angle: f64,
+    ) -> Result<(), String> {
+        let ids = decode_entities(entities)?;
+        let through = Point2::new(through_x, through_y);
+
+        self.stack
+            .edit(&mut self.document, "Espelhar", |editor| {
+                commands::mirror(editor, &ids, through, angle)
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_scale(
+        &mut self,
+        entities: &[String],
+        pivot_x: f64,
+        pivot_y: f64,
+        factor: f64,
+    ) -> Result<(), String> {
+        let ids = decode_entities(entities)?;
+        let pivot = Point2::new(pivot_x, pivot_y);
+
+        self.stack
+            .edit(&mut self.document, "Escalar", |editor| {
+                commands::scale(editor, &ids, pivot, factor)
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_offset(
+        &mut self,
+        entity: &str,
+        distance: f64,
+        side_x: f64,
+        side_y: f64,
+    ) -> Result<Vec<String>, String> {
+        let id = decode_entity(entity)?;
+        let side = Point2::new(side_x, side_y);
+
+        self.stack
+            .edit(&mut self.document, "Paralela", |editor| {
+                commands::offset(editor, id, distance, side)
+            })
+            .map(encode_entities)
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_trim(
+        &mut self,
+        entity: &str,
+        cutting_edges: &[String],
+        pick_x: f64,
+        pick_y: f64,
+        capture: f64,
+    ) -> Result<Vec<String>, String> {
+        let id = decode_entity(entity)?;
+        let edges = decode_entities(cutting_edges)?;
+        let pick = Point2::new(pick_x, pick_y);
+
+        self.stack
+            .edit(&mut self.document, "Aparar", |editor| {
+                commands::trim(editor, id, &edges, pick, capture)
+            })
+            .map(encode_entities)
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_extend(
+        &mut self,
+        entity: &str,
+        boundaries: &[String],
+        pick_x: f64,
+        pick_y: f64,
+        capture: f64,
+    ) -> Result<(), String> {
+        let id = decode_entity(entity)?;
+        let fences = decode_entities(boundaries)?;
+        let pick = Point2::new(pick_x, pick_y);
+
+        self.stack
+            .edit(&mut self.document, "Estender", |editor| {
+                commands::extend(editor, id, &fences, pick, capture)
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "a fronteira com o JavaScript recebe números soltos"
+    )]
+    fn try_fillet(
+        &mut self,
+        first: &str,
+        first_x: f64,
+        first_y: f64,
+        second: &str,
+        second_x: f64,
+        second_y: f64,
+        radius: f64,
+    ) -> Result<Option<String>, String> {
+        let first = decode_entity(first)?;
+        let second = decode_entity(second)?;
+        let first_pick = Point2::new(first_x, first_y);
+        let second_pick = Point2::new(second_x, second_y);
+
+        self.stack
+            .edit(&mut self.document, "Concordar", |editor| {
+                commands::fillet(editor, first, first_pick, second, second_pick, radius)
+            })
+            .map(|joint| joint.map(encode_entity))
+            .map_err(|error| error.to_string())
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "a fronteira com o JavaScript recebe números soltos"
+    )]
+    fn try_chamfer(
+        &mut self,
+        first: &str,
+        first_x: f64,
+        first_y: f64,
+        second: &str,
+        second_x: f64,
+        second_y: f64,
+        first_distance: f64,
+        second_distance: f64,
+    ) -> Result<Option<String>, String> {
+        let first = decode_entity(first)?;
+        let second = decode_entity(second)?;
+        let first_pick = Point2::new(first_x, first_y);
+        let second_pick = Point2::new(second_x, second_y);
+
+        self.stack
+            .edit(&mut self.document, "Chanfrar", |editor| {
+                commands::chamfer(
+                    editor,
+                    first,
+                    first_pick,
+                    second,
+                    second_pick,
+                    (first_distance, second_distance),
+                )
+            })
+            .map(|joint| joint.map(encode_entity))
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_intersections(&self, first: &str, second: &str) -> Result<Vec<PointView>, String> {
+        let first = self.curve_of(first)?;
+        let second = self.curve_of(second)?;
+
+        Ok(intersect(&first, &second, Tolerance::default())
+            .points
+            .into_iter()
+            .map(PointView::from)
+            .collect())
+    }
+
+    fn try_entities_in_box(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Vec<String> {
+        let area = Aabb::new(Point2::new(min_x, min_y), Point2::new(max_x, max_y));
+        let index = SpatialIndex::build(
+            self.document
+                .entities_in_block(self.document.model_space())
+                .map(|(id, entity)| (entity.bounding_box(), id)),
+        );
+
+        encode_entities(index.query_box(area))
+    }
+
+    fn try_hit_test(&self, x: f64, y: f64, radius: f64) -> Vec<String> {
+        let (ids, curves) = self.model_curves();
+
+        hit_test(&curves, Point2::new(x, y), radius)
+            .into_iter()
+            .map(|index| encode_entity(ids[index]))
+            .collect()
+    }
+
+    fn try_snap(
+        &self,
+        x: f64,
+        y: f64,
+        radius: f64,
+        modes: &[String],
+    ) -> Result<Option<SnapView>, String> {
+        let modes = modes
+            .iter()
+            .map(|name| decode_snap_mode(name))
+            .collect::<Result<Vec<_>, _>>()?;
+        let (ids, curves) = self.model_curves();
+
+        Ok(snap(
+            &curves,
+            Point2::new(x, y),
+            radius,
+            &modes,
+            Tolerance::default(),
+        )
+        .map(|candidate| SnapView {
+            mode: encode_snap_mode(candidate.mode).to_owned(),
+            point: candidate.point.into(),
+            entity: encode_entity(ids[candidate.curve]),
+        }))
+    }
+
+    /// A curva de uma entidade, ou erro se ela não existe ou não é curva.
+    fn curve_of(&self, entity: &str) -> Result<AnyCurve, String> {
+        let id = decode_entity(entity)?;
+        let entity = self
+            .document
+            .entity(id)
+            .ok_or_else(|| String::from("entidade inexistente no documento"))?;
+
+        curve_of_geometry(&entity.geometry)
+            .ok_or_else(|| String::from("a entidade não é uma curva"))
+    }
+
+    /// As curvas do espaço-modelo, na ordem de desenho, com os seus donos.
+    ///
+    /// Texto e janela de vista ficam de fora: não têm traço a acertar nem
+    /// ponto notável a oferecer.
+    fn model_curves(&self) -> (Vec<EntityId>, Vec<AnyCurve>) {
+        self.document
+            .entities_in_block(self.document.model_space())
+            .filter_map(|(id, entity)| curve_of_geometry(&entity.geometry).map(|curve| (id, curve)))
+            .unzip()
+    }
+}
+
+/// A geometria como curva, quando ela é uma.
+fn curve_of_geometry(geometry: &Geometry) -> Option<AnyCurve> {
+    match geometry {
+        Geometry::Line(line) => Some(AnyCurve::Line(*line)),
+        Geometry::Circle(circle) => Some(AnyCurve::Circle(*circle)),
+        Geometry::Arc(arc) => Some(AnyCurve::Arc(*arc)),
+        Geometry::Polyline(polyline) => Some(AnyCurve::Polyline(polyline.clone())),
+        Geometry::Text(_) | Geometry::Viewport(_) => None,
+    }
+}
+
+/// Decodifica uma lista de identificadores; um inválido recusa a lista inteira.
+fn decode_entities(raw: &[String]) -> Result<Vec<EntityId>, String> {
+    raw.iter().map(|id| decode_entity(id)).collect()
+}
+
+/// Codifica uma lista de identificadores de entidade.
+fn encode_entities(ids: Vec<EntityId>) -> Vec<String> {
+    ids.into_iter().map(encode_entity).collect()
+}
+
+/// Nome de cada modo de prendimento na ponte, na ordem de prioridade.
+const SNAP_MODE_NAMES: [(SnapMode, &str); 8] = [
+    (SnapMode::Endpoint, "endpoint"),
+    (SnapMode::Midpoint, "midpoint"),
+    (SnapMode::Center, "center"),
+    (SnapMode::Quadrant, "quadrant"),
+    (SnapMode::Intersection, "intersection"),
+    (SnapMode::Perpendicular, "perpendicular"),
+    (SnapMode::Tangent, "tangent"),
+    (SnapMode::Nearest, "nearest"),
+];
+
+fn decode_snap_mode(name: &str) -> Result<SnapMode, String> {
+    SNAP_MODE_NAMES
+        .iter()
+        .find(|(_, known)| *known == name)
+        .map(|(mode, _)| *mode)
+        .ok_or_else(|| format!("modo de prendimento desconhecido: {name}"))
+}
+
+fn encode_snap_mode(mode: SnapMode) -> &'static str {
+    SNAP_MODE_NAMES
+        .iter()
+        .find(|(known, _)| *known == mode)
+        .map_or("nearest", |(_, name)| name)
 }
 
 impl Default for CadSession {
@@ -1077,6 +1732,199 @@ fn loss_view(leitura: &neocad_io::DxfReading, montagem: &DocumentBuild) -> SaveL
         // referências externas.
         is_lossless: unsupported_count == 0 && xref_count == 0,
     }
+}
+
+/// Um bloco de segmentos que mudou, na forma que atravessa a ponte.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenBlockView {
+    /// Nome do espaço: `Model` ou o nome do layout.
+    pub space: String,
+    /// Identificador da camada, em texto decimal.
+    pub layer: String,
+}
+
+/// Geometria pronta para a tela (ADR 0008, MT-KV-08).
+///
+/// O fluxo é: `prepareScreen` uma vez, com o erro de corda da vista; para cada
+/// espaço, `screenOrigin`, `screenLayers` e `screenBlock`; depois de cada
+/// operação, `updateScreen`, que diz quais blocos buscar de novo.
+#[wasm_bindgen]
+impl CadSession {
+    /// Prepara os blocos de segmentos de todos os espaços.
+    ///
+    /// # Errors
+    ///
+    /// Falha se o erro de corda não for finito e positivo.
+    #[wasm_bindgen(js_name = prepareScreen)]
+    pub fn prepare_screen(&mut self, chord_error: f64) -> Result<(), JsError> {
+        self.try_prepare_screen(chord_error).map_err(js_error)
+    }
+
+    /// Espaços, o modelo primeiro e os layouts na ordem das abas.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada.
+    #[wasm_bindgen(js_name = screenSpaces)]
+    pub fn screen_spaces(&self) -> Result<Vec<String>, JsError> {
+        self.try_screen_spaces().map_err(js_error)
+    }
+
+    /// Origem dos segmentos do espaço, `[x, y]`, a somar na matriz da vista.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenOrigin)]
+    pub fn screen_origin(&self, space: &str) -> Result<Vec<f64>, JsError> {
+        self.try_screen_origin(space)
+            .map(Vec::from)
+            .map_err(js_error)
+    }
+
+    /// Camadas visíveis com segmentos no espaço.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenLayers)]
+    pub fn screen_layers(&self, space: &str) -> Result<Vec<String>, JsError> {
+        self.try_screen_layers(space).map_err(js_error)
+    }
+
+    /// Segmentos `x1, y1, x2, y2` da camada no espaço, relativos à origem.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada, o espaço não existe ou a camada é
+    /// malformada.
+    #[wasm_bindgen(js_name = screenBlock)]
+    pub fn screen_block(&self, space: &str, layer: &str) -> Result<Vec<f32>, JsError> {
+        self.try_screen_block(space, layer).map_err(js_error)
+    }
+
+    /// Acompanha as operações feitas desde a última chamada e diz quais blocos
+    /// mudaram.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada.
+    #[wasm_bindgen(js_name = updateScreen)]
+    pub fn update_screen(&mut self) -> Result<JsValue, JsError> {
+        to_js(&self.try_update_screen().map_err(js_error)?)
+    }
+
+    /// Entidades do espaço cuja caixa envolvente toca a área: o recorte pela
+    /// vista.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenQuery)]
+    pub fn screen_query(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_screen_query(space, min_x, min_y, max_x, max_y)
+            .map_err(js_error)
+    }
+}
+
+impl CadSession {
+    fn try_prepare_screen(&mut self, chord_error: f64) -> Result<(), String> {
+        let screen = Screen::prepare(&self.document, self.stack.revision(), chord_error)
+            .ok_or_else(|| format!("erro de corda inválido: {chord_error}"))?;
+        self.screen = Some(screen);
+
+        Ok(())
+    }
+
+    fn screen(&self) -> Result<&Screen, String> {
+        self.screen
+            .as_ref()
+            .ok_or_else(|| String::from("tela não preparada"))
+    }
+
+    fn try_screen_spaces(&self) -> Result<Vec<String>, String> {
+        Ok(self.screen()?.spaces())
+    }
+
+    fn try_screen_origin(&self, space: &str) -> Result<[f64; 2], String> {
+        let origin = self
+            .screen()?
+            .origin(space)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok([origin.x, origin.y])
+    }
+
+    fn try_screen_layers(&self, space: &str) -> Result<Vec<String>, String> {
+        let layers = self
+            .screen()?
+            .layers(&self.document, space)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(layers.into_iter().map(encode_layer).collect())
+    }
+
+    fn try_screen_block(&self, space: &str, layer: &str) -> Result<Vec<f32>, String> {
+        let screen = self.screen()?;
+        let layer = decode_layer(layer)?;
+
+        screen
+            .block(space, layer)
+            .ok_or_else(|| unknown_space(space))
+    }
+
+    fn try_update_screen(&mut self) -> Result<Vec<ScreenBlockView>, String> {
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let dirty = screen.update(
+            &self.document,
+            self.stack.revision(),
+            self.stack.last_effect(),
+        );
+
+        Ok(dirty
+            .into_iter()
+            .map(|(space, layer)| ScreenBlockView {
+                space,
+                layer: encode_layer(layer),
+            })
+            .collect())
+    }
+
+    fn try_screen_query(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Result<Vec<String>, String> {
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let area = Aabb::new(Point2::new(min_x, min_y), Point2::new(max_x, max_y));
+        let found = screen
+            .query(&self.document, space, area)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(found.into_iter().map(encode_entity).collect())
+    }
+}
+
+/// Mensagem de espaço que a tela não conhece.
+fn unknown_space(space: &str) -> String {
+    format!("espaço desconhecido: {space}")
 }
 
 /// Converte uma mensagem em erro do lado JavaScript.
@@ -1147,6 +1995,86 @@ mod tests {
         let caminho = format!("{}/../../e2e/fixtures/{nome}", env!("CARGO_MANIFEST_DIR"));
 
         std::fs::read(&caminho).unwrap_or_else(|erro| panic!("{caminho}: {erro}"))
+    }
+
+    // -- Auxiliares dos testes de consulta e edição (MT-K3-12) ---------------
+
+    fn sessao() -> CadSession {
+        CadSession::new()
+    }
+
+    /// Insere uma geometria no espaço-modelo, fora do histórico.
+    fn poe(s: &mut CadSession, geometria: Geometry) -> String {
+        let camada = s.document.layers().default_layer();
+        let mut editor = s.document.edit();
+        let id = editor
+            .insert_in_model_space(Entity::new(camada, geometria))
+            .expect("camada padrão existe");
+        let _ = editor.finish();
+
+        encode_entity(id)
+    }
+
+    fn linha_em(s: &mut CadSession, x1: f64, y1: f64, x2: f64, y2: f64) -> String {
+        poe(
+            s,
+            Geometry::Line(Line {
+                start: Point2::new(x1, y1),
+                end: Point2::new(x2, y2),
+            }),
+        )
+    }
+
+    fn circulo_em(s: &mut CadSession, cx: f64, cy: f64, r: f64) -> String {
+        poe(
+            s,
+            Geometry::Circle(Circle {
+                center: Point2::new(cx, cy),
+                radius: r,
+            }),
+        )
+    }
+
+    fn geometria(s: &CadSession, id: &str) -> Geometry {
+        let id = decode_entity(id).expect("id bem formado");
+
+        s.document
+            .entity(id)
+            .expect("entidade existe")
+            .geometry
+            .clone()
+    }
+
+    fn perto(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-9
+    }
+
+    fn mesmo_ponto(p: Point2, q: (f64, f64)) -> bool {
+        perto(p.x, q.0) && perto(p.y, q.1)
+    }
+
+    fn confere_reta(g: &Geometry, a: (f64, f64), b: (f64, f64)) {
+        let Geometry::Line(reta) = g else {
+            panic!("esperava reta, veio {g:?}");
+        };
+        let direta = mesmo_ponto(reta.start, a) && mesmo_ponto(reta.end, b);
+        let inversa = mesmo_ponto(reta.start, b) && mesmo_ponto(reta.end, a);
+
+        assert!(
+            direta || inversa,
+            "esperava reta {a:?}-{b:?}, veio {reta:?}"
+        );
+    }
+
+    fn confere_arco(g: &Geometry, centro: (f64, f64), raio: f64) {
+        let Geometry::Arc(arco) = g else {
+            panic!("esperava arco, veio {g:?}");
+        };
+
+        assert!(
+            mesmo_ponto(arco.center, centro) && perto(arco.radius, raio),
+            "esperava arco de centro {centro:?} e raio {raio}, veio {arco:?}"
+        );
     }
 
     #[test]
@@ -1612,5 +2540,614 @@ mod tests {
     #[test]
     fn default_equivale_a_new() {
         assert_eq!(CadSession::default().entity_count(), 0);
+    }
+
+    // -- Consulta e edição pela fachada (MT-K3-12) ---------------------------
+
+    #[test]
+    fn mover_desloca_a_reta_e_desfazer_restaura_os_bytes() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let antes = s.try_to_dxf();
+        s.try_move(std::slice::from_ref(&id), 3.0, 4.0)
+            .expect("mover deve funcionar");
+        confere_reta(&geometria(&s, &id), (3.0, 4.0), (13.0, 4.0));
+        assert_eq!(s.stack.undo_name(), Some("Mover"));
+        assert_eq!(s.try_undo(), Ok(true));
+        assert_eq!(s.try_to_dxf(), antes);
+        assert_eq!(s.try_redo(), Ok(true));
+        confere_reta(&geometria(&s, &id), (3.0, 4.0), (13.0, 4.0));
+    }
+
+    #[test]
+    fn copiar_cria_uma_reta_nova_e_preserva_a_original() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let novos = s
+            .try_copy(std::slice::from_ref(&id), 0.0, 5.0)
+            .expect("copiar deve funcionar");
+        assert_eq!(novos.len(), 1);
+        assert_ne!(novos[0], id);
+        confere_reta(&geometria(&s, &id), (0.0, 0.0), (10.0, 0.0));
+        confere_reta(&geometria(&s, &novos[0]), (0.0, 5.0), (10.0, 5.0));
+        assert_eq!(s.entity_count(), 2);
+    }
+
+    #[test]
+    fn girar_noventa_graus_em_torno_da_origem() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 10.0, 0.0, 20.0, 0.0);
+        s.try_rotate(
+            std::slice::from_ref(&id),
+            0.0,
+            0.0,
+            core::f64::consts::FRAC_PI_2,
+        )
+        .expect("girar deve funcionar");
+        confere_reta(&geometria(&s, &id), (0.0, 10.0), (0.0, 20.0));
+    }
+
+    #[test]
+    fn espelhar_pelo_eixo_x_inverte_o_sinal_de_y() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 1.0, 1.0, 2.0, 3.0);
+        s.try_mirror(std::slice::from_ref(&id), 0.0, 0.0, 0.0)
+            .expect("espelhar deve funcionar");
+        confere_reta(&geometria(&s, &id), (1.0, -1.0), (2.0, -3.0));
+    }
+
+    #[test]
+    fn escalar_dobra_a_reta_e_recusa_fatores_invalidos_sem_mudar_nada() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 1.0, 1.0, 2.0, 2.0);
+        s.try_scale(std::slice::from_ref(&id), 0.0, 0.0, 2.0)
+            .expect("escalar deve funcionar");
+        confere_reta(&geometria(&s, &id), (2.0, 2.0), (4.0, 4.0));
+
+        let mut outra = sessao();
+        let id2 = linha_em(&mut outra, 1.0, 1.0, 2.0, 2.0);
+        let antes = outra.try_to_dxf();
+        for fator in [0.0, -1.0, f64::NAN] {
+            let r = outra.try_scale(std::slice::from_ref(&id2), 0.0, 0.0, fator);
+            assert!(r.is_err());
+            assert_eq!(outra.try_to_dxf(), antes);
+            assert!(!outra.stack.can_undo());
+        }
+    }
+
+    #[test]
+    fn mover_com_id_invalido_ou_inexistente_e_recusado_sem_efeito() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let antes = s.try_to_dxf();
+        let r = s.try_move(&["abc".to_string()], 1.0, 1.0);
+        assert!(r.is_err());
+        assert_eq!(s.try_to_dxf(), antes);
+        let r = s.try_move(&[id.clone(), "999999999".to_string()], 1.0, 1.0);
+        assert!(r.is_err());
+        assert_eq!(s.try_to_dxf(), antes);
+        assert!(!s.stack.can_undo());
+    }
+
+    #[test]
+    fn paralela_cria_reta_deslocada_para_o_lado_indicado() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let novos = s
+            .try_offset(&id, 2.0, 5.0, 1.0)
+            .expect("paralela deve funcionar");
+        assert_eq!(novos.len(), 1);
+        confere_reta(&geometria(&s, &novos[0]), (0.0, 2.0), (10.0, 2.0));
+        confere_reta(&geometria(&s, &id), (0.0, 0.0), (10.0, 0.0));
+    }
+
+    #[test]
+    fn aparar_remove_o_trecho_clicado_e_desfazer_restaura() {
+        let mut s = sessao();
+        let horizontal = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let aresta = linha_em(&mut s, 5.0, -5.0, 5.0, 5.0);
+        let antes = s.try_to_dxf();
+        let restantes = s
+            .try_trim(&horizontal, std::slice::from_ref(&aresta), 8.0, 0.0, 0.5)
+            .expect("aparar deve funcionar");
+        assert_eq!(restantes, vec![horizontal.clone()]);
+        confere_reta(&geometria(&s, &horizontal), (0.0, 0.0), (5.0, 0.0));
+        assert_eq!(s.stack.undo_name(), Some("Aparar"));
+        assert_eq!(s.try_undo(), Ok(true));
+        assert_eq!(s.try_to_dxf(), antes);
+    }
+
+    #[test]
+    fn aparar_com_clique_longe_da_curva_e_recusado() {
+        let mut s = sessao();
+        let horizontal = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let aresta = linha_em(&mut s, 5.0, -5.0, 5.0, 5.0);
+        let antes = s.try_to_dxf();
+        let r = s.try_trim(&horizontal, &[aresta], 8.0, 3.0, 0.5);
+        assert!(r.is_err());
+        assert_eq!(s.try_to_dxf(), antes);
+    }
+
+    #[test]
+    fn estender_leva_a_ponta_ate_a_fronteira() {
+        let mut s = sessao();
+        let reta = linha_em(&mut s, 0.0, 0.0, 4.0, 0.0);
+        let fronteira = linha_em(&mut s, 10.0, -5.0, 10.0, 5.0);
+        s.try_extend(&reta, &[fronteira], 3.0, 0.0, 0.5)
+            .expect("estender deve funcionar");
+        confere_reta(&geometria(&s, &reta), (0.0, 0.0), (10.0, 0.0));
+        assert_eq!(s.stack.undo_name(), Some("Estender"));
+    }
+
+    #[test]
+    fn concordar_duas_retas_cria_arco_e_ajusta_as_pontas() {
+        let mut s = sessao();
+        let a = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let b = linha_em(&mut s, 10.0, 0.0, 10.0, 10.0);
+        let antes = s.try_to_dxf();
+        let arco = s
+            .try_fillet(&a, 5.0, 0.0, &b, 10.0, 5.0, 2.0)
+            .expect("concordar deve funcionar")
+            .expect("deve criar um arco");
+        confere_arco(&geometria(&s, &arco), (8.0, 2.0), 2.0);
+        confere_reta(&geometria(&s, &a), (0.0, 0.0), (8.0, 0.0));
+        confere_reta(&geometria(&s, &b), (10.0, 2.0), (10.0, 10.0));
+        assert_eq!(s.entity_count(), 3);
+        assert_eq!(s.stack.undo_name(), Some("Concordar"));
+        assert_eq!(s.try_undo(), Ok(true));
+        assert_eq!(s.try_to_dxf(), antes);
+    }
+
+    #[test]
+    fn chanfrar_duas_retas_cria_segmento_e_ajusta_as_pontas() {
+        let mut s = sessao();
+        let a = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let b = linha_em(&mut s, 10.0, 0.0, 10.0, 10.0);
+        let novo = s
+            .try_chamfer(&a, 5.0, 0.0, &b, 10.0, 5.0, 2.0, 3.0)
+            .expect("chanfrar deve funcionar")
+            .expect("deve criar um segmento");
+        confere_reta(&geometria(&s, &novo), (8.0, 0.0), (10.0, 3.0));
+        confere_reta(&geometria(&s, &a), (0.0, 0.0), (8.0, 0.0));
+        confere_reta(&geometria(&s, &b), (10.0, 3.0), (10.0, 10.0));
+    }
+
+    #[test]
+    fn concordar_paralelas_e_recusado_sem_mudar_o_documento() {
+        let mut s = sessao();
+        let a = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let b = linha_em(&mut s, 0.0, 5.0, 10.0, 5.0);
+        let antes = s.try_to_dxf();
+        let r = s.try_fillet(&a, 5.0, 0.0, &b, 5.0, 5.0, 1.0);
+        assert!(r.is_err());
+        assert_eq!(s.try_to_dxf(), antes);
+    }
+
+    #[test]
+    fn intersecoes_de_retas_e_de_circunferencia_com_reta() {
+        let mut s = sessao();
+        let r1 = linha_em(&mut s, 0.0, 0.0, 10.0, 10.0);
+        let r2 = linha_em(&mut s, 0.0, 10.0, 10.0, 0.0);
+        let pontos = s.try_intersections(&r1, &r2).expect("deve calcular");
+        assert_eq!(pontos.len(), 1);
+        assert!(perto(pontos[0].x, 5.0) && perto(pontos[0].y, 5.0));
+
+        let c = circulo_em(&mut s, 0.0, 0.0, 5.0);
+        let r3 = linha_em(&mut s, -10.0, 0.0, 10.0, 0.0);
+        let mut dois = s.try_intersections(&c, &r3).expect("deve calcular");
+        assert_eq!(dois.len(), 2);
+        dois.sort_by(|p, q| p.x.partial_cmp(&q.x).expect("sem NaN"));
+        assert!(perto(dois[0].x, -5.0) && perto(dois[0].y, 0.0));
+        assert!(perto(dois[1].x, 5.0) && perto(dois[1].y, 0.0));
+    }
+
+    #[test]
+    fn intersecoes_com_id_malformado_devolvem_erro() {
+        let mut s = sessao();
+        let id = linha_em(&mut s, 0.0, 0.0, 10.0, 10.0);
+        assert!(s.try_intersections("x", &id).is_err());
+        assert!(s.try_intersections(&id, "x").is_err());
+    }
+
+    #[test]
+    fn consulta_por_regiao_devolve_as_entidades_tocadas_em_ordem() {
+        let mut s = sessao();
+        let r1 = linha_em(&mut s, 0.0, 0.0, 1.0, 1.0);
+        let _r2 = linha_em(&mut s, 10.0, 10.0, 11.0, 11.0);
+        let r3 = linha_em(&mut s, 2.0, 2.0, 3.0, 3.0);
+        assert_eq!(s.try_entities_in_box(-1.0, -1.0, 4.0, 4.0), vec![r1, r3]);
+        assert!(s.try_entities_in_box(100.0, 100.0, 200.0, 200.0).is_empty());
+    }
+
+    #[test]
+    fn teste_de_acerto_mede_o_traco_e_nao_a_caixa() {
+        let mut s = sessao();
+        let reta = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let circulo = circulo_em(&mut s, 20.0, 0.0, 5.0);
+        assert_eq!(s.try_hit_test(5.0, 0.3, 0.5), vec![reta]);
+        assert!(s.try_hit_test(20.0, 0.0, 0.5).is_empty());
+        assert_eq!(s.try_hit_test(25.0, 0.2, 0.5), vec![circulo]);
+    }
+
+    #[test]
+    fn prendimento_escolhe_extremidade_ou_ponto_mais_proximo() {
+        let mut s = sessao();
+        let reta = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let modos = vec!["endpoint".to_string(), "nearest".to_string()];
+        let snap = s
+            .try_snap(0.2, 0.2, 1.0, &modos)
+            .expect("modos validos")
+            .expect("deve prender");
+        assert_eq!(snap.mode, "endpoint");
+        assert!(perto(snap.point.x, 0.0) && perto(snap.point.y, 0.0));
+        assert_eq!(snap.entity, reta);
+
+        let so_nearest = vec!["nearest".to_string()];
+        let snap = s
+            .try_snap(0.2, 0.2, 1.0, &so_nearest)
+            .expect("modos validos")
+            .expect("deve prender");
+        assert_eq!(snap.mode, "nearest");
+        assert!(perto(snap.point.x, 0.2) && perto(snap.point.y, 0.0));
+    }
+
+    #[test]
+    fn prendimento_recusa_modo_desconhecido_e_nada_ao_alcance_da_none() {
+        let mut s = sessao();
+        let _reta = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        assert!(s.try_snap(0.2, 0.2, 1.0, &["xyz".to_string()]).is_err());
+        let r = s.try_snap(50.0, 50.0, 1.0, &["endpoint".to_string()]);
+        assert!(r.expect("modo valido").is_none());
+    }
+
+    #[test]
+    fn desfazer_e_refazer_sem_historico_devolvem_false_sem_mudar_bytes() {
+        let mut s = sessao();
+        let _reta = linha_em(&mut s, 0.0, 0.0, 10.0, 0.0);
+        let antes = s.try_to_dxf();
+        assert_eq!(s.try_undo(), Ok(false));
+        assert_eq!(s.try_to_dxf(), antes);
+        assert_eq!(s.try_redo(), Ok(false));
+        assert_eq!(s.try_to_dxf(), antes);
+    }
+
+    // -- O que mudou e consulta pelo id (MT-KV-06) ---------------------------
+
+    fn so_entidades(
+        mudanca: &ChangeView,
+        criadas: &[String],
+        alteradas: &[String],
+        removidas: &[String],
+    ) {
+        assert_eq!(mudanca.created, criadas, "criadas");
+        assert_eq!(mudanca.modified, alteradas, "alteradas");
+        assert_eq!(mudanca.removed, removidas, "removidas");
+        assert!(mudanca.layers.is_empty(), "camadas: {:?}", mudanca.layers);
+    }
+
+    fn camada_zero(s: &CadSession) -> String {
+        encode_layer(s.document.layers().default_layer())
+    }
+
+    fn linha_desenhada(s: &mut CadSession) -> String {
+        let zero = camada_zero(s);
+        s.try_add_line(&zero, 0.0, 0.0, 10.0, 0.0).expect("desenha")
+    }
+
+    #[test]
+    fn sessao_nova_nao_mudou_nada() {
+        so_entidades(&sessao().try_last_change(), &[], &[], &[]);
+    }
+
+    #[test]
+    fn desenhar_informa_a_criada() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        so_entidades(&s.try_last_change(), &[id], &[], &[]);
+    }
+
+    #[test]
+    fn mover_informa_a_alterada() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        s.try_move(std::slice::from_ref(&id), 1.0, 2.0)
+            .expect("move");
+
+        so_entidades(&s.try_last_change(), &[], &[id], &[]);
+    }
+
+    #[test]
+    fn apagar_desfazer_e_refazer_informam_o_que_mudou() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        s.try_remove_entity(&id).expect("apaga");
+        so_entidades(&s.try_last_change(), &[], &[], std::slice::from_ref(&id));
+
+        assert_eq!(s.try_undo(), Ok(true));
+        so_entidades(&s.try_last_change(), std::slice::from_ref(&id), &[], &[]);
+
+        assert_eq!(s.try_redo(), Ok(true));
+        so_entidades(&s.try_last_change(), &[], &[], &[id]);
+    }
+
+    #[test]
+    fn copiar_informa_as_copias() {
+        let mut s = sessao();
+        let a = linha_desenhada(&mut s);
+        let b = circulo_em(&mut s, 5.0, 5.0, 1.0);
+
+        let mut copias = s.try_copy(&[a, b], 20.0, 0.0).expect("copia");
+        copias.sort_by_key(|id| id.parse::<u64>().expect("decimal"));
+
+        so_entidades(&s.try_last_change(), &copias, &[], &[]);
+    }
+
+    #[test]
+    fn desligar_camada_informa_a_camada() {
+        let mut s = sessao();
+        let zero = camada_zero(&s);
+
+        s.try_set_layer_off(&zero, true).expect("desliga");
+
+        let mudanca = s.try_last_change();
+        assert_eq!(mudanca.layers, vec![zero]);
+        assert!(
+            mudanca.created.is_empty() && mudanca.modified.is_empty() && mudanca.removed.is_empty()
+        );
+    }
+
+    #[test]
+    fn operacao_recusada_nao_informa_mudanca() {
+        let mut s = sessao();
+        let id = linha_desenhada(&mut s);
+
+        assert!(s.try_scale(&[id], 0.0, 0.0, 0.0).is_err());
+
+        so_entidades(&s.try_last_change(), &[], &[], &[]);
+    }
+
+    #[test]
+    fn abrir_dxf_nao_informa_mudanca() {
+        let mut s = sessao();
+        linha_desenhada(&mut s);
+
+        s.try_open_dxf(&fixture("minimal.dxf")).expect("abre");
+
+        so_entidades(&s.try_last_change(), &[], &[], &[]);
+    }
+
+    #[test]
+    fn consulta_pelo_id_devolve_na_ordem_e_nulo_para_apagada() {
+        let mut s = sessao();
+        let a = linha_em(&mut s, 0.0, 0.0, 3.0, 4.0);
+        let apagada = linha_em(&mut s, 1.0, 1.0, 2.0, 2.0);
+        let b = circulo_em(&mut s, 7.0, 7.0, 2.0);
+        s.try_remove_entity(&apagada).expect("apaga");
+
+        let achadas = s
+            .try_entities_by_id(&[b.clone(), apagada, a.clone()])
+            .expect("consulta");
+
+        assert_eq!(achadas.len(), 3);
+        let primeira = achadas[0].as_ref().expect("b existe");
+        assert_eq!(primeira.id, b);
+        assert!(
+            matches!(primeira.geometry, GeometryView::Circle { radius, .. } if perto(radius, 2.0))
+        );
+        assert!(achadas[1].is_none(), "apagada vem nula");
+        let terceira = achadas[2].as_ref().expect("a existe");
+        assert_eq!(terceira.id, a);
+        assert!(
+            matches!(terceira.geometry, GeometryView::Line { end, .. } if perto(end.x, 3.0) && perto(end.y, 4.0))
+        );
+    }
+
+    #[test]
+    fn consulta_pelo_id_acha_entidade_do_espaco_papel() {
+        let mut s = sessao();
+        s.try_open_dxf(&fixture("two-layouts.dxf")).expect("abre");
+        let papel = s
+            .document
+            .entities()
+            .find(|(id, _)| {
+                s.document
+                    .entity_placement(*id)
+                    .is_some_and(|lugar| lugar.block != s.document.model_space())
+            })
+            .map(|(id, _)| encode_entity(id))
+            .expect("o arquivo tem entidade no papel");
+
+        let achadas = s
+            .try_entities_by_id(std::slice::from_ref(&papel))
+            .expect("consulta");
+
+        assert_eq!(achadas[0].as_ref().map(|e| e.id.clone()), Some(papel));
+    }
+
+    #[test]
+    fn consulta_pelo_id_recusa_id_malformado() {
+        assert!(sessao().try_entities_by_id(&[String::from("abc")]).is_err());
+    }
+
+    /// Medida para o handoff: `cargo test -p neocad-wasm --release -- --ignored --nocapture medida_`.
+    #[test]
+    #[ignore = "medida de desempenho, roda à mão"]
+    fn medida_da_consulta_de_um_id_com_cem_mil() {
+        let mut s = sessao();
+        let ids: Vec<String> = (0..100_000)
+            .map(|i| {
+                let x = f64::from(i);
+                linha_em(&mut s, x, 0.0, x + 1.0, 1.0)
+            })
+            .collect();
+        let alvo = std::slice::from_ref(&ids[73_219]);
+
+        let inicio = std::time::Instant::now();
+        let voltas = 1_000;
+        for _ in 0..voltas {
+            assert!(s.try_entities_by_id(alvo).expect("consulta")[0].is_some());
+        }
+        let media = inicio.elapsed() / voltas;
+
+        println!("consulta de 1 id entre 100 mil: {media:?} por chamada");
+    }
+
+    // -- Tela (MT-KV-08) -------------------------------------------------------
+
+    #[test]
+    fn tela_sem_preparar_recusa_toda_consulta() {
+        let mut s = sessao();
+        let zero = encode_layer(s.document.layers().default_layer());
+
+        let erros = [
+            s.try_screen_spaces().err(),
+            s.try_screen_origin("Model").err(),
+            s.try_screen_layers("Model").err(),
+            s.try_screen_block("Model", &zero).err(),
+            s.try_update_screen().err(),
+            s.try_screen_query("Model", 0.0, 0.0, 1.0, 1.0).err(),
+        ];
+
+        for erro in erros {
+            assert_eq!(erro.as_deref(), Some("tela não preparada"));
+        }
+    }
+
+    #[test]
+    fn tela_recusa_erro_de_corda_invalido() {
+        let mut s = sessao();
+
+        let erro = s.try_prepare_screen(0.0).expect_err("erro zero");
+
+        assert!(erro.contains("erro de corda"), "{erro}");
+    }
+
+    #[test]
+    fn tela_acompanha_a_linha_desenhada() {
+        let mut s = sessao();
+        let zero = encode_layer(s.document.layers().default_layer());
+        linha_em(&mut s, 0.0, 0.0, 4.0, 0.0);
+        s.try_prepare_screen(1e-3).expect("prepara");
+        assert_eq!(
+            s.try_screen_spaces().expect("espaços"),
+            vec!["Model".to_owned()]
+        );
+        assert_eq!(
+            s.try_screen_layers("Model").expect("camadas"),
+            vec![zero.clone()]
+        );
+        assert_eq!(s.try_screen_origin("Model").expect("origem"), [2.0, 0.0]);
+        assert_eq!(
+            s.try_screen_block("Model", &zero).expect("bloco"),
+            vec![-2.0, 0.0, 2.0, 0.0]
+        );
+
+        let id = s.try_add_line(&zero, 0.0, 1.0, 4.0, 1.0).expect("linha");
+        let sujos = s.try_update_screen().expect("atualiza");
+
+        assert_eq!(
+            sujos,
+            vec![ScreenBlockView {
+                space: "Model".to_owned(),
+                layer: zero.clone()
+            }]
+        );
+        assert_eq!(s.try_screen_block("Model", &zero).expect("bloco").len(), 8);
+        let achadas = s
+            .try_screen_query("Model", -1.0, 0.5, 5.0, 1.5)
+            .expect("recorte");
+        assert_eq!(achadas, vec![id]);
+    }
+
+    #[test]
+    fn tela_recusa_espaco_desconhecido_e_camada_malformada() {
+        let mut s = sessao();
+        s.try_prepare_screen(1e-3).expect("prepara");
+
+        assert_eq!(
+            s.try_screen_origin("Nenhum").err().as_deref(),
+            Some("espaço desconhecido: Nenhum")
+        );
+        assert_eq!(
+            s.try_screen_block("Model", "abc").err().as_deref(),
+            Some("identificador de camada inválido")
+        );
+    }
+
+    #[test]
+    fn abrir_outro_desenho_descarta_a_tela() {
+        let mut s = sessao();
+        s.try_prepare_screen(1e-3).expect("prepara");
+
+        s.try_open_dxf(&fixture("minimal.dxf")).expect("abre");
+
+        assert_eq!(
+            s.try_screen_spaces().err().as_deref(),
+            Some("tela não preparada")
+        );
+    }
+
+    /// Medida para o handoff: `cargo test -p neocad-wasm --release -- --ignored --nocapture medida_`.
+    #[test]
+    #[ignore = "medida de desempenho, roda à mão"]
+    fn medida_da_tela_com_cem_mil() {
+        use neocad_geometry::PolylineVertex;
+
+        let mut s = sessao();
+        let zero = encode_layer(s.document.layers().default_layer());
+        // Um quinto de cada tipo segmentado: reta, círculo, arco, polilinha com
+        // abaulamento e reta de novo, espalhados numa área de 2 km.
+        for i in 0..100_000_u32 {
+            let x = f64::from(i % 400) * 5.0;
+            let y = f64::from(i / 400) * 8.0;
+            let geometria = match i % 5 {
+                1 => Geometry::Circle(Circle {
+                    center: Point2::new(x, y),
+                    radius: 1.5,
+                }),
+                2 => Geometry::Arc(Arc {
+                    center: Point2::new(x, y),
+                    radius: 2.0,
+                    start_angle: 0.0,
+                    end_angle: 2.0,
+                }),
+                3 => Geometry::Polyline(Polyline {
+                    vertices: vec![
+                        PolylineVertex::new(Point2::new(x, y), 0.5),
+                        PolylineVertex::straight(Point2::new(x + 3.0, y)),
+                        PolylineVertex::straight(Point2::new(x + 3.0, y + 2.0)),
+                    ],
+                    closed: true,
+                }),
+                _ => Geometry::Line(Line {
+                    start: Point2::new(x, y),
+                    end: Point2::new(x + 4.0, y + 3.0),
+                }),
+            };
+            poe(&mut s, geometria);
+        }
+        // Vista de 2 000 unidades em 2 000 pixels: meio pixel de erro.
+        let erro = 0.5;
+
+        let inicio = std::time::Instant::now();
+        s.try_prepare_screen(erro).expect("prepara");
+        let preparo = inicio.elapsed();
+        let floats = s.try_screen_block("Model", &zero).expect("bloco").len();
+
+        let inicio = std::time::Instant::now();
+        s.try_add_line(&zero, 0.0, 0.0, 10.0, 10.0).expect("linha");
+        s.try_update_screen().expect("atualiza");
+        let bloco = s.try_screen_block("Model", &zero).expect("bloco");
+        let edicao = inicio.elapsed();
+
+        println!(
+            "tela de 100 mil: preparo {preparo:?}; {} segmentos; uma linha nova até o bloco \
+             refeito {edicao:?}",
+            floats / 4
+        );
+        assert_eq!(bloco.len(), floats + 4);
     }
 }

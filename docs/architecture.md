@@ -61,9 +61,12 @@ Consequência: não existe alteração sem o que a desfaz.
 [ADR 0002](./adr/0002-relicenciamento-para-gpl-3.md). O projeto é
 `GPL-3.0-or-later` porque depende da LibreDWG e do `dxf-json`, ambos GPL-3.0.
 
-As dependências copyleft ficam confinadas à crate `neocad-io`; as demais crates
-do kernel permanecem livres delas, preservando a possibilidade de licenciar o
-kernel de forma independente quando for extraído. Ver
+Hoje as duas dependências GPL-3.0 estão no **frontend**, trazidas pelo upstream
+(`@mlightcad/libredwg-web` e `@mlightcad/dxf-json`); o kernel não tem nenhuma — todas as
+dependências dele são MIT ou Apache-2.0. A regra para o futuro: dependência copyleft no
+kernel só entra pela crate `neocad-io` (a leitura DWG de K6, sobre a LibreDWG), e as
+demais crates permanecem livres dela, preservando a possibilidade de licenciar o kernel
+de forma independente quando for extraído (spec 00, T7). Ver
 [`THIRD-PARTY-LICENSES.md`](../THIRD-PARTY-LICENSES.md).
 
 ### 5. Desktop first, com interface headless prevista
@@ -91,17 +94,20 @@ graph TD
   KDOC --> WASM[neocad-wasm]
 
   subgraph KERNEL["kernel/ — workspace Rust independente"]
-    WASM --> MODEL[neocad-model]
+    WASM --> IO[neocad-io]
     WASM --> TX[neocad-transaction]
+    WASM --> MODEL[neocad-model]
+    WASM --> GEO[neocad-geometry]
+    IO --> MODEL
+    IO --> GEO
     TX --> MODEL
-    MODEL --> GEO[neocad-geometry]
-    TOPO[neocad-topology] --> GEO
-    IO[neocad-io] --> MODEL
+    TX --> GEO
+    MODEL --> GEO
+    TOPO["neocad-topology<br/>(reservada para K8, sem consumidor)"] --> GEO
   end
 
-  SVC --> TAURI[Comandos Tauri]
-  TAURI --> RUST[Backend Rust]
-  RUST --> FS[Sistema de arquivos / SO]
+  SVC --> TAURI["Plugins Tauri (diálogo, fs)"]
+  TAURI --> FS[Sistema de arquivos / SO]
 ```
 
 ### UI SvelteKit
@@ -149,10 +155,13 @@ entidade removida resolve para `None` em vez de alcançar a entidade que ocupou 
 slot depois. É o que impede que seleção, histórico e referências entre entidades
 se corrompam em silêncio.
 
-### Comandos Tauri e backend Rust
+### Plugins Tauri e backend Rust
 
 Diálogo nativo, acesso controlado ao sistema de arquivos, persistência local de
-configuração e empacotamento. Hoje usa os plugins `dialog` e `fs`.
+configuração e empacotamento, pelos plugins `dialog` e `fs`. O backend Rust não
+declara comando próprio (`#[tauri::command]`) nem liga o kernel nativamente: hoje o
+kernel roda só em WebAssembly, no webview. A ligação nativa prevista no ADR 0003 fica
+para quando houver consumidor (o núcleo headless do ADR 0004).
 
 ## Fluxo de abertura de arquivo
 

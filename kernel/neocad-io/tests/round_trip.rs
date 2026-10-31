@@ -14,10 +14,11 @@ use neocad_io::{read_dxf, write_dxf, DxfContents, DxfReading, EntitySpace};
 use neocad_model::{Color, EntityColor, Geometry, LineWeight};
 
 /// Fixtures sintéticas que a suíte E2E também usa.
-const FIXTURES: [&str; 6] = [
+const FIXTURES: [&str; 7] = [
     "minimal.dxf",
     "with-unsupported.dxf",
     "legacy-polyline.dxf",
+    "bulged-polyline.dxf",
     "block-reference.dxf",
     "block-with-entities.dxf",
     "two-layouts.dxf",
@@ -504,4 +505,39 @@ fn perda_declarada_o_recorte_por_entidade_nao_e_gravado() {
     // A janela sobrevive; o recorte não.
     assert_eq!(relido.entities.len(), 1);
     assert_eq!(relido.report.clipped_viewports, 0);
+}
+
+#[test]
+fn o_abaulamento_da_polilinha_sobrevive_a_regravacao() {
+    let original = read_dxf(&fixture("bulged-polyline.dxf"));
+
+    let abaulamentos = |leitura: &DxfReading| {
+        leitura
+            .entities
+            .iter()
+            .filter_map(|e| match &e.entity.geometry {
+                Geometry::Polyline(polilinha) => Some(
+                    polilinha
+                        .vertices
+                        .iter()
+                        .map(|v| v.bulge)
+                        .collect::<Vec<_>>(),
+                ),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+
+    // A `LWPOLYLINE` traz meia-volta no primeiro trecho; a `POLYLINE` antiga
+    // traz um arco no sentido oposto. Nenhum dos dois é zero, que é o que a
+    // leitura anterior a esta entregava para todos.
+    assert_eq!(
+        abaulamentos(&original),
+        [vec![1.0, 0.0, 0.0], vec![-0.5, 0.0, 0.0]],
+        "os abaulamentos do arquivo não chegaram ao modelo"
+    );
+
+    let relido = read_dxf(&regravar(&original));
+
+    assert_eq!(abaulamentos(&relido), abaulamentos(&original));
 }

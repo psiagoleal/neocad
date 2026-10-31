@@ -290,7 +290,7 @@ errada e a polilinha não sabe representar arco.
 A: 01 → 02 → 03
 B: 04 → 05 ⇘
         06 ⇒ 07
-C: 08 → 09
+C: 08 → 09    13
    10 → 11
 D: 12
 ```
@@ -299,3 +299,30 @@ MT-K3-01 e MT-K3-02 são independentes entre si e podem trocar de ordem; os
 demais seguem as dependências declaradas. O bloco C só começa depois de o bloco
 B fechar, porque aparo, paralela e concordância consomem interseção, e não o
 contrário.
+
+---
+
+## Ligação com as specs (2026-10-29)
+
+Os tickets em aberto passam a ser aceitos contra as specs, que prevalecem sobre o
+critério escrito acima quando os dois divergem.
+
+| ticket   | aceite                                               |
+| -------- | ---------------------------------------------------- |
+| MT-K3-10 | [spec 05](../specs/05-edicao-2d.md), E7, E8, E8b, E9 |
+| MT-K3-11 | spec 05, E10–E13                                     |
+| MT-K3-12 | [spec 06](../specs/06-fachada-wasm.md), W1–W5        |
+| MT-K3-13 | spec 05, E1c                                         |
+
+### MT-K3-13: Recusar fator de escala zero, negativo ou não finito
+
+- **Objetivo:** o comando de escala recusa fator `<= 0` ou não finito, sem alterar o
+  documento, como o AutoCAD. Hoje o zero colapsa a geometria e o negativo vira
+  meia-volta.
+- **Arquivos no escopo:** `kernel/neocad-transaction/src/commands.rs`,
+  `kernel/neocad-io/tests/undo_bytes.rs`.
+- **Critério de aceite:** teste que falha antes da mudança, com a saída citada
+  (`teste-primeiro`); `make kernel-check` verde.
+- **Fora de escopo:** `Transform::scaling_around`, que continua aceitando fator negativo
+  como semelhança do plano — a recusa é regra do comando, não da geometria.
+- **Depende de:** nenhum.

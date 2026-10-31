@@ -265,8 +265,15 @@ fn write_entity(
             );
 
             for vertice in &polyline.vertices {
-                saida.real(10, vertice.x);
-                saida.real(20, vertice.y);
+                saida.real(10, vertice.point.x);
+                saida.real(20, vertice.point.y);
+
+                // O abaulamento nulo é o padrão do formato e fica implícito.
+                // Escrevê-lo engordaria o arquivo e, pior, faria a regravação
+                // de um desenho todo reto diferir do original sem motivo.
+                if vertice.bulge != 0.0 {
+                    saida.real(42, vertice.bulge);
+                }
             }
         }
         Geometry::Text(text) => {
@@ -488,14 +495,14 @@ mod tests {
         let polilinha = entidade(
             &mut camadas,
             "0",
-            Geometry::Polyline(Polyline {
-                vertices: vec![
+            Geometry::Polyline(Polyline::from_points(
+                [
                     Point2::new(0.0, 0.0),
                     Point2::new(5.0, 0.0),
                     Point2::new(5.0, 5.0),
                 ],
-                closed: true,
-            }),
+                true,
+            )),
         );
 
         let relidas = ida_e_volta(&camadas, &[no_modelo(polilinha.clone())]);
@@ -924,10 +931,10 @@ mod tests {
             no_modelo(entidade(
                 &mut camadas,
                 "0",
-                Geometry::Polyline(Polyline {
-                    vertices: vec![Point2::ORIGIN, Point2::new(1.0, 1.0)],
-                    closed: false,
-                }),
+                Geometry::Polyline(Polyline::from_points(
+                    [Point2::ORIGIN, Point2::new(1.0, 1.0)],
+                    false,
+                )),
             )),
             no_modelo(entidade(
                 &mut camadas,

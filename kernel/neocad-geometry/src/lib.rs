@@ -15,7 +15,31 @@
 //! NeoCAD, e não pode receber dependências copyleft.
 
 mod aabb;
+mod curve;
+mod fillet;
+mod intersect;
+mod offset;
 mod point;
+mod predicate;
+mod snap;
+mod spatial;
+mod tessellate;
+mod tolerance;
+mod transform;
+mod trim;
 
 pub use aabb::Aabb;
+pub use curve::{
+    Arc, Circle, ClosestPoint, Curve, Line, Polyline, PolylineSegment, PolylineVertex,
+};
+pub use fillet::{chamfer, fillet, Corner, CornerError};
+pub use intersect::{intersect, AnyCurve, Intersections};
+pub use offset::{offset, OffsetError};
 pub use point::{point_on_circle, Point2};
+pub use predicate::{orientation, Orientation};
+pub use snap::{hit_test, snap, snap_candidates, SnapCandidate, SnapMode};
+pub use spatial::SpatialIndex;
+pub use tessellate::tessellate;
+pub use tolerance::{Tolerance, BASE_ANGULAR, BASE_LINEAR};
+pub use transform::Transform;
+pub use trim::{extend, trim, TrimError};

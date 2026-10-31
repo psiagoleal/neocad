@@ -1,3 +1,5 @@
+// Caminho relativo: src/lib/services/recent-documents.spec.ts
+
 /**
  * \file src/lib/services/recent-documents.spec.ts
  * \brief Testes unitários para a persistência de documentos recentes do NeoCAD.

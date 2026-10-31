@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/ViewerScreen.svelte -->
 <script lang="ts">
 	import ViewerDropzone from '$lib/components/workspace/ViewerDropzone.svelte';
 	import ViewerToolbar from '$lib/components/workspace/ViewerToolbar.svelte';

@@ -1,0 +1,34 @@
+{
+  "_comentario_snippet": "Bloco para MESCLAR em .agentry/agentry.settings.json (nao substituir o arquivo): jq -s '.[0] * .[1]' .agentry/agentry.settings.json skills/delegacao-openai-compat/templates/agentry-litellm.snippet.json > /tmp/novo && diff -u .agentry/agentry.settings.json /tmp/novo. Substitua os tres campos <...> e REMOVA esta chave e as _comentario_* antes de usar, se preferir o arquivo limpo -- o agentry ignora chaves com _ inicial, entao mante-las tambem e valido.",
+  "providers": {
+    "litellm": {
+      "_comentario": "Qualquer endpoint OpenAI-compatible (LiteLLM, vLLM, Ollama /v1...). O nome do bloco, litellm, e do schema do agentry (ADR-0006 dele), nao do backend. baseUrl E model precisam estar os dois preenchidos -- faltando um, o provider nao e registrado e a CLI se comporta como se este bloco nao existisse. A chave de API NUNCA vem aqui: vem de AGENTRY_LITELLM_API_KEY ou de ~/.agentry/credentials.json.",
+      "baseUrl": "<https://gateway.exemplo.com>",
+      "model": "<modelo-padrao-no-gateway>",
+      "_comentario_egress": "OBRIGATORIA e declarada por quem OPERA o gateway, conforme os backends que ele roteia -- nunca inferida do host. Ausente (ou null) e tratada como cloud-ok, o que a bloqueia em perfil local-only/cloud-opt-out: o candidato fica registrado e nunca resolve, sem erro. Um proxy em localhost que encaminha para nuvem publica NAO e local-only.",
+      "egressClass": "<local-only|cloud-opt-out|cloud-ok>"
+    }
+  },
+  "taskClasses": {
+    "delegada": {
+      "_comentario": "Alvo das delegacoes de volume da skill `delegacao-openai-compat`: agentry --task-class delegada '<pedido autocontido>'. Preferivel a --provider litellm solto, porque fixa modelo, preset e classe de egresso num lugar auditavel. O candidato Ollama e a queda quando o gateway nao esta alcancavel (VPN fora do ar) ou quando o perfil da sessao e mais restritivo que a classe do gateway -- candidato indisponivel e pulado em silencio, entao a rota continua funcionando degradada.",
+      "candidates": [
+        {
+          "provider": "litellm",
+          "model": "<modelo-no-gateway>",
+          "egressClass": "<mesma classe declarada acima>"
+        },
+        {
+          "provider": "ollama",
+          "model": "llama3.1:8b",
+          "egressClass": "local-only"
+        }
+      ],
+      "_comentario_preset": "Temperatura baixa porque delegacao de volume pede resposta em formato fixo, nao criatividade; maxTokens dimensionado para a resposta CURTA que o pedido exige. ATENCAO: modelo de raciocinio gasta maxTokens pensando antes de responder e pode devolver conteudo vazio com finish_reason=length; para esses, desligue o raciocinio no servidor ou aumente o teto.",
+      "preset": {
+        "temperature": 0.1,
+        "maxTokens": 4096
+      }
+    }
+  }
+}

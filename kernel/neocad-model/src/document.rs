@@ -6,7 +6,7 @@
 
 use core::fmt;
 
-use neocad_geometry::Aabb;
+use neocad_geometry::{Aabb, SpatialIndex};
 
 use crate::arena::{Arena, RestoreError};
 use crate::block::{BlockError, BlockId, BlockRecord, BlockTable};
@@ -700,6 +700,22 @@ impl Document {
 
     /// Itera sobre as entidades de um bloco, **na ordem de desenho**.
     ///
+    /// Índice espacial das entidades de um bloco.
+    ///
+    /// É construído sob demanda e descartado pelo chamador: manter um índice vivo
+    /// exigiria invalidá-lo a cada edição, e a incrementalidade só se paga com
+    /// medição que ainda não existe.
+    ///
+    /// O índice trabalha sobre caixas envolventes, então o que sai dele são
+    /// **candidatos** — refinar até o traço é do teste de acerto.
+    #[must_use]
+    pub fn spatial_index(&self, block: BlockId) -> SpatialIndex<EntityId> {
+        SpatialIndex::build(
+            self.entities_in_block(block)
+                .map(|(id, entity)| (entity.bounding_box(), id)),
+        )
+    }
+
     /// Devolve iterador vazio se o bloco não existir.
     pub fn entities_in_block(&self, block: BlockId) -> impl Iterator<Item = (EntityId, &Entity)> {
         self.blocks
@@ -1336,9 +1352,10 @@ mod tests {
     }
 
     use crate::block::MODEL_SPACE_NAME;
-    use crate::entity::{Circle, Geometry, Line};
+    use crate::entity::Geometry;
     use crate::layer::DEFAULT_LAYER_NAME;
     use crate::text_style::STANDARD_TEXT_STYLE_NAME;
+    use neocad_geometry::{Circle, Line};
 
     fn line(layer: LayerId, x: f64) -> Entity {
         Entity::new(
@@ -1801,6 +1818,47 @@ mod tests {
                 .expect("estilo existe")
                 .effective_height(9.0),
             2.5
+        );
+    }
+    #[test]
+    fn o_indice_espacial_do_bloco_concorda_com_a_varredura() {
+        let mut documento = Document::new();
+        let modelo = documento.model_space();
+        let camada = documento.layers().default_layer();
+
+        // Uma fileira de retas curtas, mais uma longa que atravessa todas.
+        for passo in 0..20 {
+            let x = f64::from(passo) * 10.0;
+
+            documento
+                .edit()
+                .insert_in_model_space(Entity::new(
+                    camada,
+                    Geometry::Line(Line {
+                        start: Point2::new(x, 0.0),
+                        end: Point2::new(x + 1.0, 1.0),
+                    }),
+                ))
+                .expect("a entidade cabe no espaço-modelo");
+        }
+
+        let indice = documento.spatial_index(modelo);
+        let area = Aabb::new(Point2::new(45.0, -1.0), Point2::new(75.0, 2.0));
+
+        let mut do_indice = indice.query_box(area);
+        let mut da_varredura: Vec<_> = documento
+            .entities_in_block(modelo)
+            .filter(|(_, entidade)| entidade.bounding_box().intersects(area))
+            .map(|(id, _)| id)
+            .collect();
+
+        do_indice.sort_unstable();
+        da_varredura.sort_unstable();
+
+        assert_eq!(do_indice, da_varredura);
+        assert!(
+            !do_indice.is_empty(),
+            "a região escolhida tem de pegar algo"
         );
     }
 }

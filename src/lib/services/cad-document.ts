@@ -16,6 +16,7 @@
 
 import type {
 	CadBounds,
+	CadChange,
 	CadColor,
 	CadDocumentSnapshot,
 	CadEntity,
@@ -30,6 +31,9 @@ import type {
 	CadPaperSpaceLayout,
 	CadPoint,
 	CadSaveLoss,
+	CadScreenBlock,
+	CadSnap,
+	CadSnapMode,
 	CadUnsupportedCount
 } from '$lib/types/cad';
 
@@ -39,13 +43,15 @@ interface CadKernelModule {
 	CadSession: new () => CadKernelSession;
 }
 
-/** Superfície da sessão exposta pelo kernel. */
-interface CadKernelSession {
+/** Superfície da sessão exposta pelo kernel. Exportada só para o teste simular a sessão. */
+export interface CadKernelSession {
 	layers(): unknown;
 	entities(): unknown;
 	entityCount(): number;
 	boundingBox(): unknown;
 	history(): unknown;
+	lastChange(): unknown;
+	entitiesById(ids: string[]): unknown;
 	createLayer(name: string): string;
 	addLine(layer: string, startX: number, startY: number, endX: number, endY: number): string;
 	removeEntity(entity: string): void;
@@ -56,6 +62,56 @@ interface CadKernelSession {
 	saveLoss(): unknown;
 	undo(): boolean;
 	redo(): boolean;
+	moveEntities(entities: string[], dx: number, dy: number): void;
+	copyEntities(entities: string[], dx: number, dy: number): string[];
+	rotateEntities(entities: string[], pivotX: number, pivotY: number, angle: number): void;
+	mirrorEntities(entities: string[], throughX: number, throughY: number, angle: number): void;
+	scaleEntities(entities: string[], pivotX: number, pivotY: number, factor: number): void;
+	offsetEntity(entity: string, distance: number, sideX: number, sideY: number): string[];
+	trimEntity(
+		entity: string,
+		cuttingEdges: string[],
+		pickX: number,
+		pickY: number,
+		capture: number
+	): string[];
+	extendEntity(
+		entity: string,
+		boundaries: string[],
+		pickX: number,
+		pickY: number,
+		capture: number
+	): void;
+	filletEntities(
+		first: string,
+		firstX: number,
+		firstY: number,
+		second: string,
+		secondX: number,
+		secondY: number,
+		radius: number
+	): string | undefined;
+	chamferEntities(
+		first: string,
+		firstX: number,
+		firstY: number,
+		second: string,
+		secondX: number,
+		secondY: number,
+		firstDistance: number,
+		secondDistance: number
+	): string | undefined;
+	intersections(first: string, second: string): unknown;
+	entitiesInBox(minX: number, minY: number, maxX: number, maxY: number): string[];
+	hitTest(x: number, y: number, radius: number): string[];
+	snap(x: number, y: number, radius: number, modes: string[]): unknown;
+	prepareScreen(chordError: number): void;
+	screenSpaces(): string[];
+	screenOrigin(space: string): ArrayLike<number>;
+	screenLayers(space: string): string[];
+	screenBlock(space: string, layer: string): Float32Array;
+	updateScreen(): unknown;
+	screenQuery(space: string, minX: number, minY: number, maxX: number, maxY: number): string[];
 }
 
 let kernelModule: Promise<CadKernelModule> | null = null;
@@ -89,6 +145,32 @@ export class CadKernelContractError extends Error {
 	constructor(message: string) {
 		super(`Contrato do kernel violado: ${message}`);
 		this.name = 'CadKernelContractError';
+	}
+}
+
+/**
+ * O kernel recusou a operação. O documento não mudou.
+ *
+ * Traz a mensagem do kernel como veio, para a interface poder mostrá-la.
+ */
+export class CadKernelOperationError extends Error {
+	constructor(readonly kernelMessage: string) {
+		super(kernelMessage);
+		this.name = 'CadKernelOperationError';
+	}
+}
+
+/**
+ * O WebAssembly abortou no meio de uma chamada (pânico ou _trap_).
+ *
+ * Depois disso o estado da sessão é desconhecido: o documento passa a ser não
+ * confiável e toda chamada seguinte falha com este erro, exceto a gravação de
+ * cópia (`toDxf`), que é a última chance de salvar o trabalho.
+ */
+export class CadKernelFailureError extends Error {
+	constructor(readonly cause: unknown) {
+		super('O kernel falhou internamente; o documento não é mais confiável.');
+		this.name = 'CadKernelFailureError';
 	}
 }
 
@@ -359,6 +441,104 @@ export function toCadEntities(raw: unknown): CadEntity[] {
 	);
 }
 
+/** Converte uma lista de identificadores de entidade vinda do kernel. */
+export function toCadEntityIds(raw: unknown, context = 'ids'): CadEntityId[] {
+	return asArray(raw, context).map(
+		(id, index) => asString(id, `${context}[${index}]`) as CadEntityId
+	);
+}
+
+/** Converte o que a última operação mudou. */
+export function toCadChange(raw: unknown, context = 'mudança'): CadChange {
+	const record = asRecord(raw, context);
+
+	return {
+		created: toCadEntityIds(record.created, `${context}.created`),
+		modified: toCadEntityIds(record.modified, `${context}.modified`),
+		removed: toCadEntityIds(record.removed, `${context}.removed`),
+		layers: asArray(record.layers, `${context}.layers`).map(
+			(layer, index) => asString(layer, `${context}.layers[${index}]`) as CadLayerId
+		)
+	};
+}
+
+/** Converte a origem de um espaço da tela, `[x, y]`. */
+function toScreenOrigin(raw: unknown): CadPoint {
+	const values = ArrayBuffer.isView(raw) ? Array.from(raw as Float64Array) : raw;
+	const pair = asArray(values, 'origem da tela');
+
+	if (pair.length !== 2) {
+		throw new CadKernelContractError('origem da tela deveria ter dois números.');
+	}
+
+	return {
+		x: asNumber(pair[0], 'origem da tela[0]'),
+		y: asNumber(pair[1], 'origem da tela[1]')
+	};
+}
+
+/** Confere um bloco de segmentos da tela, sem copiá-lo. */
+function toScreenBlock(raw: unknown): Float32Array {
+	if (!(raw instanceof Float32Array)) {
+		throw new CadKernelContractError('bloco da tela deveria ser um Float32Array.');
+	}
+	if (raw.length % 4 !== 0) {
+		throw new CadKernelContractError(
+			`bloco da tela deveria ter segmentos inteiros (4 números cada), tem ${raw.length}.`
+		);
+	}
+
+	return raw;
+}
+
+/** Converte a lista de blocos da tela que mudaram. */
+export function toCadScreenBlocks(raw: unknown, context = 'blocos da tela'): CadScreenBlock[] {
+	return asArray(raw, context).map((item, index) => {
+		const record = asRecord(item, `${context}[${index}]`);
+
+		return {
+			space: asString(record.space, `${context}[${index}].space`),
+			layer: asString(record.layer, `${context}[${index}].layer`) as CadLayerId
+		};
+	});
+}
+
+/** Identificador opcional: `undefined` ou `null` viram `null`. */
+function toOptionalEntityId(raw: unknown, context = 'junção'): CadEntityId | null {
+	return raw === undefined || raw === null ? null : (asString(raw, context) as CadEntityId);
+}
+
+const SNAP_MODES: readonly CadSnapMode[] = [
+	'endpoint',
+	'midpoint',
+	'center',
+	'quadrant',
+	'intersection',
+	'perpendicular',
+	'tangent',
+	'nearest'
+];
+
+/** Converte o ponto de prendimento; `null` quando nada está ao alcance. */
+export function toCadSnap(raw: unknown, context = 'prendimento'): CadSnap | null {
+	if (raw === undefined || raw === null) {
+		return null;
+	}
+
+	const record = asRecord(raw, context);
+	const mode = asString(record.mode, `${context}.mode`);
+
+	if (!(SNAP_MODES as readonly string[]).includes(mode)) {
+		throw new CadKernelContractError(`${context}.mode tem modo desconhecido: ${mode}.`);
+	}
+
+	return {
+		mode: mode as CadSnapMode,
+		point: toCadPoint(record.point, `${context}.point`),
+		entityId: asString(record.entity, `${context}.entity`) as CadEntityId
+	};
+}
+
 // -- Extração do documento do upstream ---------------------------------------
 //
 // A leitura acontece sobre a **forma** dos objetos do `@mlightcad/data-model`,
@@ -553,7 +733,18 @@ export function buildDocumentSnapshot(
  * do kernel atravessa esta classe.
  */
 export class CadDocument {
+	/** A falha interna que tornou o documento não confiável, se houve. */
+	private failure: CadKernelFailureError | null = null;
+
 	private constructor(private readonly session: CadKernelSession) {}
+
+	/**
+	 * Envolve uma sessão já criada. Existe para o teste simular a sessão; a
+	 * interface usa `create`.
+	 */
+	static fromSession(session: CadKernelSession): CadDocument {
+		return new CadDocument(session);
+	}
 
 	/** Cria um documento vazio, carregando o kernel na primeira chamada. */
 	static async create(): Promise<CadDocument> {
@@ -564,49 +755,51 @@ export class CadDocument {
 
 	/** Camadas do documento, em ordem alfabética. */
 	listLayers(): CadLayer[] {
-		return toCadLayers(this.session.layers());
+		return this.call(() => toCadLayers(this.session.layers()));
 	}
 
 	/** Entidades do espaço-modelo, na ordem de desenho. */
 	listEntities(): CadEntity[] {
-		return toCadEntities(this.session.entities());
+		return this.call(() => toCadEntities(this.session.entities()));
 	}
 
 	/** Quantidade de entidades do documento. */
 	countEntities(): number {
-		return this.session.entityCount();
+		return this.call(() => this.session.entityCount());
 	}
 
 	/** Extensão do espaço-modelo, ou `null` quando não há entidades. */
 	getBounds(): CadBounds | null {
-		const raw = this.session.boundingBox();
+		const raw = this.call(() => this.session.boundingBox());
 
 		return raw === null || raw === undefined ? null : toCadBounds(raw);
 	}
 
 	/** Estado da pilha de comandos. */
 	getHistory(): CadHistoryState {
-		return toCadHistoryState(this.session.history());
+		return this.call(() => toCadHistoryState(this.session.history()));
 	}
 
 	/** Cria uma camada e devolve seu identificador. */
 	createLayer(name: string): CadLayerId {
-		return this.session.createLayer(name) as CadLayerId;
+		return this.call(() => this.session.createLayer(name) as CadLayerId);
 	}
 
 	/** Desenha um segmento de reta como uma ação desfazível. */
 	drawLine(layerId: CadLayerId, start: CadPoint, end: CadPoint): CadEntityId {
-		return this.session.addLine(layerId, start.x, start.y, end.x, end.y) as CadEntityId;
+		return this.call(
+			() => this.session.addLine(layerId, start.x, start.y, end.x, end.y) as CadEntityId
+		);
 	}
 
 	/** Apaga uma entidade como uma ação desfazível. */
 	eraseEntity(entityId: CadEntityId): void {
-		this.session.removeEntity(entityId);
+		this.call(() => this.session.removeEntity(entityId));
 	}
 
 	/** Liga ou desliga uma camada como uma ação desfazível. */
 	setLayerOff(layerId: CadLayerId, isOff: boolean): void {
-		this.session.setLayerOff(layerId, isOff);
+		this.call(() => this.session.setLayerOff(layerId, isOff));
 	}
 
 	/**
@@ -616,16 +809,18 @@ export class CadDocument {
 	 * sentido.
 	 */
 	load(snapshot: CadDocumentSnapshot): CadLoadReport {
-		const raw = this.session.load({
-			layers: snapshot.layers.map((layer) => ({
-				name: layer.name,
-				color: layer.color,
-				off: layer.isOff,
-				frozen: layer.isFrozen,
-				locked: layer.isLocked
-			})),
-			entities: snapshot.entities
-		});
+		const raw = this.call(() =>
+			this.session.load({
+				layers: snapshot.layers.map((layer) => ({
+					name: layer.name,
+					color: layer.color,
+					off: layer.isOff,
+					frozen: layer.isFrozen,
+					locked: layer.isLocked
+				})),
+				entities: snapshot.entities
+			})
+		);
 		const record = asRecord(raw, 'relatório de carregamento');
 
 		return {
@@ -645,7 +840,7 @@ export class CadDocument {
 	 * ainda não é exibido.
 	 */
 	openDxf(content: ArrayBuffer): CadDxfOpenReport {
-		return toCadDxfOpenReport(this.session.openDxf(new Uint8Array(content)));
+		return this.call(() => toCadDxfOpenReport(this.session.openDxf(new Uint8Array(content))));
 	}
 
 	/**
@@ -655,6 +850,8 @@ export class CadDocument {
 	 * é o que torna um desenho versionável sem ruído (ADR 0004).
 	 */
 	toDxf(): Uint8Array {
+		// Fica fora do guarda de propósito: depois de uma falha interna, gravar
+		// uma cópia é a última chance de salvar o trabalho (spec 06, W4b).
 		return this.session.toDxf();
 	}
 
@@ -667,16 +864,239 @@ export class CadDocument {
 	 * contou.
 	 */
 	getSaveLoss(): CadSaveLoss {
-		return toCadSaveLoss(this.session.saveLoss());
+		return this.call(() => toCadSaveLoss(this.session.saveLoss()));
 	}
 
 	/** Desfaz a última ação. Devolve `false` se não houver o que desfazer. */
 	undo(): boolean {
-		return this.session.undo();
+		return this.call(() => this.session.undo());
 	}
 
 	/** Refaz a última ação desfeita. Devolve `false` se não houver o que refazer. */
 	redo(): boolean {
-		return this.session.redo();
+		return this.call(() => this.session.redo());
+	}
+
+	// -- Consulta e edição da fase K3 (spec 06) ------------------------------
+
+	/** Falso depois de o kernel falhar internamente (ver `CadKernelFailureError`). */
+	get isTrusted(): boolean {
+		return this.failure === null;
+	}
+
+	/** Move as entidades, como uma ação desfazível. */
+	moveEntities(ids: CadEntityId[], delta: CadPoint): void {
+		this.call(() => this.session.moveEntities(ids, delta.x, delta.y));
+	}
+
+	/** Copia as entidades deslocadas e devolve os identificadores das cópias. */
+	copyEntities(ids: CadEntityId[], delta: CadPoint): CadEntityId[] {
+		return this.call(() => toCadEntityIds(this.session.copyEntities(ids, delta.x, delta.y)));
+	}
+
+	/** Gira as entidades em torno do pivô, em radianos no sentido anti-horário. */
+	rotateEntities(ids: CadEntityId[], pivot: CadPoint, angle: number): void {
+		this.call(() => this.session.rotateEntities(ids, pivot.x, pivot.y, angle));
+	}
+
+	/** Espelha as entidades pelo eixo que passa pelo ponto, com o ângulo dado. */
+	mirrorEntities(ids: CadEntityId[], through: CadPoint, angle: number): void {
+		this.call(() => this.session.mirrorEntities(ids, through.x, through.y, angle));
+	}
+
+	/** Escala as entidades em torno do pivô; fator `<= 0` é recusado pelo kernel. */
+	scaleEntities(ids: CadEntityId[], pivot: CadPoint, factor: number): void {
+		this.call(() => this.session.scaleEntities(ids, pivot.x, pivot.y, factor));
+	}
+
+	/** Cria a paralela do lado do ponto e devolve os identificadores criados. */
+	offsetEntity(id: CadEntityId, distance: number, side: CadPoint): CadEntityId[] {
+		return this.call(() => toCadEntityIds(this.session.offsetEntity(id, distance, side.x, side.y)));
+	}
+
+	/** Apara o trecho clicado e devolve os identificadores do que resta. */
+	trimEntity(
+		id: CadEntityId,
+		cuttingEdges: CadEntityId[],
+		pick: CadPoint,
+		capture: number
+	): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(this.session.trimEntity(id, cuttingEdges, pick.x, pick.y, capture))
+		);
+	}
+
+	/** Estende a ponta mais perto do clique até a fronteira. */
+	extendEntity(id: CadEntityId, boundaries: CadEntityId[], pick: CadPoint, capture: number): void {
+		this.call(() => this.session.extendEntity(id, boundaries, pick.x, pick.y, capture));
+	}
+
+	/** Concorda duas curvas e devolve o arco criado, ou `null` com raio zero. */
+	filletEntities(
+		first: CadEntityId,
+		firstPick: CadPoint,
+		second: CadEntityId,
+		secondPick: CadPoint,
+		radius: number
+	): CadEntityId | null {
+		return this.call(() =>
+			toOptionalEntityId(
+				this.session.filletEntities(
+					first,
+					firstPick.x,
+					firstPick.y,
+					second,
+					secondPick.x,
+					secondPick.y,
+					radius
+				)
+			)
+		);
+	}
+
+	/** Chanfra duas retas e devolve o segmento criado, ou `null` com distâncias zero. */
+	chamferEntities(
+		first: CadEntityId,
+		firstPick: CadPoint,
+		second: CadEntityId,
+		secondPick: CadPoint,
+		firstDistance: number,
+		secondDistance: number
+	): CadEntityId | null {
+		return this.call(() =>
+			toOptionalEntityId(
+				this.session.chamferEntities(
+					first,
+					firstPick.x,
+					firstPick.y,
+					second,
+					secondPick.x,
+					secondPick.y,
+					firstDistance,
+					secondDistance
+				)
+			)
+		);
+	}
+
+	/** Pontos em que as duas entidades se cruzam ou se tocam. */
+	findIntersections(first: CadEntityId, second: CadEntityId): CadPoint[] {
+		return this.call(() =>
+			asArray(this.session.intersections(first, second), 'interseção').map((point, index) =>
+				toCadPoint(point, `interseção[${index}]`)
+			)
+		);
+	}
+
+	/** Entidades cuja caixa envolvente toca a região, na ordem de desenho. */
+	/** O que a última operação mudou: ids criados, alterados e removidos, e camadas. */
+	lastChange(): CadChange {
+		return this.call(() => toCadChange(this.session.lastChange()));
+	}
+
+	/** Entidades pelos ids, de qualquer espaço, na ordem pedida; `null` para id que não existe. */
+	getEntitiesById(ids: CadEntityId[]): (CadEntity | null)[] {
+		return this.call(() =>
+			asArray(this.session.entitiesById(ids), 'entidades pelo id').map((entity, index) =>
+				entity === null ? null : toCadEntity(entity, `entidade pelo id[${index}]`)
+			)
+		);
+	}
+
+	/**
+	 * Prepara a geometria da tela no kernel, com o erro de corda da vista
+	 * (ADR 0008). Depois de cada operação, `updateScreen` diz o que buscar de novo.
+	 */
+	prepareScreen(chordError: number): void {
+		this.call(() => this.session.prepareScreen(chordError));
+	}
+
+	/** Espaços da tela: `Model` primeiro, depois os layouts na ordem das abas. */
+	getScreenSpaces(): string[] {
+		return this.call(() =>
+			asArray(this.session.screenSpaces(), 'espaços da tela').map((space, index) =>
+				asString(space, `espaços da tela[${index}]`)
+			)
+		);
+	}
+
+	/** Origem dos segmentos do espaço, a somar na matriz da vista. */
+	getScreenOrigin(space: string): CadPoint {
+		return this.call(() => toScreenOrigin(this.session.screenOrigin(space)));
+	}
+
+	/** Camadas visíveis com segmentos no espaço. */
+	getScreenLayers(space: string): CadLayerId[] {
+		return this.call(() =>
+			asArray(this.session.screenLayers(space), 'camadas da tela').map(
+				(layer, index) => asString(layer, `camadas da tela[${index}]`) as CadLayerId
+			)
+		);
+	}
+
+	/**
+	 * Segmentos `x1, y1, x2, y2` da camada no espaço, relativos à origem.
+	 *
+	 * É o próprio `Float32Array` do kernel: vai à GPU sem cópia nem conversão.
+	 */
+	getScreenBlock(space: string, layer: CadLayerId): Float32Array {
+		return this.call(() => toScreenBlock(this.session.screenBlock(space, layer)));
+	}
+
+	/** Blocos que mudaram desde a última chamada. */
+	updateScreen(): CadScreenBlock[] {
+		return this.call(() => toCadScreenBlocks(this.session.updateScreen()));
+	}
+
+	/** Entidades do espaço cuja caixa envolvente toca a área: o recorte pela vista. */
+	findEntitiesInView(space: string, area: CadBounds): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(
+				this.session.screenQuery(space, area.minX, area.minY, area.maxX, area.maxY),
+				'recorte da tela'
+			)
+		);
+	}
+
+	findEntitiesInBox(area: CadBounds): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(this.session.entitiesInBox(area.minX, area.minY, area.maxX, area.maxY))
+		);
+	}
+
+	/** Curvas cujo traço passa a até `radius` do ponto, na ordem de desenho. */
+	hitTest(point: CadPoint, radius: number): CadEntityId[] {
+		return this.call(() => toCadEntityIds(this.session.hitTest(point.x, point.y, radius)));
+	}
+
+	/** O ponto notável a que o cursor prende, ou `null`. */
+	snap(point: CadPoint, radius: number, modes: CadSnapMode[]): CadSnap | null {
+		return this.call(() => toCadSnap(this.session.snap(point.x, point.y, radius, modes)));
+	}
+
+	/**
+	 * Toda chamada à sessão passa por aqui.
+	 *
+	 * Recusa do kernel vira `CadKernelOperationError`; forma inválida segue como
+	 * `CadKernelContractError`; aborto do WebAssembly envenena o documento.
+	 */
+	private call<T>(run: () => T): T {
+		if (this.failure) {
+			throw this.failure;
+		}
+
+		try {
+			return run();
+		} catch (error) {
+			if (error instanceof WebAssembly.RuntimeError) {
+				this.failure = new CadKernelFailureError(error);
+				throw this.failure;
+			}
+			if (error instanceof CadKernelContractError) {
+				throw error;
+			}
+
+			throw new CadKernelOperationError(error instanceof Error ? error.message : String(error));
+		}
 	}
 }

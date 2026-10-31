@@ -59,6 +59,7 @@ version = "0.0.0"
 dependencies = [
  "neocad-geometry",
  "neocad-model",
+ "neocad-transaction",
 ]
 
 [[package]]

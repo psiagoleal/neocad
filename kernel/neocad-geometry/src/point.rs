@@ -81,13 +81,12 @@ pub fn point_on_circle(center: Point2, radius: f64, angle: f64) -> Point2 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Tolerance;
     use core::f64::consts::{FRAC_PI_2, PI};
-
-    const TOLERANCE: f64 = 1e-12;
 
     fn assert_close(actual: Point2, expected: Point2) {
         assert!(
-            (actual.x - expected.x).abs() < TOLERANCE && (actual.y - expected.y).abs() < TOLERANCE,
+            Tolerance::default().points_equal(actual, expected),
             "esperado {expected:?}, obtido {actual:?}"
         );
     }
@@ -100,7 +99,8 @@ mod tests {
 
     #[test]
     fn distancia_entre_pontos() {
-        assert!((Point2::new(3.0, 4.0).distance_to(Point2::ORIGIN) - 5.0).abs() < TOLERANCE);
+        assert!(Tolerance::default()
+            .lengths_equal(Point2::new(3.0, 4.0).distance_to(Point2::ORIGIN), 5.0));
     }
 
     #[test]

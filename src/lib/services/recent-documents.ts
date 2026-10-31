@@ -1,3 +1,5 @@
+// Caminho relativo: src/lib/services/recent-documents.ts
+
 /**
  * \file src/lib/services/recent-documents.ts
  * \brief Persistência de documentos recentes no frontend do NeoCAD.

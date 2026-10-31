@@ -103,6 +103,25 @@ function isUpToDate() {
 	return statSync(WASM_FILE).mtimeMs >= newestSourceTime(KERNEL_DIR);
 }
 
+/**
+ * Teto do `.wasm` de release, em bytes (spec 06, W5): ≈ 303 KiB medidos em
+ * 2026-10-29, mais 50%. Só sobe por ADR — cálculo novo pesa, e o peso chega a
+ * todo usuário que abre o app.
+ */
+const WASM_RELEASE_LIMIT = 465_000;
+
+/** Encerra com erro se o `.wasm` de release passou do teto. */
+function enforceSizeLimit() {
+	const size = statSync(WASM_FILE).size;
+
+	if (size > WASM_RELEASE_LIMIT) {
+		console.error(
+			`\nerro: o .wasm de release tem ${size} bytes, acima do teto de ${WASM_RELEASE_LIMIT} (spec 06, W5).`
+		);
+		process.exit(1);
+	}
+}
+
 function formatSize(bytes) {
 	return `${(bytes / 1024).toFixed(1)} KB`;
 }
@@ -134,6 +153,10 @@ function main() {
 	if (result.status !== 0) {
 		console.error('\nerro: a compilação do kernel WebAssembly falhou.');
 		process.exit(result.status ?? 1);
+	}
+
+	if (profile === '--release') {
+		enforceSizeLimit();
 	}
 
 	// O tamanho entra no bundle distribuído; convém acompanhá-lo desde o início.

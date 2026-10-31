@@ -12,46 +12,46 @@
 
 ## Identificação
 
-- **Assunto / projeto:** **\_\_**
-- **Tipo:** ☐ Reunião ☐ Entrevista ☐ Workshop ☐ Outro: **\_\_**
-- **Data / hora:** **\_\_** **Duração:** **\_\_**
-- **Local / plataforma:** **\_\_**
-- **Consentimento p/ gravar/anotar:** ☐ Sim ☐ Não **Retenção do bruto:** **\_\_**
-- **Confidencialidade:** ☐ Pública ☐ Interna ☐ Confidencial (NDA) **Autor da ata:** **\_\_**
+- **Assunto / projeto:** ______
+- **Tipo:** ☐ Reunião ☐ Entrevista ☐ Workshop ☐ Outro: ______
+- **Data / hora:** ______   **Duração:** ______
+- **Local / plataforma:** ______
+- **Consentimento p/ gravar/anotar:** ☐ Sim ☐ Não   **Retenção do bruto:** ______
+- **Confidencialidade:** ☐ Pública ☐ Interna ☐ Confidencial (NDA)   **Autor da ata:** ______
 
 ## Participantes
 
 | Nome / índice | Papel / cargo | Organização | Presente |
-| ------------- | ------------- | ----------- | -------- |
-| **\_\_**      | **\_\_**      | **\_\_**    | ☐        |
+|---------------|---------------|-------------|----------|
+| ______ | ______ | ______ | ☐ |
 
-- **Ausentes / convidados que faltaram:** **\_\_**
+- **Ausentes / convidados que faltaram:** ______
 
 ## Pauta / objetivos
 
-1. ***
+1. ______
 
 ## Discussão (pontos principais por tópico)
 
-- **<tópico 1>:** **\_\_**
+- **<tópico 1>:** ______
 
 ## Decisões tomadas
 
-1. ***
+1. ______
 
 ## Ações acordadas
 
-| Ação     | Responsável | Prazo    |
-| -------- | ----------- | -------- |
-| **\_\_** | **\_\_**    | **\_\_** |
+| Ação | Responsável | Prazo |
+|------|-------------|-------|
+| ______ | ______ | ______ |
 
 ## Pendências / dúvidas em aberto
 
-- ***
+- ______
 
 ## Próxima reunião / próximos passos
 
-- ***
+- ______
 
 ---
 
@@ -61,28 +61,23 @@
 > Base-se estritamente no que foi dito; não invente.
 
 ### Sistemas / ferramentas de dados citados
-
 - Liste **todos** os sistemas, bases ou ferramentas nomeados (com 1 linha de contexto de uso
   cada). Não omita nenhum citado. Se nenhum: "nenhum sistema nomeado".
 
 ### Impressões por participante
-
 - Para **cada** participante que se manifestou (nome/índice e papel): postura, preocupações e
   pontos de vista. Não atribua fala a quem não falou.
 
 ### Sentimento geral
-
 - Tom da conversa, abertura/engajamento, disposição para colaborar/compartilhar.
 
 ### Informações úteis para o projeto / tratativas
-
 - Pontos acionáveis: disponibilidade de recursos, bloqueios, dependências, riscos, prazos,
   contatos, próximos passos.
 
 ---
 
 <!-- Rodapé de proveniência (obrigatório quando há material confidencial) -->
-
 > **Proveniência:** fonte = <áudio/vídeo | transcrição automática | ASR local>;
 > síntese qualitativa = <modelo local X | manual>; campos estruturados =
-> <modelo Y | manual> (autorização: <ref.>). Revisão humana: ☐ pendente ☐ feita por **\_\_**.
+> <modelo Y | manual> (autorização: <ref.>). Revisão humana: ☐ pendente ☐ feita por ______.

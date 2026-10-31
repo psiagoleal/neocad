@@ -2,7 +2,7 @@
 
 # ADR 0006: Modelo de tolerância e robustez numérica da geometria 2D
 
-- **Status:** Proposed <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
+- **Status:** Accepted <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
 - **Data:** 2026-08-31
 - **Decisores:** Iago Leal
 - **Tags:** kernel, geometria, tolerância, robustez, k3

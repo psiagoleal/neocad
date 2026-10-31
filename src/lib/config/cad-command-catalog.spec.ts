@@ -1,3 +1,5 @@
+// Caminho relativo: src/lib/config/cad-command-catalog.spec.ts
+
 /**
  * \file src/lib/config/cad-command-catalog.spec.ts
  * \brief Testes unitários da montagem do catálogo de comandos CAD.
