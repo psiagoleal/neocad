@@ -21,6 +21,24 @@
 
 ## Rodada de 2026-10-30: KV, prova e medida
 
+- **MT-KV-08** (`fe35d0c`): o kernel prepara a tela (spec 06, W8).
+  - `neocad_geometry::tessellate` divide arco, círculo e polilinha com abaulamento pelo
+    erro de corda: nenhuma corda se afasta do arco mais que o erro, e as pontas são
+    exatas. O ADR 0006 não fixa erro de corda; quem o escolhe é a vista (≈ um pixel).
+  - `neocad-wasm/src/tela.rs`: blocos `x1, y1, x2, y2` em `f32` por espaço e camada,
+    **relativos a uma origem do espaço em `f64`** (em `f32` puro uma coordenada UTM
+    perde 25 cm), índice espacial do recorte pela vista e atualização só dos ids da
+    operação. A pilha ganhou `revision()`: se a tela perde uma operação, refaz tudo.
+  - Fachada `prepareScreen`, `screenSpaces`, `screenOrigin`, `screenLayers`,
+    `screenBlock`, `updateScreen`, `screenQuery`; serviço com os mesmos nomes em
+    `CadDocument` (o bloco chega como o próprio `Float32Array`, sem cópia).
+  - Medida (nativo, release, 100 mil entidades, 240 mil segmentos): preparar tudo
+    52 ms; uma linha nova até o bloco refeito 6,4 ms
+    (`cargo test -p neocad-wasm --lib --release -- --ignored --nocapture medida_da_tela`).
+  - Teste-primeiro sem o gateway (fim de semana, por decisão do mantenedor): vermelho
+    visto em asserção — 11 (segmentação), 1 (revisão), 12 (tela), 5 (fachada) e 9
+    (serviço) — antes de cada implementação.
+
 - **MT-KV-07** (`878a7da`): `e2e/desempenho.e2e.ts` mede N1 (abrir), N2 (refletir uma linha) e N3
   (mediana entre quadros no pan e zoom) contra a tela própria; pulado sem
   `NEOCAD_SINTETICO_N`, então a CI não o roda.

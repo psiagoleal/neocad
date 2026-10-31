@@ -132,6 +132,8 @@ verificação por fabricante (15).
 - **Critério de aceite:** relatório com os números e a escolha, citada no MT-KV-10.
 - **Fora de escopo:** código de produção.
 - **Depende de:** MT-KV-08.
+- **Resultado:** [WebGL2 em TypeScript](../spikes/kv-camada-gpu.md); `wgpu` levaria o
+  `.wasm` a 2 042 252 bytes sem ganho medido.
 
 ### MT-KV-10: Desenhista pela GPU com reserva em canvas 2D
 
@@ -192,3 +194,16 @@ verificação por fabricante (15).
 - **Fora de escopo:** correções que o roteiro revelar, e relatos futuros de AMD ou Intel
   (viram tickets).
 - **Depende de:** MT-KV-12.
+
+### MT-KV-16: Aplicar o orçamento de tamanho (ADR 0009)
+
+- **Objetivo:** o build de release falha com o `.wasm` do kernel acima de 600 000 bytes
+  ou com o total de `build/` acima do registro versionado.
+- **Arquivos no escopo:** `scripts/build-kernel.mjs`, script novo de conferência do
+  total em `scripts/`, registro do total (arquivo novo), `package.json`,
+  `docs/specs/06-fachada-wasm.md` (W5).
+- **Critério de aceite:** com o registro um byte abaixo da medida, `pnpm build` falha
+  com mensagem que cita os dois números; com o registro igual, passa. O teto do kernel
+  conferido do mesmo jeito.
+- **Fora de escopo:** reduzir o upstream.
+- **Depende de:** ADR 0009 aceito.

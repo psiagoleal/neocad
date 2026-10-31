@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       build falha acima de 465 000 bytes.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-09](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-09-escolher-a-camada-da-gpu--webgl2-em-typescript-ou-wgpu-em-rust) —
-      spike WebGL2 × `wgpu`.
 - [ ] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) —
       V1 sem texto, N1, N3, N4.
 - [ ] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
@@ -49,6 +47,8 @@ UI começa pelo que não depende de KV.
       V4, V5b, V7 — depende do MT-UI-04.
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
       N5 na NVIDIA; AMD e Intel presumidas.
+- [ ] [MT-KV-16](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-16-aplicar-o-orçamento-de-tamanho-adr-0009) —
+      teto do kernel e catraca do total no build — bloqueado por ADR 0009: aceite.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
       spec 09, S1, S2, S5.
 - [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —
@@ -62,6 +62,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-09](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-09-escolher-a-camada-da-gpu--webgl2-em-typescript-ou-wgpu-em-rust) —
+      WebGL2 em TypeScript; `wgpu` +1,6 MB de `.wasm` sem ganho medido.
 - [x] [MT-KV-08](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-08-preparo-para-a-tela-no-kernel) —
       blocos `Float32Array` e índice no kernel; 100 mil em 52 ms, uma edição em 6 ms (nativo).
 - [x] [MT-KV-07](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-07-prova-local-de-desempenho-n1n3) —

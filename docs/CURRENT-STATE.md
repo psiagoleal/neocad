@@ -13,31 +13,24 @@
 - **Data:** 2026-10-31
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-KV-08); antes, `878a7da` (MT-KV-07, CI verde nos 8 jobs)
+- **Commit:** o deste turno (MT-KV-09, só documentação); antes, `fe35d0c` (MT-KV-08, CI verde nos 8 jobs)
 - **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check`, `make
 kernel-wasm` (463 233 bytes, teto 465 000), `pnpm lint`, `pnpm check`, `pnpm test` (117)
   e `make e2e` (15 passam; 5 pulados de propósito) verdes
 
 ## Metas cumpridas neste turno
 
-- **MT-KV-08:** o kernel prepara a tela (spec 06, W8).
-  - `neocad_geometry::tessellate` divide arco, círculo e polilinha com abaulamento pelo
-    erro de corda: nenhuma corda se afasta do arco mais que o erro, e as pontas são
-    exatas. O ADR 0006 não fixa erro de corda; quem o escolhe é a vista (≈ um pixel).
-  - `neocad-wasm/src/tela.rs`: blocos `x1, y1, x2, y2` em `f32` por espaço e camada,
-    **relativos a uma origem do espaço em `f64`** (em `f32` puro uma coordenada UTM
-    perde 25 cm), índice espacial do recorte pela vista e atualização só dos ids da
-    operação. A pilha ganhou `revision()`: se a tela perde uma operação, refaz tudo.
-  - Fachada `prepareScreen`, `screenSpaces`, `screenOrigin`, `screenLayers`,
-    `screenBlock`, `updateScreen`, `screenQuery`; serviço com os mesmos nomes em
-    `CadDocument` (o bloco chega como o próprio `Float32Array`, sem cópia).
-  - Medida (nativo, release, 100 mil entidades, 240 mil segmentos): preparar tudo
-    52 ms; uma linha nova até o bloco refeito 6,4 ms
-    (`cargo test -p neocad-wasm --lib --release -- --ignored --nocapture medida_da_tela`).
-  - Teste-primeiro sem o gateway (fim de semana, por decisão do mantenedor): vermelho
-    visto em asserção — 11 (segmentação), 1 (revisão), 12 (tela), 5 (fachada) e 9
-    (serviço) — antes de cada implementação.
-- **MT-KV-07** (`878a7da`) e **MT-KV-06** estão no
+- **MT-KV-09 (spike):** a camada da GPU é **WebGL2 em TypeScript**
+  ([relatório](spikes/kv-camada-gpu.md)). Medido com janela na RTX 3070, 100 mil
+  entidades: abrir 2,2 s (N1 ≤ 5 s; ~2 s são a leitura do DXF), uma linha nova até o
+  quadro 7,5 ms (N2 ≤ 100 ms), pan e zoom no limite do monitor, 16,7 ms (N3 ≤ 33 ms).
+  `wgpu` empata no desempenho e leva o `.wasm` de 463 233 a 2 042 252 bytes. Protótipo
+  no ramo local `spike/kv-camada-gpu` (`d2413f7`), fora de `master`.
+- **[ADR 0009](adr/0009-orcamento-de-tamanho-do-aplicativo.md) proposto:** teto do
+  `.wasm` do kernel de 465 000 para 600 000 bytes, e catraca no total que o aplicativo
+  baixa (hoje 12 921 011 bytes, 95% do upstream), que só desce quando o upstream sai.
+  Aguarda o mantenedor; o MT-KV-16 o aplica.
+- **MT-KV-08** (`fe35d0c`), **MT-KV-07** (`878a7da`) e **MT-KV-06** estão no
   [arquivo](handoff-arquivo.md#rodada-de-2026-10-30-kv-prova-e-medida).
 - **[ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito pelo mantenedor**,
   com dois acréscimos pedidos por ele:
@@ -69,12 +62,12 @@ kernel-wasm` (463 233 bytes, teto 465 000), `pnpm lint`, `pnpm check`, `pnpm tes
 
 ## Em andamento
 
-- Nada em andamento; o bloco B de KV segue pelo MT-KV-09.
+- Nada em andamento; o bloco B de KV segue pelo MT-KV-10, depois do ADR 0009.
 
 ## Próximo passo sugerido
 
-1. MT-KV-09: spike WebGL2 × `wgpu` sobre os blocos do MT-KV-08, medido com o MT-KV-07.
-2. Antes do MT-KV-10, decidir o teto do `.wasm` (ver impedimentos).
+1. Mantenedor: aceitar ou ajustar o ADR 0009; então MT-KV-16 (aplicar no build).
+2. MT-KV-10: desenhista WebGL2 com reserva em canvas 2D (não aumenta o `.wasm`).
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos
@@ -86,10 +79,8 @@ kernel-wasm` (463 233 bytes, teto 465 000), `pnpm lint`, `pnpm check`, `pnpm tes
 
 - O gateway só responde com a rede da empresa ou a VPN; fora dela, a delegação cai para
   subagente (como na parte Rust do MT-K3-12).
-- **Teto do `.wasm` quase esgotado:** 463 233 de 465 000 bytes depois do MT-KV-08 (o
-  preparo da tela somou ~37 KB, já sem `HashMap`). O desenhista e o texto do kernel
-  (MT-KV-10, 11) não cabem. O teto só sobe por ADR (spec 06, W5); a opção `wgpu` do
-  MT-KV-09 pesaria muito mais. Decisão do mantenedor.
+- **Teto do `.wasm` quase esgotado:** 463 233 de 465 000 bytes. O MT-KV-10 não mexe no
+  `.wasm`; o MT-KV-11 (texto) precisa do ADR 0009 aceito.
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
 
 > Painel de tickets (o que existe e o que falta): [`docs/TICKETS.md`](TICKETS.md).

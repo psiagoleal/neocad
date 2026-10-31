@@ -17,3 +17,4 @@ como `Superseded by ADR-NNNN`.
 | [0006](0006-tolerancia-e-robustez-da-geometria-2d.md)        | Modelo de tolerância e robustez numérica da geometria 2D                            | Accepted |
 | [0007](0007-fase-de-prancha-de-engenharia.md)                | Fase de prancha de engenharia antes do paramétrico e do 3D                          | Accepted |
 | [0008](0008-tela-desenhada-a-partir-do-kernel.md)            | A tela é desenhada a partir do kernel                                               | Accepted |
+| [0009](0009-orcamento-de-tamanho-do-aplicativo.md)           | Orçamento de tamanho: teto do kernel e catraca do total                             | Proposed |
