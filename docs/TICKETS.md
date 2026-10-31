@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       build falha acima de 465 000 bytes.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-07](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-07-prova-local-de-desempenho-n1n3) —
-      E2E de 100 mil entidades contra N1–N3.
 - [ ] [MT-KV-08](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-08-preparo-para-a-tela-no-kernel) —
       blocos `Float32Array` e índice espacial no kernel.
 - [ ] [MT-KV-09](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-09-escolher-a-camada-da-gpu--webgl2-em-typescript-ou-wgpu-em-rust) —
@@ -66,6 +64,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-07](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-07-prova-local-de-desempenho-n1n3) —
+      `e2e/desempenho.e2e.ts`; falha hoje porque a tela própria não existe.
 - [x] [MT-KV-06](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-06-fachada-informa-o-que-cada-operação-mudou-e-consulta-pelo-id) —
       `lastChange` e `getEntitiesById`; um id entre 100 mil em ~0,2 µs (nativo).
 - [x] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) —

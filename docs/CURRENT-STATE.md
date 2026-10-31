@@ -10,29 +10,28 @@
 
 ## Último turno
 
-- **Data:** 2026-10-30
+- **Data:** 2026-10-31
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-KV-06); antes, `35f0641` e `7d62dbd` (ADR 0008 aceito,
-  só documentação)
-- **Estado da árvore:** limpa após o commit · **DoD:** `make kernel-check`, `make
-kernel-wasm` (426 369 bytes, teto 465 000), `pnpm lint`, `pnpm check`, `pnpm test` (108)
-  e `make e2e` (15 passam; 2 pulados de propósito) verdes
+- **Commit:** o deste turno (MT-KV-07); antes, `86506c7` (MT-KV-06, CI verde nos 8 jobs)
+- **Estado da árvore:** limpa após o commit · **DoD:** `pnpm lint`, `pnpm check` e o
+  E2E novo pulado sem a variável; só teste e documentação mudaram
 
 ## Metas cumpridas neste turno
 
-- **MT-KV-06:** cada edição, desfazer e refazer informa o que mudou, e a fachada busca
-  entidades pelo id (spec 06, W6 e W7).
-  - Onde: `neocad_transaction::Effect` e `CommandStack::last_effect`, deduzidos das
-    mudanças que desfazem a operação (a pilha já as guardava); fachada `lastChange` e
-    `entitiesById`; serviço `lastChange()` e `getEntitiesById()`.
-  - Medida: buscar 1 id entre 100 mil leva ~174 ns em Rust nativo, release
-    (`cargo test -p neocad-wasm --lib --release -- --ignored --nocapture medida_`). No
-    navegador soma a travessia da ponte; não medido.
-  - Teste-primeiro: rascunhos do `qwen3-coder:30b` só com o critério; erros mecânicos
-    corrigidos (assinaturas inventadas, ids fora da closure, forma de `CadEntity`
-    suposta). Vermelho visto nas asserções com esboços: 9 (pilha), 8 (fachada) e 10
-    (serviço) testes falhando antes da implementação.
+- **MT-KV-07:** `e2e/desempenho.e2e.ts` mede N1 (abrir), N2 (refletir uma linha) e N3
+  (mediana entre quadros no pan e zoom) contra a tela própria; pulado sem
+  `NEOCAD_SINTETICO_N`, então a CI não o roda.
+  - Vermelho visto com `VITE_NEOCAD_SONDA=1 NEOCAD_SINTETICO_N=100000 pnpm exec playwright
+test desempenho`: os três falham em `locator('canvas[data-tela="kernel"]')` —
+    `element(s) not found` (esperava `data-entidades="90000"`). É o motivo certo: a tela
+    desenhada pelo kernel chega no MT-KV-10.
+  - O que o teste observa ficou escrito na spec 07 ("O que os testes observam na tela"):
+    atributos `data-caminho`, `data-entidades`, `data-quadros` e a sonda
+    `window.__neocadSonda`, que só existe no build com `VITE_NEOCAD_SONDA=1`, porque
+    ainda não há edição pela interface que passe pelo kernel.
+  - Escrito sem o gateway: ele não respondeu (fora da VPN).
+- **MT-KV-06** está no [arquivo](handoff-arquivo.md#rodada-de-2026-10-30-kv-prova-e-medida).
 - **[ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito pelo mantenedor**,
   com dois acréscimos pedidos por ele:
   - **GPU:** desenho por WebGL2, independente de fabricante (AMD, NVIDIA, Intel) pela
@@ -63,12 +62,12 @@ kernel-wasm` (426 369 bytes, teto 465 000), `pnpm lint`, `pnpm check`, `pnpm tes
 
 ## Em andamento
 
-- Nada em andamento; o bloco B de KV segue pelo MT-KV-07.
+- Nada em andamento; o bloco B de KV segue pelo MT-KV-08.
 
 ## Próximo passo sugerido
 
-1. MT-KV-07: E2E de desempenho com 100 mil entidades (N1–N3), visto falhando.
-2. Depois, MT-KV-08: preparo da geometria para a tela no kernel.
+1. MT-KV-08: preparo da geometria para a tela no kernel.
+2. Depois, MT-KV-09: spike WebGL2 × `wgpu`, medido com o MT-KV-07.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos

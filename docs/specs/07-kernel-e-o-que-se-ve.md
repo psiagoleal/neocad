@@ -51,6 +51,18 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 | V6  | SE o caminho de exibição recusa uma entidade do kernel, ENTÃO a área de mensagens DEVE informar o tipo e a quantidade das entidades não exibidas; V1 vale para todas as demais.          | teste de unidade do adaptador de exibição com entidade recusada simulada, conferindo a mensagem emitida (a criar)                          |
 | V7  | QUANDO o usuário pede uma edição sobre entidade que o kernel não modela, a edição DEVE ser recusada com a mensagem "entidade ainda não editável" e o tipo dela, sem alterar o documento. | `pnpm test:e2e -- kernel-view` com fixture `with-unsupported.dxf` (a criar)                                                                |
 
+## O que os testes observam na tela
+
+A tela própria é um `canvas` com `data-tela="kernel"` que expõe, como atributos, o que
+desenhou no último quadro: `data-caminho` (`webgl2` ou `canvas2d`), `data-entidades`
+(quantas entidades do espaço corrente estão na tela) e `data-quadros` (quantos quadros
+desenhou desde a abertura). Pan é o arrasto com o botão do meio; zoom, a roda do mouse.
+
+Edição pelo serviço, para V2 e N2, enquanto não há linha de comando própria (spec 08):
+no build feito com `VITE_NEOCAD_SONDA=1`, a página expõe `window.__neocadSonda` com
+`desenharLinha(x1, y1, x2, y2)`, que chama `CadDocument.drawLine` na camada corrente e
+devolve o id. Sem essa variável, a sonda não existe.
+
 ## Requisitos não-funcionais
 
 Em EARS, com prova, na [spec 00](00-transversal.md) (N1–N5): abrir 100 mil entidades em

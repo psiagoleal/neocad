@@ -21,6 +21,19 @@
 
 ## Rodada de 2026-10-30: KV, prova e medida
 
+- **MT-KV-06:** cada edição, desfazer e refazer informa o que mudou, e a fachada busca
+  entidades pelo id (spec 06, W6 e W7).
+  - Onde: `neocad_transaction::Effect` e `CommandStack::last_effect`, deduzidos das
+    mudanças que desfazem a operação (a pilha já as guardava); fachada `lastChange` e
+    `entitiesById`; serviço `lastChange()` e `getEntitiesById()`.
+  - Medida: buscar 1 id entre 100 mil leva ~174 ns em Rust nativo, release
+    (`cargo test -p neocad-wasm --lib --release -- --ignored --nocapture medida_`). No
+    navegador soma a travessia da ponte; não medido.
+  - Teste-primeiro: rascunhos do `qwen3-coder:30b` só com o critério; erros mecânicos
+    corrigidos (assinaturas inventadas, ids fora da closure, forma de `CadEntity`
+    suposta). Vermelho visto nas asserções com esboços: 9 (pilha), 8 (fachada) e 10
+    (serviço) testes falhando antes da implementação.
+
 Commits `3e2e3e4` (MT-KV-01), `0d1b4ce` (MT-KV-02) e `bfc864f` (MT-KV-03/04, ADR 0008
 proposto), todos verdes na CI nos 8 jobs (execução 41067898361 para o `bfc864f`).
 

@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Local performance proof, `e2e/desempenho.e2e.ts` (MT-KV-07) — opens the 100 000-entity synthetic drawing and checks spec 00 N1 (open in 5 s), N2 (reflect an edit in 100 ms) and N3 (30 frames per second while panning and zooming) against the kernel-drawn screen; runs only with `NEOCAD_SINTETICO_N`, and fails until that screen exists.
+
 - What each edit changed, and entities by id (MT-KV-06) — `CommandStack::last_effect`, the facade's `lastChange`/`entitiesById` and the service's `lastChange`/`getEntitiesById`: every edit, undo and redo reports the created, modified and removed entity ids and the changed layers, so the screen can redraw only what changed (ADR 0008); looking up one id among 100 000 entities takes about 0.2 µs natively.
 
 - Synthetic DXF generator, `scripts/gerar-dxf-sintetico.mjs` (MT-KV-02) — a seeded, reproducible drawing of N entities across layers, model space and two layouts, for measuring large files without third-party data; the kernel opens 100 000 entities in about 2.4 s.
