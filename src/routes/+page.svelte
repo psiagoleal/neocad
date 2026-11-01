@@ -507,6 +507,8 @@
 
 	function handleKernelScreenReady(tela: TelaDoKernel): void {
 		telaDoKernel = tela;
+		// Spec 07, V6: o que a tela não exibe vai para a área de mensagens.
+		tela.avisarCom((mensagem) => pushNotification('warning', mensagem));
 	}
 
 	function handleKernelScreenError(message: string): void {

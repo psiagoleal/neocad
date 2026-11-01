@@ -252,6 +252,19 @@ tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela
 - **Critério de aceite:** spec 07, V6.
 - **Fora de escopo:** desenhar as recusadas.
 - **Depende de:** MT-KV-10.
+- **Resultado (2026-11-01):** a tela do kernel guarda as entidades que não viram
+  segmentos e `Screen::refused` as conta por tipo DXF, por espaço, só em camada visível
+  (`screenRefused` na fachada, `CadDocument.getScreenRefused`). Hoje são a janela de
+  layout e o texto sem traço. A `TelaDoKernel` avisa por `avisarCom` ao mostrar o espaço
+  e quando uma edição muda a contagem, sem repetir o mesmo aviso; a página manda o aviso
+  à área de mensagens. Provas: `o_que_nao_vira_traco_e_contado_por_tipo_e_espaco` e
+  `a_janela_de_layout_lida_e_contada_como_nao_desenhada` (Rust), `tela-do-kernel.spec.ts`
+  (recusa simulada, a prova da spec), `cad-document-sessao.spec.ts` e o e2e V6 com a
+  fixture nova `with-viewport.dxf`, todos vistos falhar antes. A primeira versão somava
+  14 914 bytes ao `.wasm` por trazer dois mapas de tipo novo; reaproveitando o mapa que a
+  tela já usava e contando num vetor, ficou em +5 719 (485 816 bytes). N1 2,83 s, N2
+  12,2 ms, N3 16,7 ms. Fora da lista do ticket, tocados: `tela.rs`, `lib.rs` da fachada,
+  `cad-document.ts` e `+page.svelte`.
 
 ### MT-KV-14: Comandos de edição pelo kernel na linha de comando própria
 

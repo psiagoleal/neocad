@@ -56,6 +56,20 @@ pub struct Screen {
     spaces: Vec<SpaceScreen>,
     /// Onde estão os segmentos de cada entidade: espaço e camada.
     place: BTreeMap<EntityId, (usize, LayerId)>,
+    /// Entidades que não viraram segmentos: espaço e camada (V6).
+    refused: BTreeMap<EntityId, (usize, LayerId)>,
+}
+
+/// Tipo DXF da geometria, como o aviso das não desenhadas o mostra.
+fn dxf_type(geometry: &Geometry) -> &'static str {
+    match geometry {
+        Geometry::Line(_) => "LINE",
+        Geometry::Circle(_) => "CIRCLE",
+        Geometry::Arc(_) => "ARC",
+        Geometry::Polyline(_) => "LWPOLYLINE",
+        Geometry::Text(_) => "TEXT",
+        Geometry::Viewport(_) => "VIEWPORT",
+    }
 }
 
 /// Tipos de entidade DXF que esta tela desenha.
@@ -120,6 +134,7 @@ impl Screen {
             revision,
             spaces: Vec::new(),
             place: BTreeMap::new(),
+            refused: BTreeMap::new(),
         };
         screen.fill(document);
 
@@ -153,6 +168,7 @@ impl Screen {
             })
             .collect();
         self.place.clear();
+        self.refused.clear();
 
         for space in 0..self.spaces.len() {
             let block = self.spaces[space].block;
@@ -172,6 +188,8 @@ impl Screen {
                 .or_default()
                 .insert(id, segments);
             self.place.insert(id, (space, entity.layer));
+        } else {
+            self.refused.insert(id, (space, entity.layer));
         }
         target.index = None;
 
@@ -180,6 +198,7 @@ impl Screen {
 
     /// Tira os segmentos da entidade; devolve onde estavam.
     fn remove(&mut self, id: EntityId) -> Option<(usize, LayerId)> {
+        self.refused.remove(&id);
         let (space, layer) = self.place.remove(&id)?;
         let target = &mut self.spaces[space];
         if let Some(entities) = target.layers.get_mut(&layer) {
@@ -268,6 +287,34 @@ impl Screen {
                 .map(BTreeMap::len)
                 .sum(),
         )
+    }
+
+    /// Entidades do espaço, em camada visível, que a tela não desenha: tipo DXF e
+    /// quantidade, em ordem de tipo. `None` se o espaço é desconhecido.
+    #[must_use]
+    pub fn refused(&self, document: &Document, space: &str) -> Option<Vec<(String, usize)>> {
+        let found = self.space(space)?;
+        // Seis tipos no máximo: um vetor basta, e não traz outro mapa ao `.wasm`.
+        let mut counts: Vec<(String, usize)> = Vec::new();
+        for (id, (refused_space, layer)) in &self.refused {
+            let visible = document
+                .layers()
+                .get(*layer)
+                .is_some_and(LayerRecord::is_visible);
+            if *refused_space != found || !visible {
+                continue;
+            }
+            let Some(kind) = document.entity(*id).map(|e| dxf_type(&e.geometry)) else {
+                continue;
+            };
+            match counts.iter_mut().find(|(k, _)| k == kind) {
+                Some((_, count)) => *count += 1,
+                None => counts.push((kind.to_owned(), 1)),
+            }
+        }
+        counts.sort_unstable();
+
+        Some(counts)
     }
 
     /// Caixa envolvente das entidades do espaço; `None` se o espaço é
@@ -588,6 +635,90 @@ mod tests {
         let papel = absolutos(&tela, "Prancha A1", zero);
         assert_eq!(papel.len(), 1);
         assert!(perto(papel[0], [5.0, 5.0, 6.0, 5.0], 1e-6));
+    }
+
+    fn janela() -> Geometry {
+        Geometry::Viewport(neocad_model::Viewport {
+            center: Point2::new(100.0, 100.0),
+            width: 100.0,
+            height: 50.0,
+            view_center: Point2::ORIGIN,
+            view_height: 25.0,
+            twist: 0.0,
+            clip: neocad_model::ViewportClip::Window,
+            is_on: true,
+            frozen_layers: BTreeSet::new(),
+        })
+    }
+
+    fn texto(conteudo: &str) -> Geometry {
+        Geometry::Text(Text {
+            content: conteudo.to_owned(),
+            position: Point2::ORIGIN,
+            height: 1.0,
+            rotation: 0.0,
+        })
+    }
+
+    #[test]
+    fn o_que_nao_vira_traco_e_contado_por_tipo_e_espaco() {
+        let mut doc = Document::new();
+        let mut pilha = CommandStack::new();
+        let zero = doc.layers().default_layer();
+        let oculta = doc.create_layer("Oculta").expect("camada");
+        let layout = doc.create_layout("Prancha A1").expect("layout");
+        let bloco = doc.layouts().get(layout).expect("registro").block();
+        insere(&mut doc, &mut pilha, zero, reta(0.0, 0.0, 1.0, 1.0));
+        insere(&mut doc, &mut pilha, zero, texto("  "));
+        for (camada, g) in [
+            (zero, janela()),
+            (zero, janela()),
+            (oculta, janela()),
+            (zero, reta(5.0, 5.0, 6.0, 5.0)),
+        ] {
+            pilha
+                .edit(&mut doc, "Inserir", |editor| {
+                    editor.insert_entity(Entity::new(camada, g), bloco)
+                })
+                .expect("insere no papel");
+        }
+        let mut registro = doc.layers().get(oculta).expect("registro").clone();
+        registro.set_off(true);
+        pilha
+            .edit(&mut doc, "Desligar", |editor| {
+                editor.set_layer_record(oculta, registro)
+            })
+            .expect("desliga");
+
+        let mut tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("erro válido");
+
+        assert_eq!(
+            tela.refused(&doc, MODEL_LAYOUT_NAME),
+            Some(vec![("TEXT".to_owned(), 1)])
+        );
+        // A janela em camada desligada não seria vista de qualquer jeito.
+        assert_eq!(
+            tela.refused(&doc, "Prancha A1"),
+            Some(vec![("VIEWPORT".to_owned(), 2)])
+        );
+        assert_eq!(tela.refused(&doc, "Inexistente"), None);
+
+        // Apagar a recusada tira a contagem; a edição é acompanhada.
+        let vazio = doc
+            .entities_in_block(
+                doc.layouts()
+                    .get(doc.layouts().model_layout())
+                    .expect("modelo")
+                    .block(),
+            )
+            .find(|(_, e)| matches!(e.geometry, Geometry::Text(_)))
+            .map(|(id, _)| id)
+            .expect("texto vazio");
+        pilha
+            .edit(&mut doc, "Apagar", |editor| editor.remove_entity(vazio))
+            .expect("apaga");
+        tela.update(&doc, pilha.revision(), pilha.last_effect());
+        assert_eq!(tela.refused(&doc, MODEL_LAYOUT_NAME), Some(vec![]));
     }
 
     #[test]

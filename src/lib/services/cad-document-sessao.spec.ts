@@ -59,6 +59,7 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		prepareScreen: () => undefined,
 		screenSpaces: () => [],
 		screenEntityTypes: () => [],
+		screenRefused: () => [],
 		screenOrigin: () => new Float64Array([0, 0]),
 		screenExtents: () => new Float64Array(),
 		screenEntityCount: () => 0,
@@ -532,6 +533,25 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 		const doc = documentoSobre(sessaoFalsa({ screenEntityTypes: vi.fn(() => ['LINE', 'TEXT']) }));
 
 		expect(doc.getScreenEntityTypes()).toEqual(['LINE', 'TEXT']);
+	});
+
+	it('as entidades que a tela não desenha vêm do kernel, por espaço', () => {
+		const sessao = sessaoFalsa({
+			screenRefused: vi.fn(() => [{ entityType: 'VIEWPORT', count: 2 }])
+		});
+
+		expect(documentoSobre(sessao).getScreenRefused('Prancha A1')).toEqual([
+			{ entityType: 'VIEWPORT', count: 2 }
+		]);
+		expect(sessao.screenRefused).toHaveBeenCalledWith('Prancha A1');
+	});
+
+	it('contagem de não desenhadas sem número é erro de contrato', () => {
+		const doc = documentoSobre(
+			sessaoFalsa({ screenRefused: vi.fn(() => [{ entityType: 'VIEWPORT' }]) })
+		);
+
+		expect(() => doc.getScreenRefused('Model')).toThrow(CadKernelContractError);
 	});
 
 	it('tipo que não é texto é erro de contrato', () => {

@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       interseção, paralela e transformação.
 - [ ] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
       sai a barra do upstream (V5) — bloqueado por MT-KV-14: sem ele, nenhum comando de desenho.
-- [ ] [MT-KV-13c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13c-aviso-das-entidades-que-a-tela-não-exibe-v6) —
-      aviso das entidades não exibidas (V6).
 - [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
       V4, V5b, V7 — depende do MT-UI-04.
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
@@ -58,6 +56,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-13c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13c-aviso-das-entidades-que-a-tela-não-exibe-v6) —
+      aviso das entidades não exibidas (V6).
 - [x] [MT-KV-13a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13a-upstream-desenha-só-o-não-modelado-abaixo-da-tela-e-na-mesma-vista) —
       upstream só com o não modelado, abaixo da tela e na mesma vista.
 - [x] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —

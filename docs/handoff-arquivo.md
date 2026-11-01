@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-01: upstream por baixo](#rodada-de-2026-11-01-upstream-por-baixo) — MT-KV-13a
 - [Rodada de 2026-11-01: texto na tela](#rodada-de-2026-11-01-texto-na-tela) — MT-KV-11
 - [Rodada de 2026-11-01: a tela acompanha a edição](#rodada-de-2026-11-01-a-tela-acompanha-a-edição) —
   MT-KV-12: sonda, `data-caixa`, V2, V3 e N2.
@@ -25,6 +26,18 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-01: upstream por baixo
+
+Commit `94c0630`.
+
+- **MT-KV-13a:** com o DXF lido pelo kernel, o upstream desenha por baixo só os tipos que a
+  tela própria não desenha (SOLID, HATCH, INSERT, MTEXT…). O kernel informa a lista
+  (`CadDocument.getScreenEntityTypes`); o adaptador filtra só durante a abertura, então o
+  que a barra do upstream desenhar continua aparecendo. A tela própria fica transparente
+  no espaço-modelo e a vista do upstream segue pan e zoom; nos layouts, ela fica opaca.
+- Provado no e2e com `with-unsupported.dxf` (visto falhar antes) e conferido em captura.
+  RTX 3070, 100 mil entidades: N1 2,88 s, N2 12,3 ms, N3 16,7 ms. `.wasm` 480 097 bytes.
 
 ## Rodada de 2026-11-01: texto na tela
 

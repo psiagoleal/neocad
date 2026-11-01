@@ -313,3 +313,22 @@ test('o upstream desenha só o que o kernel não modela, na mesma vista (MT-KV-1
 	await expect.poll(async () => (await lerVista(tela)).texto).not.toBe(antes);
 	await expect.poll(() => diferencaDeVistas(page)).toBeLessThanOrEqual(0.5);
 });
+
+test('a área de mensagens avisa o que a tela não exibe (V6)', async ({ page }) => {
+	test.setTimeout(60_000);
+	await abrirSoPeloKernel(page, path.join(process.cwd(), 'e2e/fixtures/with-viewport.dxf'));
+
+	const tela = telaDoKernel(page);
+	await expect(tela).toHaveAttribute('data-entidades', '2', { timeout: 30_000 });
+	const aviso = page.getByText('A tela não exibe 1 entidade(s) de Prancha A1: 1 VIEWPORT.');
+	// O espaço-modelo não tem nada recusado: nenhum aviso ainda.
+	await expect(page.getByText(/^A tela não exibe/)).toHaveCount(0);
+
+	await page
+		.getByRole('tablist', { name: 'Espaços do desenho' })
+		.getByRole('tab', { name: 'Prancha A1' })
+		.click();
+	// A janela não vira traço; as duas linhas da prancha, sim.
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+	await expect(aviso).toHaveCount(1);
+});

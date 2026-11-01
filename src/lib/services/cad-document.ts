@@ -108,6 +108,7 @@ export interface CadKernelSession {
 	prepareScreen(chordError: number): void;
 	screenSpaces(): string[];
 	screenEntityTypes(): string[];
+	screenRefused(space: string): unknown;
 	screenOrigin(space: string): ArrayLike<number>;
 	screenExtents(space: string): ArrayLike<number>;
 	screenEntityCount(space: string): number;
@@ -350,21 +351,23 @@ export function toCadDxfOpenReport(raw: unknown, context = 'abertura DXF'): CadD
 	};
 }
 
+/** Converte uma lista de tipo e quantidade vinda do kernel. */
+export function toCadUnsupportedCounts(raw: unknown, context: string): CadUnsupportedCount[] {
+	return asArray(raw, context).map((item, index) => {
+		const entry = asRecord(item, `${context}[${index}]`);
+
+		return {
+			entityType: asString(entry.entityType, `${context}[${index}].entityType`),
+			count: asNumber(entry.count, `${context}[${index}].count`)
+		};
+	});
+}
+
 /** Converte o relatório de perda de gravação vindo do kernel. */
 export function toCadSaveLoss(raw: unknown, context = 'perda de gravação'): CadSaveLoss {
 	const record = asRecord(raw, context);
 
-	const unsupported: CadUnsupportedCount[] = asArray(
-		record.unsupported,
-		`${context}.unsupported`
-	).map((item, index) => {
-		const entry = asRecord(item, `${context}.unsupported[${index}]`);
-
-		return {
-			entityType: asString(entry.entityType, `${context}.unsupported[${index}].entityType`),
-			count: asNumber(entry.count, `${context}.unsupported[${index}].count`)
-		};
-	});
+	const unsupported = toCadUnsupportedCounts(record.unsupported, `${context}.unsupported`);
 
 	const paperSpace: CadPaperSpaceLayout[] = asArray(record.paperSpace, `${context}.paperSpace`).map(
 		(item, index) => {
@@ -1051,6 +1054,13 @@ export class CadDocument {
 			asArray(this.session.screenEntityTypes(), 'tipos da tela').map((tipo, index) =>
 				asString(tipo, `tipos da tela[${index}]`)
 			)
+		);
+	}
+
+	/** Entidades do espaço, em camada visível, que a tela não desenha, por tipo (V6). */
+	getScreenRefused(space: string): CadUnsupportedCount[] {
+		return this.call(() =>
+			toCadUnsupportedCounts(this.session.screenRefused(space), 'não desenhadas da tela')
 		);
 	}
 

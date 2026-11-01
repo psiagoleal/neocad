@@ -48,7 +48,7 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 | V4  | QUANDO uma linha é desenhada por comando e o arquivo é salvo e reaberto, a linha DEVE estar no arquivo.                                                                                  | `pnpm test:e2e -- kernel-view` — falha hoje (achado C4) e fica `test.fail()` até KV fechar                                       |
 | V5  | Todo comando que edite o desenho DEVE fazê-lo pelo kernel; comando de edição que não passe pelo kernel NÃO DEVE aparecer no catálogo de comandos.                                        | `pnpm test -- cad-command-catalog`                                                                                               |
 | V5b | SE o kernel recusa uma edição pedida por comando, ENTÃO a tela NÃO DEVE mudar e uma mensagem em português, com o motivo da recusa, DEVE aparecer na área de mensagens.                   | `pnpm test:e2e -- kernel-view` (a criar)                                                                                         |
-| V6  | SE o caminho de exibição recusa uma entidade do kernel, ENTÃO a área de mensagens DEVE informar o tipo e a quantidade das entidades não exibidas; V1 vale para todas as demais.          | teste de unidade do adaptador de exibição com entidade recusada simulada, conferindo a mensagem emitida (a criar)                |
+| V6  | SE o caminho de exibição recusa uma entidade do kernel, ENTÃO a área de mensagens DEVE informar o tipo e a quantidade das entidades não exibidas; V1 vale para todas as demais.          | `pnpm test -- tela-do-kernel` (recusa simulada, mensagem emitida) e `pnpm test:e2e -- kernel-view` com `with-viewport.dxf`       |
 | V7  | QUANDO o usuário pede uma edição sobre entidade que o kernel não modela, a edição DEVE ser recusada com a mensagem "entidade ainda não editável" e o tipo dela, sem alterar o documento. | `pnpm test:e2e -- kernel-view` com fixture `with-unsupported.dxf` (a criar)                                                      |
 
 ## O que os testes observam na tela
@@ -73,6 +73,11 @@ zoom; nos layouts, a tela própria fica opaca. O contêiner do upstream tem
 `data-tela="upstream"`, com `data-entidades` (quantas entidades o upstream recebeu na
 última abertura) e `data-vista` (centro e escala medidos na vista dele, no formato da
 tela própria).
+
+A tela própria não desenha a janela de layout (`VIEWPORT`), que é moldura de outra vista,
+nem o texto sem traço nenhum. Ao mostrar um espaço que tenha entidades assim em camada
+visível, e de novo se uma edição mudar a contagem, a área de mensagens recebe "A tela não
+exibe N entidade(s) de <espaço>: <quantidade> <tipo>, …" (V6).
 
 Edição pelo serviço, para V2 e N2, enquanto não há linha de comando própria (spec 08):
 no build feito com `VITE_NEOCAD_SONDA=1`, a página expõe `window.__neocadSonda` com

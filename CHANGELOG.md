@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Warning for what the kernel screen does not show (MT-KV-13c, spec 07 V6) — layout viewports and blank texts are counted per space and type; showing a space that has them, or an edit that changes the count, posts "A tela não exibe N entidade(s) de <space>: …" to the messages area.
+
 - One picture from two renderers (MT-KV-13a) — on a DXF read by the kernel, the upstream viewer now draws only the entity types the kernel screen does not (`CadDocument.getScreenEntityTypes`), underneath it; the kernel screen is transparent in model space and the upstream view follows its pan and zoom, so unsupported entities (SOLID, HATCH, INSERT, …) stay visible without being drawn twice.
 
 - Text on the kernel screen (MT-KV-11, ADR 0010) — TEXT entities are drawn with the embedded Hershey Roman Simplex stroke font, including Portuguese accents and the `%%d`, `%%p`, `%%c` codes; no download needed.

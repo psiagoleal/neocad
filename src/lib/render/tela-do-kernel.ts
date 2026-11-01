@@ -75,6 +75,9 @@ export class TelaDoKernel {
 	private pedido = 0;
 	private escuro: boolean;
 	private arrasto: { x: number; y: number; id: number } | null = null;
+	private aviso: ((mensagem: string) => void) | null = null;
+	/** Último aviso de não exibidas dado por espaço, para não repetir. */
+	private readonly avisados = new Map<string, string>();
 	/** Quem desenha por baixo o que o kernel não modela (o upstream) e segue a vista. */
 	private aoMudarVista: AoMudarVista | null = null;
 	private readonly observador: ResizeObserver | null;
@@ -117,6 +120,7 @@ export class TelaDoKernel {
 	/** Prepara e mostra o documento, começando pelo espaço-modelo. */
 	mostrar(documento: CadDocument): void {
 		this.documento = documento;
+		this.avisados.clear();
 		documento.prepareScreen(erroDeCorda(documento.getBounds()));
 		this.espacos = documento.getScreenSpaces();
 		this.mostrarEspaco(this.espacos[0] ?? '');
@@ -133,6 +137,7 @@ export class TelaDoKernel {
 		this.carregarCamadas(documento.getScreenLayers(espaco));
 		this.enquadrar();
 		this.aoMudarEspacos?.(this.espacos, espaco);
+		this.avisarNaoExibidas();
 	}
 
 	/** Enquadra o espaço corrente inteiro. */
@@ -168,6 +173,7 @@ export class TelaDoKernel {
 		}
 		this.entidades = documento.getScreenEntityCount(this.espaco);
 		this.caixa = this.caixaDoEspaco();
+		this.avisarNaoExibidas();
 		this.pedirQuadro();
 	}
 
@@ -180,6 +186,11 @@ export class TelaDoKernel {
 	sobrepor(aoMudarVista: AoMudarVista | null): void {
 		this.aoMudarVista = aoMudarVista;
 		this.pedirQuadro();
+	}
+
+	/** Para onde vai o aviso das entidades que a tela não exibe (spec 07, V6). */
+	avisarCom(aviso: (mensagem: string) => void): void {
+		this.aviso = aviso;
 	}
 
 	/** Troca o fundo; a cor 7 acompanha (branca no escuro, preta no claro). */
@@ -199,6 +210,29 @@ export class TelaDoKernel {
 		for (const soltar of this.soltar) soltar();
 		this.desenhista.destruir();
 		this.documento = null;
+	}
+
+	/**
+	 * Avisa as entidades do espaço que a tela não exibe (V6), uma vez por
+	 * contagem: o mesmo aviso não se repete ao voltar ao espaço, e uma edição que
+	 * muda a contagem avisa de novo.
+	 */
+	private avisarNaoExibidas(): void {
+		const documento = this.documento;
+		if (documento == null || this.aviso == null) return;
+
+		const recusadas = documento.getScreenRefused(this.espaco);
+		const total = recusadas.reduce((soma, { count }) => soma + count, 0);
+		const mensagem =
+			total === 0
+				? ''
+				: `A tela não exibe ${total} entidade(s) de ${this.espaco}: ` +
+					recusadas.map(({ entityType, count }) => `${count} ${entityType}`).join(', ') +
+					'.';
+
+		if (this.avisados.get(this.espaco) === mensagem) return;
+		this.avisados.set(this.espaco, mensagem);
+		if (mensagem !== '') this.aviso(mensagem);
 	}
 
 	// -- blocos ----------------------------------------------------------------

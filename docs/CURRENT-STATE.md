@@ -13,22 +13,21 @@
 - **Data:** 2026-11-01
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `94c0630` (MT-KV-13a); antes, `607604c` (MT-KV-11)
+- **Commit:** ver `git log` (MT-KV-13c); antes, `94c0630` (MT-KV-13a)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
 
 ## Metas cumpridas neste turno
 
-- **MT-KV-13a:** com o DXF lido pelo kernel, o upstream desenha por baixo só os tipos que a
-  tela própria não desenha (SOLID, HATCH, INSERT, MTEXT…). O kernel informa a lista
-  (`CadDocument.getScreenEntityTypes`); o adaptador filtra só durante a abertura, então o
-  que a barra do upstream desenhar continua aparecendo. A tela própria fica transparente
-  no espaço-modelo e a vista do upstream segue pan e zoom; nos layouts, ela fica opaca.
-- Provado no e2e com `with-unsupported.dxf` (visto falhar antes) e conferido em captura.
-  RTX 3070, 100 mil entidades: N1 2,88 s, N2 12,3 ms, N3 16,7 ms. `.wasm` 480 097 bytes.
-- A rodada anterior (MT-KV-11) está no
-  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-texto-na-tela).
+- **MT-KV-13c (V6):** a tela do kernel conta, por espaço e tipo, o que não vira traço (hoje
+  a janela de layout e o texto vazio, em camada visível) e avisa a área de mensagens ao
+  mostrar o espaço e quando uma edição muda a contagem. Fixture nova `with-viewport.dxf`.
+- O `.wasm` foi a 485 816 bytes (+5 719). A primeira versão somava 14 914; o custo vinha
+  de dois mapas de tipo novo, e reaproveitar o mapa da tela resolveu. N1 2,83 s, N2
+  12,2 ms, N3 16,7 ms.
+- A rodada anterior (MT-KV-13a) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-upstream-por-baixo).
 
 ## O que mudou de rumo
 
@@ -45,10 +44,9 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-13c (V6): aviso das entidades que a tela não exibe.
-2. MT-KV-14 (comandos digitados no kernel, fecha o V4) e só então MT-KV-13b (sai a barra
-   do upstream).
-3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
+1. MT-KV-14 (comandos digitados no kernel, fecha o V4; depende do MT-UI-04) e só então
+   MT-KV-13b (sai a barra do upstream).
+2. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos
 

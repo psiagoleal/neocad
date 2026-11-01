@@ -1836,6 +1836,17 @@ impl CadSession {
         self.try_screen_block(space, layer).map_err(js_error)
     }
 
+    /// Entidades do espaço, em camada visível, que a tela não desenha, por tipo
+    /// DXF (spec 07, V6).
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenRefused)]
+    pub fn screen_refused(&self, space: &str) -> Result<JsValue, JsError> {
+        to_js(&self.try_screen_refused(space).map_err(js_error)?)
+    }
+
     /// Acompanha as operações feitas desde a última chamada e diz quais blocos
     /// mudaram.
     ///
@@ -1928,6 +1939,18 @@ impl CadSession {
         screen
             .block(space, layer)
             .ok_or_else(|| unknown_space(space))
+    }
+
+    fn try_screen_refused(&self, space: &str) -> Result<Vec<UnsupportedView>, String> {
+        let refused = self
+            .screen()?
+            .refused(&self.document, space)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(refused
+            .into_iter()
+            .map(|(entity_type, count)| UnsupportedView { entity_type, count })
+            .collect())
     }
 
     fn try_update_screen(&mut self) -> Result<Vec<ScreenBlockView>, String> {
@@ -3060,11 +3083,32 @@ mod tests {
             s.try_screen_block("Model", &zero).err(),
             s.try_update_screen().err(),
             s.try_screen_query("Model", 0.0, 0.0, 1.0, 1.0).err(),
+            s.try_screen_refused("Model").err(),
         ];
 
         for erro in erros {
             assert_eq!(erro.as_deref(), Some("tela não preparada"));
         }
+    }
+
+    #[test]
+    fn a_janela_de_layout_lida_e_contada_como_nao_desenhada() {
+        let mut s = sessao();
+        s.try_open_dxf(&fixture("with-viewport.dxf")).expect("abre");
+        s.try_prepare_screen(0.01).expect("prepara");
+
+        let papel: Vec<(String, usize)> = s
+            .try_screen_refused("Prancha A1")
+            .expect("espaço existe")
+            .into_iter()
+            .map(|v| (v.entity_type, v.count))
+            .collect();
+        assert_eq!(papel, [("VIEWPORT".to_owned(), 1)]);
+        assert!(s.try_screen_refused("Model").expect("modelo").is_empty());
+        assert_eq!(
+            s.try_screen_refused("Inexistente").err().as_deref(),
+            Some("espaço desconhecido: Inexistente")
+        );
     }
 
     #[test]
