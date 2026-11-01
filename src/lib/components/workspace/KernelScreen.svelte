@@ -65,6 +65,7 @@
 	.kernel-screen {
 		position: absolute;
 		inset: 0;
+		z-index: 1;
 		visibility: hidden;
 		pointer-events: none;
 	}

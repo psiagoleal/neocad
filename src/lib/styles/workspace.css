@@ -168,6 +168,9 @@
 .viewer-container {
 	position: absolute;
 	inset: 0;
+	/* Camada própria: os z-index do upstream (a camada de carregamento usa 9999)
+	   ficam presos aqui dentro e não cobrem a tela do kernel, que vem por cima. */
+	z-index: 0;
 }
 
 .viewer-overlay,

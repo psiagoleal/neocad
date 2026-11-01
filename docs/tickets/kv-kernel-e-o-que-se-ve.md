@@ -145,15 +145,16 @@ verificação por fabricante (15).
   MT-KV-07 passando localmente e o resultado citado no PR.
 - **Fora de escopo:** texto; edição.
 - **Depende de:** MT-KV-07, MT-KV-09.
-- **Andamento (2026-11-01):** `src/lib/render/` (vista, cor, WebGL2, canvas 2D e o
+- **Resultado (2026-11-01):** `src/lib/render/` (vista, cor, WebGL2, canvas 2D e o
   controlador) e `KernelScreen.svelte`; o kernel ganhou `screenExtents` e
   `screenEntityCount`. V1 sem texto (modelo e cada layout, por abas) e N4 provados em
-  `e2e/kernel-view.e2e.ts`; N1 medido em 2,7 s. **Falta N3 na GPU:** o driver da
-  NVIDIA foi atualizado sem reinício (`nvidia-smi`: "Driver/library version
-  mismatch"), e o Chrome cai no WebGL2 em software (SwiftShader), onde o quadro custa
-  ~180 ms. O teste de N3 agora recusa renderizador em software. A reserva sem WebGL2
-  vale só para a tela própria: sem WebGL2 na página, o upstream não monta e a abertura
-  de arquivo não habilita, até o MT-KV-13.
+  `e2e/kernel-view.e2e.ts`. Com Chrome em janela na RTX 3070, 100 mil entidades, três
+  rodadas: N1 3,57 / 3,79 / 4,10 s (meta 5 s); N3 16,7 ms nas três (meta 33,3 ms). A
+  medida achou um defeito: a camada de carregamento do upstream (`z-index: 9999`)
+  cobria a tela própria e engolia o mouse até o upstream terminar; a área do upstream
+  passou a ter camada de empilhamento própria, abaixo da tela. O teste de N3 recusa
+  renderizador em software. A reserva sem WebGL2 vale só para a tela própria: sem
+  WebGL2 na página, o upstream não monta e a abertura não habilita, até o MT-KV-13.
 
 ### MT-KV-11: Texto do kernel na tela
 

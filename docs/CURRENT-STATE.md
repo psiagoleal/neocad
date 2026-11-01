@@ -13,7 +13,7 @@
 - **Data:** 2026-11-01
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** o deste turno (MT-KV-10, em andamento); antes, `8610d47` (MT-KV-16)
+- **Commit:** o deste turno (MT-KV-10 fechado); antes, `98a2626` (MT-KV-10, tela)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
@@ -29,19 +29,15 @@
 size:check`) e pelo build do kernel. Testes em `scripts/size-budget.spec.mjs` (o
   Vitest agora inclui `scripts/**/*.spec.mjs`); visto falhar no build real com o
   registro abaixo da medida e com o teto um byte abaixo do `.wasm`.
-- **MT-KV-10 (em andamento):** a tela própria desenha o DXF lido pelo kernel.
-  `src/lib/render/` traz a vista (pan, zoom no cursor, enquadrar), a cor da camada
-  (paleta de índice calculada), o desenhista WebGL2, a reserva em canvas 2D e o
-  controlador; `KernelScreen.svelte` põe o canvas e as abas dos espaços sobre a área do
-  upstream. O kernel ganhou `screenExtents` e `screenEntityCount` (`.wasm` 464 723
-  bytes). Provados: V1 sem texto no modelo e em cada layout, N4 (reserva) e N1 (2,7 s
-  com 100 mil entidades).
-- **N3 não pôde ser medido na GPU.** Causa: o driver da NVIDIA foi atualizado (biblioteca
-  595.99) sem reiniciar a máquina; `nvidia-smi` responde "Driver/library version
-  mismatch". Sem a GPU, o Chrome usa WebGL2 em software (SwiftShader), e o quadro custa
-  ~180 ms; com `--ignore-gpu-blocklist`, o processo de GPU cai três vezes e o WebGL some.
-  Perfil de CPU confirmou: o tempo é nativo do navegador, não do código da tela. O
-  teste de N3 passou a recusar renderizador em software.
+- **MT-KV-10** (`98a2626` e o deste turno): a tela própria desenha o DXF lido pelo
+  kernel, em WebGL2 ou canvas 2D, com pan, zoom, enquadrar e uma aba por espaço. Depois
+  do reinício (driver NVIDIA), medido em janela na RTX 3070, 100 mil entidades, três
+  rodadas: N1 mediana 3,79 s (máx. 4,10 s; meta 5 s), N3 16,7 ms (meta 33,3 ms).
+- A medida achou um defeito: a camada de carregamento do upstream (`z-index: 9999`)
+  cobria a tela própria e engolia o mouse enquanto o upstream carregava. A área do
+  upstream ganhou camada de empilhamento própria (`z-index: 0`), abaixo da tela.
+- As falhas do run do mantenedor eram de ambiente: o shell não tinha `$DISPLAY`, e o
+  Chrome em janela não abriu ("Missing X server or $DISPLAY").
 - A rodada anterior (MT-KV-09, ADR 0008) está no
   [arquivo](handoff-arquivo.md#rodada-de-2026-10-31-camada-da-gpu).
 
@@ -56,14 +52,13 @@ size:check`) e pelo build do kernel. Testes em `scripts/size-budget.spec.mjs` (o
 
 ## Em andamento
 
-- MT-KV-10: falta medir N3 na GPU, depois de reiniciar a máquina.
+- Nada em andamento.
 
 ## Próximo passo sugerido
 
-1. Mantenedor: reiniciar a máquina (driver NVIDIA). Então
-   `NEOCAD_SINTETICO_N=100000 npx playwright test desempenho -g "N1|N3" --headed` e,
-   com N3 verde, fechar o MT-KV-10.
-2. MT-KV-12 (sonda, N2, refletir edição) ou MT-KV-11 (texto), que não dependem da GPU.
+1. MT-KV-12: sonda, refletir edição e N2 (o N1 tem só ~1 s de folga; o MT-KV-12 não
+   deve pesar na abertura).
+2. MT-KV-11: texto do kernel na tela.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos
@@ -75,8 +70,6 @@ size:check`) e pelo build do kernel. Testes em `scripts/size-budget.spec.mjs` (o
 
 - O gateway só responde com a rede da empresa ou a VPN; fora dela, a delegação cai para
   subagente (como na parte Rust do MT-K3-12).
-- **GPU desta máquina indisponível até reiniciar** (driver NVIDIA atualizado sem
-  reinício). Bloqueia só a medida de N3.
 - A reserva em canvas 2D vale para a tela própria; num navegador sem WebGL2 o upstream
   não monta e a abertura de arquivo fica desabilitada, até o MT-KV-13.
 - O erro de corda é um só para todos os espaços (lado do modelo / 4096); num desenho

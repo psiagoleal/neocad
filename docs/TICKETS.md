@@ -33,8 +33,6 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [>] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) — falta
-  N3 na GPU (driver NVIDIA pede reinício); V1 sem texto, N1 e N4 feitos.
 - [ ] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
       V1 completo.
 - [ ] [MT-KV-12](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-12-refletir-edição-desfazer-e-refazer) —
@@ -58,6 +56,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) —
+      tela própria em WebGL2 e canvas 2D; N1 3,8 s, N3 16,7 ms na RTX 3070.
 - [x] [MT-QP-08](tickets/qp-provas-das-specs.md#mt-qp-08-limite-de-tamanho-do-wasm-06-w5) —
       entregue pelo MT-KV-16; vista a falha com o teto abaixo da medida.
 - [x] [MT-KV-16](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-16-aplicar-o-orçamento-de-tamanho-adr-0009) —
