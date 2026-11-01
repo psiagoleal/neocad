@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- The kernel screen follows edits (MT-KV-12) — creating, moving or erasing an entity, and Edit › Undo/Redo, update only the blocks that changed; with 100 000 entities a new line shows in about 12 ms. Test builds carry an editing probe (`VITE_NEOCAD_SONDA=1`) that production builds leave out.
+
 - Drawing drawn by the kernel (MT-KV-10) — a DXF read by the kernel now shows on its own screen: WebGL2 when the browser offers it, canvas 2D otherwise; middle-button pan, wheel zoom, Fit, background toggle, undo/redo reflected, and one tab per space (model and each layout). Text is not drawn yet (MT-KV-11). With 100 000 entities on an RTX 3070: open in about 3.8 s, pan and zoom at the monitor rate (16.7 ms per frame).
 
 - Size budget enforced by the build (ADR 0009, MT-KV-16) — `pnpm build` fails when the kernel `.wasm` passes 600 000 bytes or the whole `build/` passes the recorded total plus 256 KiB; the numbers live in `scripts/size-budget.json`, and the record goes down as upstream parts leave.

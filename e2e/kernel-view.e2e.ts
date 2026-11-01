@@ -174,3 +174,82 @@ test('sem WebGL2, a tela cai sozinha no canvas 2D (N4)', async ({ page }) => {
 		.poll(async () => Number(await tela.getAttribute('data-quadros')))
 		.toBeGreaterThan(antes);
 });
+
+/** O que a página expõe aos testes no build com `VITE_NEOCAD_SONDA=1` (spec 07). */
+type JanelaComSonda = {
+	__neocadSonda?: {
+		desenharLinha(x1: number, y1: number, x2: number, y2: number): string;
+		mover(ids: string[], dx: number, dy: number): void;
+		apagar(id: string): void;
+	};
+};
+
+/** Abre a fixture e confere que a sonda existe, para a falha não se confundir com outra. */
+async function abrirComSonda(page: Page) {
+	await abrirSoPeloKernel(page, FIXTURE);
+	const tela = telaDoKernel(page);
+	await expect(tela).toHaveAttribute('data-entidades', '2', { timeout: 30_000 });
+
+	const temSonda = await page.evaluate(
+		() => (window as unknown as JanelaComSonda).__neocadSonda !== undefined
+	);
+	expect(temSonda, 'build sem VITE_NEOCAD_SONDA=1').toBe(true);
+	return tela;
+}
+
+/** Desfaz ou refaz pelo menu Editar, como o usuário. */
+async function peloMenuEditar(page: Page, acao: 'Desfazer' | 'Refazer'): Promise<void> {
+	await page.getByRole('button', { name: 'Editar' }).click();
+	await page.getByRole('button', { name: new RegExp(`^${acao}`) }).click();
+}
+
+test('criar, mover e apagar uma linha reflete na tela sem reabrir (V2)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const tela = await abrirComSonda(page);
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 100 100');
+
+	const id = await page.evaluate(() =>
+		(window as unknown as JanelaComSonda).__neocadSonda!.desenharLinha(200, 0, 300, 50)
+	);
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 300 100');
+
+	await page.evaluate(
+		(linha) => (window as unknown as JanelaComSonda).__neocadSonda!.mover([linha], 0, 100),
+		id
+	);
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 300 150');
+
+	await page.evaluate(
+		(linha) => (window as unknown as JanelaComSonda).__neocadSonda!.apagar(linha),
+		id
+	);
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 100 100');
+});
+
+test('desfazer e refazer pelo menu Editar refletem na tela (V3)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const tela = await abrirComSonda(page);
+
+	await page.evaluate(() => {
+		const sonda = (window as unknown as JanelaComSonda).__neocadSonda!;
+		const id = sonda.desenharLinha(200, 0, 300, 50);
+		sonda.mover([id], 0, 100);
+	});
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 300 150');
+
+	await peloMenuEditar(page, 'Desfazer');
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 300 100');
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+
+	await peloMenuEditar(page, 'Desfazer');
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 100 100');
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+
+	await peloMenuEditar(page, 'Refazer');
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 300 100');
+});

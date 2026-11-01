@@ -174,6 +174,13 @@ verificação por fabricante (15).
 - **Critério de aceite:** spec 07, V2 e V3; spec 00, N2, pelo MT-KV-07.
 - **Fora de escopo:** comandos digitados.
 - **Depende de:** MT-KV-10.
+- **Resultado (2026-11-01):** a tela já buscava só os blocos que `updateScreen` aponta;
+  faltavam a sonda (`src/lib/services/sonda.ts`, ligada em `+page.svelte` e sempre
+  presente no build dos testes E2E) e o atributo `data-caixa`. V2 e V3 provados em
+  `e2e/kernel-view.e2e.ts`; a sonda fica fora do build de produção (conferido em
+  `build/`). N2 com Chrome em janela na RTX 3070, 100 mil entidades: 11,3 / 14,3 /
+  11,2 ms (meta 100 ms). O escopo passou de `src/lib/render/` para incluir a sonda, a
+  página e `playwright.config.ts`.
 
 ### MT-KV-13: Upstream só para o que o kernel não modela
 

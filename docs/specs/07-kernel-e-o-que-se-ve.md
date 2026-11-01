@@ -40,22 +40,23 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 
 ## Critérios de aceite (EARS)
 
-| id  | critério                                                                                                                                                                                 | prova                                                                                                                                      |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| V1  | QUANDO um desenho é aberto, a tela DEVE exibir as entidades do kernel, com a mesma contagem por tipo e por camada, no espaço-modelo e em cada layout.                                    | `pnpm test:e2e -- kernel-document` (estender)                                                                                              |
-| V2  | QUANDO o kernel cria, altera ou remove uma entidade, a tela DEVE refletir a mudança sem reabrir o arquivo.                                                                               | `pnpm test:e2e -- kernel-view` (a criar): criar, mover e apagar uma linha pelo serviço e conferir a contagem e a caixa envolvente exibidas |
-| V3  | QUANDO o usuário desfaz ou refaz pelo menu `Editar`, a tela DEVE refletir o estado do kernel.                                                                                            | `pnpm test:e2e -- kernel-view` (a criar)                                                                                                   |
-| V4  | QUANDO uma linha é desenhada por comando e o arquivo é salvo e reaberto, a linha DEVE estar no arquivo.                                                                                  | `pnpm test:e2e -- kernel-view` — falha hoje (achado C4) e fica `test.fail()` até KV fechar                                                 |
-| V5  | Todo comando que edite o desenho DEVE fazê-lo pelo kernel; comando de edição que não passe pelo kernel NÃO DEVE aparecer no catálogo de comandos.                                        | `pnpm test -- cad-command-catalog`                                                                                                         |
-| V5b | SE o kernel recusa uma edição pedida por comando, ENTÃO a tela NÃO DEVE mudar e uma mensagem em português, com o motivo da recusa, DEVE aparecer na área de mensagens.                   | `pnpm test:e2e -- kernel-view` (a criar)                                                                                                   |
-| V6  | SE o caminho de exibição recusa uma entidade do kernel, ENTÃO a área de mensagens DEVE informar o tipo e a quantidade das entidades não exibidas; V1 vale para todas as demais.          | teste de unidade do adaptador de exibição com entidade recusada simulada, conferindo a mensagem emitida (a criar)                          |
-| V7  | QUANDO o usuário pede uma edição sobre entidade que o kernel não modela, a edição DEVE ser recusada com a mensagem "entidade ainda não editável" e o tipo dela, sem alterar o documento. | `pnpm test:e2e -- kernel-view` com fixture `with-unsupported.dxf` (a criar)                                                                |
+| id  | critério                                                                                                                                                                                 | prova                                                                                                                            |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| V1  | QUANDO um desenho é aberto, a tela DEVE exibir as entidades do kernel, com a mesma contagem por tipo e por camada, no espaço-modelo e em cada layout.                                    | `pnpm test:e2e -- kernel-document` (estender)                                                                                    |
+| V2  | QUANDO o kernel cria, altera ou remove uma entidade, a tela DEVE refletir a mudança sem reabrir o arquivo.                                                                               | `pnpm test:e2e -- kernel-view`: criar, mover e apagar uma linha pelo serviço e conferir a contagem e a caixa envolvente exibidas |
+| V3  | QUANDO o usuário desfaz ou refaz pelo menu `Editar`, a tela DEVE refletir o estado do kernel.                                                                                            | `pnpm test:e2e -- kernel-view`                                                                                                   |
+| V4  | QUANDO uma linha é desenhada por comando e o arquivo é salvo e reaberto, a linha DEVE estar no arquivo.                                                                                  | `pnpm test:e2e -- kernel-view` — falha hoje (achado C4) e fica `test.fail()` até KV fechar                                       |
+| V5  | Todo comando que edite o desenho DEVE fazê-lo pelo kernel; comando de edição que não passe pelo kernel NÃO DEVE aparecer no catálogo de comandos.                                        | `pnpm test -- cad-command-catalog`                                                                                               |
+| V5b | SE o kernel recusa uma edição pedida por comando, ENTÃO a tela NÃO DEVE mudar e uma mensagem em português, com o motivo da recusa, DEVE aparecer na área de mensagens.                   | `pnpm test:e2e -- kernel-view` (a criar)                                                                                         |
+| V6  | SE o caminho de exibição recusa uma entidade do kernel, ENTÃO a área de mensagens DEVE informar o tipo e a quantidade das entidades não exibidas; V1 vale para todas as demais.          | teste de unidade do adaptador de exibição com entidade recusada simulada, conferindo a mensagem emitida (a criar)                |
+| V7  | QUANDO o usuário pede uma edição sobre entidade que o kernel não modela, a edição DEVE ser recusada com a mensagem "entidade ainda não editável" e o tipo dela, sem alterar o documento. | `pnpm test:e2e -- kernel-view` com fixture `with-unsupported.dxf` (a criar)                                                      |
 
 ## O que os testes observam na tela
 
 A tela própria é um `canvas` com `data-tela="kernel"` que expõe, como atributos, o que
 desenhou no último quadro: `data-caminho` (`webgl2` ou `canvas2d`), `data-espaco` (o
-nome do espaço mostrado: `Model` ou o do layout), `data-entidades` (quantas entidades do
+nome do espaço mostrado: `Model` ou o do layout), `data-caixa` (a caixa envolvente do
+espaço no kernel, `minX minY maxX maxY`, vazia sem entidades), `data-entidades` (quantas entidades do
 espaço corrente estão na tela: as que têm traço em camada visível) e `data-quadros`
 (quantos quadros desenhou desde a abertura). Pan é o arrasto com o botão do meio; zoom,
 a roda do mouse. Com mais de um espaço, uma lista de abas (`role="tablist"`, nome
@@ -67,8 +68,10 @@ desenho do upstream.
 
 Edição pelo serviço, para V2 e N2, enquanto não há linha de comando própria (spec 08):
 no build feito com `VITE_NEOCAD_SONDA=1`, a página expõe `window.__neocadSonda` com
-`desenharLinha(x1, y1, x2, y2)`, que chama `CadDocument.drawLine` na camada corrente e
-devolve o id. Sem essa variável, a sonda não existe.
+`desenharLinha(x1, y1, x2, y2)`, que chama `CadDocument.drawLine` na camada `0` (ou na
+primeira, se não houver `0`) e devolve o id; `mover(ids, dx, dy)`; e `apagar(id)`. Cada
+uma é uma ação desfazível, como as do menu. O build dos testes de ponta a ponta sempre
+a traz; sem essa variável, a sonda não existe.
 
 ## Requisitos não-funcionais
 

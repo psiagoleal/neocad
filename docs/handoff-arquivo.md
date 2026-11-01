@@ -8,6 +8,8 @@
 
 ## Índice
 
+- [Rodada de 2026-11-01: orçamento e tela própria](#rodada-de-2026-11-01-orçamento-e-tela-própria) —
+  ADR 0009 aceito, MT-KV-16 e MT-KV-10 (tela em WebGL2 e canvas 2D).
 - [Rodada de 2026-10-31: camada da GPU](#rodada-de-2026-10-31-camada-da-gpu) — MT-KV-09
   (WebGL2 em TypeScript), ADR 0009 proposto e o ADR 0008 aceito.
 - [Rodada de 2026-10-30: KV, prova e medida](#rodada-de-2026-10-30-kv-prova-e-medida) —
@@ -20,6 +22,29 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-01: orçamento e tela própria
+
+- **Último turno:** `9ad5f27` (MT-KV-10 fechado); antes, `98a2626` e `8610d47`.
+
+- **[ADR 0009](adr/0009-orcamento-de-tamanho-do-aplicativo.md) aceito**, com uma revisão
+  antes de implementar: a catraca do total ganhou folga fixa de 256 KiB. Sem ela, o
+  build variava dezenas de bytes entre execuções iguais (carimbo de versão do SvelteKit)
+  e cada ticket de interface exigiria ADR; a folga escolhida foi do mantenedor.
+- **MT-KV-16:** `scripts/size-budget.json` (teto 600 000; registro 12 921 011 + folga
+  262 144) e `scripts/size-budget.mjs`, chamado no fim do `pnpm build` (`pnpm
+size:check`) e pelo build do kernel. Testes em `scripts/size-budget.spec.mjs` (o
+  Vitest agora inclui `scripts/**/*.spec.mjs`); visto falhar no build real com o
+  registro abaixo da medida e com o teto um byte abaixo do `.wasm`.
+- **MT-KV-10** (`98a2626` e `9ad5f27`): a tela própria desenha o DXF lido pelo
+  kernel, em WebGL2 ou canvas 2D, com pan, zoom, enquadrar e uma aba por espaço. Depois
+  do reinício (driver NVIDIA), medido em janela na RTX 3070, 100 mil entidades, três
+  rodadas: N1 mediana 3,79 s (máx. 4,10 s; meta 5 s), N3 16,7 ms (meta 33,3 ms).
+- A medida achou um defeito: a camada de carregamento do upstream (`z-index: 9999`)
+  cobria a tela própria e engolia o mouse enquanto o upstream carregava. A área do
+  upstream ganhou camada de empilhamento própria (`z-index: 0`), abaixo da tela.
+- As falhas do run do mantenedor eram de ambiente: o shell não tinha `$DISPLAY`, e o
+  Chrome em janela não abriu ("Missing X server or $DISPLAY").
 
 ## Rodada de 2026-10-31: camada da GPU
 

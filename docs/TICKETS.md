@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       interseção, paralela e transformação.
 - [ ] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
       V1 completo.
-- [ ] [MT-KV-12](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-12-refletir-edição-desfazer-e-refazer) —
-      V2, V3, N2.
 - [ ] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) —
       V5, V6; sai a barra do upstream.
 - [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
@@ -56,6 +54,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-12](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-12-refletir-edição-desfazer-e-refazer) —
+      a tela acompanha edição, desfazer e refazer; N2 11–14 ms na RTX 3070.
 - [x] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) —
       tela própria em WebGL2 e canvas 2D; N1 3,8 s, N3 16,7 ms na RTX 3070.
 - [x] [MT-QP-08](tickets/qp-provas-das-specs.md#mt-qp-08-limite-de-tamanho-do-wasm-06-w5) —

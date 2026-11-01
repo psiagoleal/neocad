@@ -710,6 +710,19 @@
 	onMount(() => {
 		void refreshRecentDocuments();
 
+		// Só no build dos testes (spec 07); sem a variável, o import some do pacote.
+		if (import.meta.env.VITE_NEOCAD_SONDA === '1') {
+			void import('$lib/services/sonda').then(({ criarSonda }) => {
+				(window as unknown as { __neocadSonda?: unknown }).__neocadSonda = criarSonda({
+					documento: () => kernelDocument,
+					aposEditar: () => {
+						refreshHistory();
+						telaDoKernel?.atualizar();
+					}
+				});
+			});
+		}
+
 		let controller: NeoCadViewer | null = null;
 		let isDisposed = false;
 

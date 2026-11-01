@@ -11,9 +11,10 @@
  * quadros durante pan e zoom (N3). O que se observa na tela está na spec 07,
  * seção "O que os testes observam na tela".
  *
- * Só roda com `NEOCAD_SINTETICO_N`; N2 pede ainda o build com a sonda:
+ * Só roda com `NEOCAD_SINTETICO_N`; N2 usa a sonda, que o build dos testes já traz
+ * (playwright.config.ts):
  *
- *     VITE_NEOCAD_SONDA=1 NEOCAD_SINTETICO_N=100000 pnpm test:e2e -- desempenho
+ *     NEOCAD_SINTETICO_N=100000 pnpm test:e2e -- desempenho
  *
  * O texto só entra na tela no MT-KV-11; até lá, a tela inteira são as
  * entidades do espaço-modelo menos os textos.

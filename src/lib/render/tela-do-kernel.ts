@@ -62,6 +62,8 @@ export class TelaDoKernel {
 	private origem = { x: 0, y: 0 };
 	private vista: Vista;
 	private entidades = 0;
+	/** Caixa do espaço corrente como o atributo a mostra; vazia sem entidades. */
+	private caixa = '';
 	private quadros = 0;
 	private pedido = 0;
 	private escuro: boolean;
@@ -156,6 +158,7 @@ export class TelaDoKernel {
 			}
 		}
 		this.entidades = documento.getScreenEntityCount(this.espaco);
+		this.caixa = this.caixaDoEspaco();
 		this.pedirQuadro();
 	}
 
@@ -212,12 +215,19 @@ export class TelaDoKernel {
 			this.chaves.add(chave);
 		}
 		this.entidades = documento.getScreenEntityCount(this.espaco);
+		this.caixa = this.caixaDoEspaco();
+	}
+
+	private caixaDoEspaco(): string {
+		const caixa = this.documento?.getScreenExtents(this.espaco) ?? null;
+		return caixa == null ? '' : `${caixa.minX} ${caixa.minY} ${caixa.maxX} ${caixa.maxY}`;
 	}
 
 	private limparBlocos(): void {
 		for (const chave of this.chaves) this.desenhista.removerBloco(chave);
 		this.chaves.clear();
 		this.entidades = 0;
+		this.caixa = '';
 	}
 
 	// -- quadro ----------------------------------------------------------------
@@ -244,6 +254,7 @@ export class TelaDoKernel {
 		dados.quadros = String(this.quadros);
 		dados.entidades = String(this.entidades);
 		dados.espaco = this.espaco;
+		dados.caixa = this.caixa;
 	}
 
 	private ajustarArea(): void {
