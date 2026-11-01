@@ -192,13 +192,44 @@ verificação por fabricante (15).
 
 ### MT-KV-13: Upstream só para o que o kernel não modela
 
-- **Objetivo:** o upstream deixa de desenhar entidade modelada, desenha o resto numa
-  camada abaixo, na mesma vista; a barra de comandos e a edição do upstream saem.
-- **Arquivos no escopo:** `src/lib/viewer/neocad-viewer.ts`, `src/routes/+page.svelte`,
-  `src/lib/services/cad-commands.ts`.
-- **Critério de aceite:** spec 07, V5 e V6.
-- **Fora de escopo:** linha de comando própria (spec 08).
+Fatiado em 2026-11-01, ao escrever o aceite: são três objetivos com riscos diferentes, e
+tirar a barra do upstream antes da linha de comando própria (MT-KV-14) deixaria o usuário
+sem nenhum comando de desenho. A API do upstream dá o necessário: `AcTrView2d.removeEntity`
+tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela própria.
+
+### MT-KV-13a: Upstream desenha só o não modelado, abaixo da tela e na mesma vista
+
+- **Objetivo:** com o DXF lido pelo kernel, o upstream tira da cena dele as entidades que
+  o kernel modela e desenha o resto numa camada abaixo da tela própria, que passa a ter
+  fundo transparente; pan e zoom da tela própria movem a vista do upstream junto.
+- **Arquivos no escopo:** `src/lib/viewer/neocad-viewer.ts`,
+  `src/lib/render/tela-do-kernel.ts`, `src/routes/+page.svelte`,
+  `e2e/kernel-view.e2e.ts`.
+- **Critério de aceite:** com `with-unsupported.dxf`, a entidade não modelada aparece e
+  acompanha pan e zoom (conferido pela vista do upstream exposta em atributo); as
+  modeladas não são desenhadas duas vezes; N1 e N3 mantidos.
+- **Fora de escopo:** edição; barra de comandos.
 - **Depende de:** MT-KV-12.
+
+### MT-KV-13b: Barra de comandos e edição do upstream saem (V5)
+
+- **Objetivo:** a barra de comandos e todo comando de edição do upstream deixam de ser
+  oferecidos; o catálogo lista só comando que edita pelo kernel.
+- **Arquivos no escopo:** `src/lib/viewer/neocad-viewer.ts`,
+  `src/lib/services/cad-commands.ts`, `e2e/kernel-view.e2e.ts` (o V4 passa a usar a
+  linha de comando própria).
+- **Critério de aceite:** spec 07, V5 (`pnpm test -- cad-command-catalog`).
+- **Fora de escopo:** linha de comando própria.
+- **Depende de:** MT-KV-14, para o usuário não ficar sem comando de desenho.
+
+### MT-KV-13c: Aviso das entidades que a tela não exibe (V6)
+
+- **Objetivo:** quando o caminho de exibição recusa uma entidade do kernel, a área de
+  mensagens informa o tipo e a quantidade das não exibidas.
+- **Arquivos no escopo:** `src/lib/render/tela-do-kernel.ts`, teste de unidade novo.
+- **Critério de aceite:** spec 07, V6.
+- **Fora de escopo:** desenhar as recusadas.
+- **Depende de:** MT-KV-10.
 
 ### MT-KV-14: Comandos de edição pelo kernel na linha de comando própria
 

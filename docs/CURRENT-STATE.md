@@ -50,8 +50,10 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-13: o upstream só desenha o que o kernel não modela.
-2. MT-KV-14: comandos de edição digitados chegam ao kernel (fecha o V4).
+1. MT-KV-13a: o upstream só desenha o não modelado, abaixo da tela e na mesma vista.
+   Pontos de partida na API dele: `AcTrView2d.removeEntity`, `center`, `zoomTo`.
+2. MT-KV-13c (V6), depois MT-KV-14 (comandos digitados no kernel, fecha o V4) e só então
+   MT-KV-13b (sai a barra do upstream). O MT-KV-13 foi fatiado nesses três.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos

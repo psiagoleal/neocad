@@ -33,8 +33,12 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) —
-      V5, V6; sai a barra do upstream.
+- [ ] [MT-KV-13a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13a-upstream-desenha-só-o-não-modelado-abaixo-da-tela-e-na-mesma-vista) —
+      upstream só com o não modelado, abaixo da tela e na mesma vista.
+- [ ] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
+      sai a barra do upstream (V5) — bloqueado por MT-KV-14: sem ele, nenhum comando de desenho.
+- [ ] [MT-KV-13c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13c-aviso-das-entidades-que-a-tela-não-exibe-v6) —
+      aviso das entidades não exibidas (V6).
 - [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
       V4, V5b, V7 — depende do MT-UI-04.
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
@@ -130,4 +134,6 @@ UI começa pelo que não depende de KV.
 
 ## Abandonados
 
+- [~] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) · motivo:
+fatiado em MT-KV-13a, 13b e 13c.
 <!-- - [~] [MT-0](plano.md#mt-0) — <frase curta> · motivo: <uma frase> -->
