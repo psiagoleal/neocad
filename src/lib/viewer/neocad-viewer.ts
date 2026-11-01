@@ -132,6 +132,62 @@ export function buildLayoutList(source: CadLayoutSource): CadLayout[] {
 	});
 }
 
+/** O que a vista do upstream oferece para ser seguida. Existe para o teste simular. */
+export type VistaDoUpstream = {
+	readonly center: { x: number; y: number };
+	flyTo(point: { x: number; y: number }, scale?: number): void;
+	screenToWorld(point: { x: number; y: number }): { x: number; y: number };
+};
+
+/** Centro em coordenadas do desenho e escala em pixels por unidade. */
+export type AlvoDaVista = { x: number; y: number; escala: number };
+
+/** Pixels de tela usados para medir a escala da vista do upstream. */
+const PASSO_DA_MEDIDA = 100;
+
+/**
+ * Entidades que o upstream ainda precisa desenhar: as que a tela do kernel não
+ * desenha. Entidade sem tipo legível fica com o upstream, para não sumir.
+ */
+export function paraOUpstream<T>(entidades: T[], tiposDoKernel: ReadonlySet<string>): T[] {
+	if (tiposDoKernel.size === 0) return entidades;
+
+	return entidades.filter((entidade) => {
+		const tipo = (entidade as { dxfTypeName?: unknown } | null)?.dxfTypeName;
+		return typeof tipo !== 'string' || !tiposDoKernel.has(tipo.toUpperCase());
+	});
+}
+
+/** Unidades do desenho que cabem em `PASSO_DA_MEDIDA` pixels, na vista atual. */
+function unidadesNoPasso(vista: VistaDoUpstream): number {
+	const a = vista.screenToWorld({ x: 0, y: 0 });
+	const b = vista.screenToWorld({ x: PASSO_DA_MEDIDA, y: 0 });
+	return Math.abs(b.x - a.x);
+}
+
+/**
+ * Põe a vista do upstream no centro e na escala da tela do kernel.
+ *
+ * A câmera do upstream não fala em pixels: a escala dela depende da altura da
+ * tela. Por isso o zoom 1 é medido antes, e o zoom final sai da proporção.
+ */
+export function seguirVista(vista: VistaDoUpstream, alvo: AlvoDaVista): void {
+	if (!(Number.isFinite(alvo.escala) && alvo.escala > 0)) return;
+	if (!(Number.isFinite(alvo.x) && Number.isFinite(alvo.y))) return;
+
+	vista.flyTo({ x: alvo.x, y: alvo.y }, 1);
+	const porUnidadeNoZoom1 = PASSO_DA_MEDIDA / unidadesNoPasso(vista);
+	if (!(Number.isFinite(porUnidadeNoZoom1) && porUnidadeNoZoom1 > 0)) return;
+
+	vista.flyTo({ x: alvo.x, y: alvo.y }, alvo.escala / porUnidadeNoZoom1);
+}
+
+/** Centro e escala, em pixels por unidade, que a vista do upstream mostra agora. */
+export function medirVista(vista: VistaDoUpstream): AlvoDaVista {
+	const { x, y } = vista.center;
+	return { x, y, escala: PASSO_DA_MEDIDA / unidadesNoPasso(vista) };
+}
+
 export class NeoCadViewer {
 	private cadModule: CadSimpleViewerModule | null = null;
 	private docManager: AcApDocManagerType | null = null;
@@ -153,6 +209,14 @@ export class NeoCadViewer {
 		onFailedToOpenFile: (payload: { fileName: string }) => void;
 		onMissingFont: (payload: { fontName: string; count: number }) => void;
 	};
+	/** Contêiner do upstream; os atributos dele são o que os testes observam (spec 07). */
+	private host: HTMLElement | null = null;
+	/** Tipos que a tela do kernel desenha na próxima abertura; vazio = o upstream desenha tudo. */
+	private tiposDoKernel: ReadonlySet<string> = new Set();
+	/** Vista da tela do kernel que o upstream segue; `null` quando não há o que seguir. */
+	private alvo: AlvoDaVista | null = null;
+	private aplicandoVista = false;
+	private readonly aoMudarVistaDoUpstream = () => this.reaplicarVista();
 	private documentActivatedHandler?: (payload: {
 		doc: { fileName: string; docTitle: string };
 		mode: AcEdOpenModeType;
@@ -244,6 +308,12 @@ export class NeoCadViewer {
 			});
 		};
 
+		this.host = container;
+		// O tema começa escuro (a página e a tela do kernel também); agora que a
+		// tela do kernel é transparente, é o fundo do upstream que aparece.
+		this.docManager.curView.backgroundColor = DARK_BACKGROUND;
+		this.docManager.curView.events.viewChanged.addEventListener(this.aoMudarVistaDoUpstream);
+		this.docManager.curView.events.viewResize.addEventListener(this.aoMudarVistaDoUpstream);
 		this.docManager.events.documentActivated.addEventListener(this.documentActivatedHandler);
 		cadModule.eventBus.on('open-file', this.eventHandlers.onOpenRequested);
 		cadModule.eventBus.on('open-file-progress', this.eventHandlers.onProgress);
@@ -261,9 +331,65 @@ export class NeoCadViewer {
 		this.activeDocumentSource = payload.source;
 		this.activeDocumentPath = payload.path;
 
-		return this.docManager.openDocument(payload.fileName, payload.content, {
-			mode: this.resolveOpenMode(cadModule, mode)
-		});
+		// Durante a leitura, o que a tela do kernel desenha não chega à cena do
+		// upstream. Depois dela, o filtro sai: o que a barra de comandos do upstream
+		// desenhar continua aparecendo até o MT-KV-13b.
+		const vista = this.docManager.curView;
+		const original = vista.addEntity;
+		const tipos = this.tiposDoKernel;
+		let entregues = 0;
+		vista.addEntity = (entidade) => {
+			const restantes = paraOUpstream(Array.isArray(entidade) ? entidade : [entidade], tipos);
+			entregues += restantes.length;
+			if (restantes.length > 0) original.call(vista, restantes);
+		};
+
+		try {
+			return await this.docManager.openDocument(payload.fileName, payload.content, {
+				mode: this.resolveOpenMode(cadModule, mode)
+			});
+		} finally {
+			vista.addEntity = original;
+			if (this.host != null) this.host.dataset.entidades = String(entregues);
+		}
+	}
+
+	/**
+	 * Tipos de entidade que a tela do kernel desenha (`CadDocument.getScreenEntityTypes`).
+	 * Valem para a próxima abertura; lista vazia faz o upstream desenhar tudo.
+	 */
+	definirTiposDoKernel(tipos: Iterable<string>): void {
+		this.tiposDoKernel = new Set([...tipos].map((tipo) => tipo.toUpperCase()));
+	}
+
+	/**
+	 * Faz a vista do upstream seguir a da tela do kernel; `null` deixa de seguir.
+	 * A vista medida depois vai para `data-vista` do contêiner (spec 07).
+	 */
+	seguirVistaDoKernel(alvo: AlvoDaVista | null): void {
+		this.alvo = alvo;
+		this.reaplicarVista();
+	}
+
+	private reaplicarVista(): void {
+		const docManager = this.docManager;
+		if (docManager == null || this.aplicandoVista) return;
+
+		const vista = docManager.curView as unknown as VistaDoUpstream;
+		this.aplicandoVista = true;
+		try {
+			if (this.alvo != null) {
+				seguirVista(vista, this.alvo);
+				docManager.curView.isDirty = true;
+			}
+		} finally {
+			this.aplicandoVista = false;
+		}
+
+		if (this.host != null) {
+			const medida = this.alvo == null ? null : medirVista(vista);
+			this.host.dataset.vista = medida == null ? '' : `${medida.x} ${medida.y} ${medida.escala}`;
+		}
 	}
 
 	zoomToFit(): void {
@@ -388,6 +514,11 @@ export class NeoCadViewer {
 			this.cadModule.eventBus.off('font-not-found', this.eventHandlers.onMissingFont);
 		}
 
+		if (this.docManager) {
+			this.docManager.curView.events.viewChanged.removeEventListener(this.aoMudarVistaDoUpstream);
+			this.docManager.curView.events.viewResize.removeEventListener(this.aoMudarVistaDoUpstream);
+		}
+
 		if (this.docManager && this.documentActivatedHandler) {
 			this.docManager.events.documentActivated.removeEventListener(this.documentActivatedHandler);
 		}
@@ -401,6 +532,8 @@ export class NeoCadViewer {
 		}
 
 		this.docManager = null;
+		this.host = null;
+		this.alvo = null;
 		this.activeDocumentSource = undefined;
 		this.activeDocumentPath = undefined;
 		this.documentActivatedHandler = undefined;

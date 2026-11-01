@@ -13,27 +13,22 @@
 - **Data:** 2026-11-01
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `607604c` (MT-KV-11); antes, `889be19` (MT-KV-12)
+- **Commit:** ver `git log` (MT-KV-13a); antes, `607604c` (MT-KV-11)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
 
 ## Metas cumpridas neste turno
 
-- **MT-KV-11:** o texto do kernel aparece na tela, nos dois caminhos de desenho. A fonte
-  é a Hershey Roman Simplex, embutida em `neocad-geometry`
-  ([ADR 0010](adr/0010-texto-da-tela-em-fonte-de-traco.md)). O mantenedor escolheu a
-  fonte e autorizou o download. O kernel compõe os acentos e entende `%%d`, `%%p`,
-  `%%c`, `%%%` e `%%nnn`. O texto vira segmentos no bloco da camada, então o desenhista
-  em TypeScript não mudou.
-- **V1 com texto** provado em `e2e/kernel-view.e2e.ts` (`with-text.dxf`), visto falhar
-  com o texto desligado. Uma amostra com acentos e texto girado foi conferida em
-  captura.
-- Com Chrome em janela na RTX 3070 e 100 mil entidades, a espera de N1 voltou a ser
-  `contagem.modelo`: N1 2,79 / 2,89 / 2,92 s, N2 12,9–15,4 ms, N3 16,7 ms. O `.wasm`
-  passou a 479 595 bytes (+14 872; teto 600 000).
-- A rodada anterior (MT-KV-12) está no
-  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-a-tela-acompanha-a-edição).
+- **MT-KV-13a:** com o DXF lido pelo kernel, o upstream desenha por baixo só os tipos que a
+  tela própria não desenha (SOLID, HATCH, INSERT, MTEXT…). O kernel informa a lista
+  (`CadDocument.getScreenEntityTypes`); o adaptador filtra só durante a abertura, então o
+  que a barra do upstream desenhar continua aparecendo. A tela própria fica transparente
+  no espaço-modelo e a vista do upstream segue pan e zoom; nos layouts, ela fica opaca.
+- Provado no e2e com `with-unsupported.dxf` (visto falhar antes) e conferido em captura.
+  RTX 3070, 100 mil entidades: N1 2,88 s, N2 12,3 ms, N3 16,7 ms. `.wasm` 480 097 bytes.
+- A rodada anterior (MT-KV-11) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-texto-na-tela).
 
 ## O que mudou de rumo
 
@@ -50,10 +45,9 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-13a: o upstream só desenha o não modelado, abaixo da tela e na mesma vista.
-   Pontos de partida na API dele: `AcTrView2d.removeEntity`, `center`, `zoomTo`.
-2. MT-KV-13c (V6), depois MT-KV-14 (comandos digitados no kernel, fecha o V4) e só então
-   MT-KV-13b (sai a barra do upstream). O MT-KV-13 foi fatiado nesses três.
+1. MT-KV-13c (V6): aviso das entidades que a tela não exibe.
+2. MT-KV-14 (comandos digitados no kernel, fecha o V4) e só então MT-KV-13b (sai a barra
+   do upstream).
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos
@@ -66,12 +60,14 @@
 - O gateway só responde com a rede da empresa ou a VPN; fora dela, a delegação cai para
   subagente (como na parte Rust do MT-K3-12).
 - A reserva em canvas 2D vale para a tela própria; num navegador sem WebGL2 o upstream
-  não monta e a abertura de arquivo fica desabilitada, até o MT-KV-13. N1 e N2 no
+  não monta e a abertura de arquivo fica desabilitada, até o MT-KV-13b. N1 e N2 no
   canvas 2D (spec 00, N4) ainda não foram medidos com 100 mil entidades.
 - O texto sai sempre na fonte Hershey: estilo, fator de largura, inclinação, alinhamento
   e `%%u`/`%%o` ficam para a fase KP (ADR 0010).
 - O erro de corda é um só para todos os espaços (lado do modelo / 4096); num desenho
   cujo modelo é muito maior que a prancha, os arcos do layout saem poligonais.
+- Um `INSERT` segue inteiro com o upstream, inclusive as linhas do bloco, porque o kernel
+  não modela referência de bloco; num layout, o upstream fica escondido sob a tela opaca.
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
 
 > Painel de tickets (o que existe e o que falta): [`docs/TICKETS.md`](TICKETS.md).

@@ -536,6 +536,15 @@
 		void rememberDocument(state);
 	}
 
+	/** Tipos que a tela própria desenha; vazio se o kernel não os informar. */
+	function screenEntityTypes(): string[] {
+		try {
+			return kernelDocument?.getScreenEntityTypes() ?? [];
+		} catch {
+			return [];
+		}
+	}
+
 	async function openCadPayload(payload: CadDocumentPayload): Promise<void> {
 		if (viewerController == null) {
 			throw new Error('Viewer CAD ainda não foi inicializado.');
@@ -543,15 +552,25 @@
 
 		kernelReadNatively = false;
 		isKernelScreenVisible = false;
+		telaDoKernel?.sobrepor(null);
+		viewerController.seguirVistaDoKernel(null);
 
 		// A leitura nativa acontece **antes** do upstream e não depende dele: é o
 		// que faz um arquivo que o parser de terceiro não abre continuar sendo um
 		// documento aqui.
 		const kernelReport = isDxfPayload(payload.fileName) ? await readDxfWithKernel(payload) : null;
 
+		// O que a tela própria já desenha, o upstream não desenha de novo (MT-KV-13a).
+		viewerController.definirTiposDoKernel(
+			kernelReport != null && isKernelScreenVisible ? screenEntityTypes() : []
+		);
 		const isSuccess = await viewerController.openDocument(payload, 'write');
 
 		if (isSuccess) {
+			if (kernelReport != null && isKernelScreenVisible) {
+				const upstream = viewerController;
+				telaDoKernel?.sobrepor((vista) => upstream.seguirVistaDoKernel(vista));
+			}
 			return;
 		}
 

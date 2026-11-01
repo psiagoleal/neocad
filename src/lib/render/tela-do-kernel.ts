@@ -40,6 +40,13 @@ const BOTAO_DO_MEIO = 1;
 
 export type AoMudarEspacos = (espacos: string[], atual: string) => void;
 
+/**
+ * Vista do quadro desenhado, para quem desenha por baixo seguir: centro em
+ * coordenadas do desenho e escala em pixels por unidade. `null` quando a tela
+ * está opaca e não há o que seguir.
+ */
+export type AoMudarVista = (vista: { x: number; y: number; escala: number } | null) => void;
+
 /** Escolhe o caminho de desenho do canvas: GPU se houver, reserva se não. */
 export function criarDesenhista(canvas: HTMLCanvasElement): Desenhista {
 	const gl = canvas.getContext('webgl2', { antialias: true, preserveDrawingBuffer: false });
@@ -68,6 +75,8 @@ export class TelaDoKernel {
 	private pedido = 0;
 	private escuro: boolean;
 	private arrasto: { x: number; y: number; id: number } | null = null;
+	/** Quem desenha por baixo o que o kernel não modela (o upstream) e segue a vista. */
+	private aoMudarVista: AoMudarVista | null = null;
 	private readonly observador: ResizeObserver | null;
 	private readonly soltar: Array<() => void> = [];
 
@@ -162,6 +171,17 @@ export class TelaDoKernel {
 		this.pedirQuadro();
 	}
 
+	/**
+	 * Põe esta tela sobre outra que desenha o que o kernel não modela, e que
+	 * segue a vista pelo aviso; `null` tira a sobreposição. Sobreposto, o
+	 * espaço-modelo sai com fundo transparente e a vista é avisada a cada quadro;
+	 * nos layouts a tela fica opaca, porque a de baixo só mostra o modelo.
+	 */
+	sobrepor(aoMudarVista: AoMudarVista | null): void {
+		this.aoMudarVista = aoMudarVista;
+		this.pedirQuadro();
+	}
+
 	/** Troca o fundo; a cor 7 acompanha (branca no escuro, preta no claro). */
 	definirFundo(escuro: boolean): void {
 		if (escuro === this.escuro) return;
@@ -241,20 +261,27 @@ export class TelaDoKernel {
 	}
 
 	private desenharQuadro(): void {
+		const transparente =
+			this.aoMudarVista != null && this.espaco !== '' && this.espaco === this.espacos[0];
 		const t = transformacao(this.vista, this.origem);
 		this.desenhista.desenhar(
 			t,
 			this.canvas.width,
 			this.canvas.height,
-			this.escuro ? FUNDO_ESCURO : FUNDO_CLARO
+			transparente ? null : this.escuro ? FUNDO_ESCURO : FUNDO_CLARO
 		);
 		this.quadros += 1;
 
+		const { centroX: x, centroY: y, escala } = this.vista;
 		const dados = this.canvas.dataset;
 		dados.quadros = String(this.quadros);
 		dados.entidades = String(this.entidades);
 		dados.espaco = this.espaco;
 		dados.caixa = this.caixa;
+		dados.vista = `${x} ${y} ${escala}`;
+		dados.fundo = transparente ? 'transparente' : 'opaco';
+
+		this.aoMudarVista?.(transparente ? { x, y, escala } : null);
 	}
 
 	private ajustarArea(): void {

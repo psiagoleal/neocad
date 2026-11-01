@@ -210,6 +210,28 @@ tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela
   modeladas não são desenhadas duas vezes; N1 e N3 mantidos.
 - **Fora de escopo:** edição; barra de comandos.
 - **Depende de:** MT-KV-12.
+- **Resultado (2026-11-01):** o kernel diz quais tipos DXF a tela dele desenha
+  (`SCREEN_ENTITY_TYPES` em `tela.rs`: LINE, CIRCLE, ARC, LWPOLYLINE, POLYLINE e TEXT;
+  `screenEntityTypes` na fachada; `CadDocument.getScreenEntityTypes`). Durante a abertura,
+  o adaptador do upstream não entrega à cena dele as entidades desses tipos; depois da
+  abertura o filtro sai, para o que a barra do upstream desenhar continuar aparecendo até
+  o MT-KV-13b. O nome do tipo vem do upstream (`dxfTypeName`): a SOLID, por exemplo, é
+  `TRACE` lá, e por isso a lista é do que o kernel desenha, não do que ele recusa.
+  A tela própria fica transparente no espaço-modelo e avisa a vista a cada quadro; o
+  adaptador põe o centro e mede o zoom 1 antes de aplicar a escala, porque a câmera do
+  upstream não fala em pixels, e reaplica quando o upstream muda a vista sozinho
+  (`viewChanged`, `viewResize`). O fundo inicial do upstream passou ao do tema escuro.
+  Provas: `cada_tipo_da_lista_vira_tracos_e_o_resto_fica_fora` (Rust),
+  `vista-do-upstream.spec.ts`, `canvas2d.spec.ts` (fundo transparente),
+  `cad-document-sessao.spec.ts` e o e2e "o upstream desenha só o que o kernel não modela"
+  (visto falhar antes: `data-entidades` do upstream ausente). Vista conferida em captura:
+  os vértices da SOLID caem sobre a LINE antes e depois de pan e zoom. RTX 3070, 100 mil
+  entidades: N1 2,88 s, N2 12,3 ms, N3 16,7 ms. Fora do escopo do ticket, tocados:
+  `tela.rs`, `lib.rs` da fachada, `cad-document.ts`, `desenhista.ts`, `webgl2.ts`,
+  `canvas2d.ts` e `ViewerDropzone.svelte` (o atributo `data-tela="upstream"`).
+  Limites: um `INSERT` segue inteiro com o upstream (o kernel não modela referência de
+  bloco), inclusive as linhas do bloco; num layout, o upstream fica escondido sob a tela
+  opaca.
 
 ### MT-KV-13b: Barra de comandos e edição do upstream saem (V5)
 

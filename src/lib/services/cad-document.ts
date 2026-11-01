@@ -107,6 +107,7 @@ export interface CadKernelSession {
 	snap(x: number, y: number, radius: number, modes: string[]): unknown;
 	prepareScreen(chordError: number): void;
 	screenSpaces(): string[];
+	screenEntityTypes(): string[];
 	screenOrigin(space: string): ArrayLike<number>;
 	screenExtents(space: string): ArrayLike<number>;
 	screenEntityCount(space: string): number;
@@ -1037,6 +1038,18 @@ export class CadDocument {
 		return this.call(() =>
 			asArray(this.session.screenSpaces(), 'espaços da tela').map((space, index) =>
 				asString(space, `espaços da tela[${index}]`)
+			)
+		);
+	}
+
+	/**
+	 * Tipos de entidade DXF que a tela do kernel desenha. Quem desenha o resto
+	 * (o upstream, por ora) não deve desenhar estes de novo.
+	 */
+	getScreenEntityTypes(): string[] {
+		return this.call(() =>
+			asArray(this.session.screenEntityTypes(), 'tipos da tela').map((tipo, index) =>
+				asString(tipo, `tipos da tela[${index}]`)
 			)
 		);
 	}

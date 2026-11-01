@@ -58,6 +58,7 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		snap: () => null,
 		prepareScreen: () => undefined,
 		screenSpaces: () => [],
+		screenEntityTypes: () => [],
 		screenOrigin: () => new Float64Array([0, 0]),
 		screenExtents: () => new Float64Array(),
 		screenEntityCount: () => 0,
@@ -525,6 +526,18 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 		expect(sessao.screenOrigin).toHaveBeenCalledWith('Prancha A1');
 		expect(doc.getScreenLayers('Model')).toEqual(['3', '9']);
 		expect(sessao.screenLayers).toHaveBeenCalledWith('Model');
+	});
+
+	it('os tipos que a tela desenha vêm do kernel', () => {
+		const doc = documentoSobre(sessaoFalsa({ screenEntityTypes: vi.fn(() => ['LINE', 'TEXT']) }));
+
+		expect(doc.getScreenEntityTypes()).toEqual(['LINE', 'TEXT']);
+	});
+
+	it('tipo que não é texto é erro de contrato', () => {
+		const doc = documentoSobre(sessaoFalsa({ screenEntityTypes: vi.fn(() => ['LINE', 7]) }));
+
+		expect(() => doc.getScreenEntityTypes()).toThrow(CadKernelContractError);
 	});
 
 	it('origem que não tem dois números é erro de contrato', () => {

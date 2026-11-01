@@ -1761,6 +1761,16 @@ impl CadSession {
         self.try_prepare_screen(chord_error).map_err(js_error)
     }
 
+    /// Tipos de entidade DXF que a tela desenha (os demais, quem desenha é o upstream).
+    #[wasm_bindgen(js_name = screenEntityTypes)]
+    #[must_use]
+    pub fn screen_entity_types(&self) -> Vec<String> {
+        tela::SCREEN_ENTITY_TYPES
+            .iter()
+            .map(|tipo| (*tipo).to_owned())
+            .collect()
+    }
+
     /// Espaços, o modelo primeiro e os layouts na ordem das abas.
     ///
     /// # Errors

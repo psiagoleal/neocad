@@ -58,6 +58,14 @@ pub struct Screen {
     place: BTreeMap<EntityId, (usize, LayerId)>,
 }
 
+/// Tipos de entidade DXF que esta tela desenha.
+///
+/// Quem ainda desenha o resto (o upstream, até o MT-KV-13b) usa esta lista para
+/// não desenhar de novo o que já está aqui. `VIEWPORT` é lido, mas não vira traço;
+/// `INSERT` e os demais ainda não são modelados.
+pub const SCREEN_ENTITY_TYPES: &[&str] =
+    &["LINE", "CIRCLE", "ARC", "LWPOLYLINE", "POLYLINE", "TEXT"];
+
 /// Segmentos `x1, y1, x2, y2` da entidade, relativos à origem.
 ///
 /// O texto vira os traços da fonte (ADR 0010). A janela de layout não vira
@@ -393,6 +401,50 @@ mod tests {
 
     fn perto(a: [f64; 4], b: [f64; 4], tol: f64) -> bool {
         a.iter().zip(b).all(|(x, y)| (x - y).abs() <= tol)
+    }
+
+    /// Lê a seção `ENTITIES` de um DXF mínimo com o corpo dado.
+    fn entidades_do_dxf(corpo: &str) -> Vec<Entity> {
+        let texto = format!("0\nSECTION\n2\nENTITIES\n{corpo}0\nENDSEC\n0\nEOF\n");
+        neocad_io::read_dxf(texto.as_bytes())
+            .entities
+            .into_iter()
+            .map(|lida| lida.entity)
+            .collect()
+    }
+
+    #[test]
+    fn cada_tipo_da_lista_vira_tracos_e_o_resto_fica_fora() {
+        let amostras = [
+            ("LINE", "0\nLINE\n8\n0\n10\n0\n20\n0\n11\n1\n21\n1\n"),
+            ("CIRCLE", "0\nCIRCLE\n8\n0\n10\n0\n20\n0\n40\n1\n"),
+            ("ARC", "0\nARC\n8\n0\n10\n0\n20\n0\n40\n1\n50\n0\n51\n90\n"),
+            (
+                "LWPOLYLINE",
+                "0\nLWPOLYLINE\n8\n0\n90\n2\n10\n0\n20\n0\n10\n1\n20\n1\n",
+            ),
+            (
+                "POLYLINE",
+                "0\nPOLYLINE\n8\n0\n66\n1\n0\nVERTEX\n8\n0\n10\n0\n20\n0\n\
+                 0\nVERTEX\n8\n0\n10\n1\n20\n1\n0\nSEQEND\n8\n0\n",
+            ),
+            ("TEXT", "0\nTEXT\n8\n0\n10\n0\n20\n0\n40\n1\n1\nA\n"),
+        ];
+
+        for (tipo, corpo) in amostras {
+            assert!(SCREEN_ENTITY_TYPES.contains(&tipo), "{tipo} fora da lista");
+            let lidas = entidades_do_dxf(corpo);
+            assert_eq!(lidas.len(), 1, "{tipo}: {} entidades lidas", lidas.len());
+            assert!(
+                segments(&lidas[0], Point2::new(0.0, 0.0), ERRO).is_some(),
+                "{tipo} não vira traço"
+            );
+        }
+        assert_eq!(SCREEN_ENTITY_TYPES.len(), amostras.len());
+
+        for fora in ["VIEWPORT", "INSERT", "SOLID", "TRACE", "HATCH", "MTEXT"] {
+            assert!(!SCREEN_ENTITY_TYPES.contains(&fora), "{fora} na lista");
+        }
     }
 
     #[test]

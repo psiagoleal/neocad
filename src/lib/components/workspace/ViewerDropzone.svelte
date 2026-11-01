@@ -54,7 +54,7 @@
 	ondragleave={onDragLeave}
 	ondrop={onDrop}
 >
-	<div class="viewer-container" bind:this={viewerElement}></div>
+	<div class="viewer-container" data-tela="upstream" bind:this={viewerElement}></div>
 
 	<KernelScreen
 		visible={isKernelScreenVisible}

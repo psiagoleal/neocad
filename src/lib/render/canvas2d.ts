@@ -30,11 +30,15 @@ export class DesenhistaCanvas2d implements Desenhista {
 		this.blocos.delete(chave);
 	}
 
-	desenhar(t: Transformacao, largura: number, altura: number, fundo: Rgb): void {
+	desenhar(t: Transformacao, largura: number, altura: number, fundo: Rgb | null): void {
 		const ctx = this.ctx;
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
-		ctx.fillStyle = `rgb(${fundo[0]}, ${fundo[1]}, ${fundo[2]})`;
-		ctx.fillRect(0, 0, largura, altura);
+		if (fundo == null) {
+			ctx.clearRect(0, 0, largura, altura);
+		} else {
+			ctx.fillStyle = `rgb(${fundo[0]}, ${fundo[1]}, ${fundo[2]})`;
+			ctx.fillRect(0, 0, largura, altura);
+		}
 		ctx.lineWidth = 1;
 
 		// Do recorte (-1..1, y para cima) ao pixel (0..largura, y para baixo).

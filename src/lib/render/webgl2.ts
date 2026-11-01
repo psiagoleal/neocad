@@ -89,10 +89,11 @@ export class DesenhistaWebgl2 implements Desenhista {
 		this.blocos.delete(chave);
 	}
 
-	desenhar(t: Transformacao, largura: number, altura: number, fundo: Rgb): void {
+	desenhar(t: Transformacao, largura: number, altura: number, fundo: Rgb | null): void {
 		const gl = this.gl;
 		gl.viewport(0, 0, largura, altura);
-		gl.clearColor(fundo[0] / 255, fundo[1] / 255, fundo[2] / 255, 1);
+		if (fundo == null) gl.clearColor(0, 0, 0, 0);
+		else gl.clearColor(fundo[0] / 255, fundo[1] / 255, fundo[2] / 255, 1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
 		gl.useProgram(this.programa);
 		gl.uniform4f(this.uT, t[0], t[1], t[2], t[3]);

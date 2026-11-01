@@ -9,8 +9,8 @@
  * A barra de comandos ainda é do upstream, e salvar grava o modelo do kernel,
  * que não recebe as edições feitas por essa barra (achado C4); o primeiro teste
  * prova o defeito antes da correção. Os seguintes conferem a tela desenhada pelo
- * kernel (V1, V2, V3; spec 00, N4). Os demais critérios da spec 07 (V5b, V7)
- * entram aqui quando a fase KV os implementar.
+ * kernel (V1, V2, V3; spec 00, N4) e o upstream por baixo dela (MT-KV-13a). Os
+ * demais critérios da spec 07 (V5b, V7) entram aqui quando a fase KV os implementar.
  */
 
 import path from 'node:path';
@@ -154,7 +154,7 @@ test('sem WebGL2, a tela cai sozinha no canvas 2D (N4)', async ({ page }) => {
 	test.setTimeout(60_000);
 	// Tira o WebGL2 só da tela própria. Tirá-lo da página inteira derruba também
 	// o visualizador do upstream, que hoje habilita a abertura de arquivos; isso
-	// deixa de valer quando o upstream sair da tela (MT-KV-13).
+	// deixa de valer quando o upstream sair da tela (MT-KV-13b).
 	await page.addInitScript(() => {
 		const original = HTMLCanvasElement.prototype.getContext;
 		HTMLCanvasElement.prototype.getContext = function (
@@ -260,4 +260,56 @@ test('desfazer e refazer pelo menu Editar refletem na tela (V3)', async ({ page 
 	await peloMenuEditar(page, 'Refazer');
 	await expect(tela).toHaveAttribute('data-entidades', '3');
 	await expect(tela).toHaveAttribute('data-caixa', '0 0 300 100');
+});
+
+/** Centro e escala (pixels por unidade) de uma vista, como os atributos `data-vista` a mostram. */
+async function lerVista(alvo: ReturnType<Page['locator']>) {
+	const texto = (await alvo.getAttribute('data-vista')) ?? '';
+	const [x, y, escala] = texto.split(' ').map(Number);
+	return { x, y, escala, texto };
+}
+
+/** Quanto as duas vistas diferem, em pixels de tela, no centro e na escala. */
+async function diferencaDeVistas(page: Page): Promise<number> {
+	const kernel = await lerVista(telaDoKernel(page));
+	const upstream = await lerVista(page.locator('[data-tela="upstream"]'));
+	if (![kernel, upstream].every((v) => [v.x, v.y, v.escala].every(Number.isFinite))) {
+		return Number.POSITIVE_INFINITY;
+	}
+	const centro = Math.hypot(kernel.x - upstream.x, kernel.y - upstream.y) * kernel.escala;
+	// Diferença de escala vista na borda de uma tela de 1000 px.
+	const escala = (Math.abs(kernel.escala - upstream.escala) / kernel.escala) * 1000;
+	return Math.max(centro, escala);
+}
+
+test('o upstream desenha só o que o kernel não modela, na mesma vista (MT-KV-13a)', async ({
+	page
+}) => {
+	test.setTimeout(60_000);
+	await abrirDesenho(page, path.join(process.cwd(), 'e2e/fixtures/with-unsupported.dxf'));
+
+	const tela = telaDoKernel(page);
+	const upstream = page.locator('[data-tela="upstream"]');
+	// A LINE é do kernel; a SOLID, que o kernel não modela, fica com o upstream.
+	await expect(tela).toHaveAttribute('data-entidades', '1', { timeout: 30_000 });
+	await expect(upstream).toHaveAttribute('data-entidades', '1');
+	// A tela própria deixa ver o upstream por baixo.
+	await expect(tela).toHaveAttribute('data-fundo', 'transparente');
+	await expect.poll(() => diferencaDeVistas(page)).toBeLessThanOrEqual(0.5);
+
+	// Pan e zoom pela tela própria levam a vista do upstream junto.
+	const antes = (await lerVista(tela)).texto;
+	const caixa = await tela.boundingBox();
+	expect(caixa).not.toBeNull();
+	const cx = (caixa?.x ?? 0) + (caixa?.width ?? 0) / 2;
+	const cy = (caixa?.y ?? 0) + (caixa?.height ?? 0) / 2;
+	await page.mouse.move(cx, cy);
+	await page.mouse.down({ button: 'middle' });
+	await page.mouse.move(cx + 80, cy + 30, { steps: 5 });
+	await page.mouse.up({ button: 'middle' });
+	await page.mouse.move(cx - 100, cy + 40);
+	await page.mouse.wheel(0, -360);
+
+	await expect.poll(async () => (await lerVista(tela)).texto).not.toBe(antes);
+	await expect.poll(() => diferencaDeVistas(page)).toBeLessThanOrEqual(0.5);
 });

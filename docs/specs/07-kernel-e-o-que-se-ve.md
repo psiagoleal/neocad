@@ -58,13 +58,21 @@ desenhou no último quadro: `data-caminho` (`webgl2` ou `canvas2d`), `data-espac
 nome do espaço mostrado: `Model` ou o do layout), `data-caixa` (a caixa envolvente do
 espaço no kernel, `minX minY maxX maxY`, vazia sem entidades), `data-entidades` (quantas entidades do
 espaço corrente estão na tela: as que têm traço em camada visível) e `data-quadros`
-(quantos quadros desenhou desde a abertura). Pan é o arrasto com o botão do meio; zoom,
+(quantos quadros desenhou desde a abertura), `data-vista` (centro e escala do quadro,
+`x y pixels-por-unidade`) e `data-fundo` (`transparente` quando o upstream desenha por
+baixo, `opaco` nos demais casos). Pan é o arrasto com o botão do meio; zoom,
 a roda do mouse. Com mais de um espaço, uma lista de abas (`role="tablist"`, nome
 "Espaços do desenho") troca o espaço mostrado, uma aba por espaço com o nome dele.
 
-O texto é desenhado em traços, com a fonte Hershey Roman Simplex (ADR 0010). Até o MT-KV-13,
-a tela própria aparece só para o DXF lido pelo kernel; os demais arquivos seguem no
-desenho do upstream.
+O texto é desenhado em traços, com a fonte Hershey Roman Simplex (ADR 0010). A tela
+própria aparece só para o DXF lido pelo kernel; os demais arquivos seguem no desenho do
+upstream. Com o DXF lido pelos dois, o upstream fica por baixo e desenha só as entidades
+de tipo que a tela própria não desenha (`CadDocument.getScreenEntityTypes`); no
+espaço-modelo, a tela própria fica transparente e a vista do upstream acompanha pan e
+zoom; nos layouts, a tela própria fica opaca. O contêiner do upstream tem
+`data-tela="upstream"`, com `data-entidades` (quantas entidades o upstream recebeu na
+última abertura) e `data-vista` (centro e escala medidos na vista dele, no formato da
+tela própria).
 
 Edição pelo serviço, para V2 e N2, enquanto não há linha de comando própria (spec 08):
 no build feito com `VITE_NEOCAD_SONDA=1`, a página expõe `window.__neocadSonda` com

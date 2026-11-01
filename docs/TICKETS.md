@@ -33,8 +33,6 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-13a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13a-upstream-desenha-só-o-não-modelado-abaixo-da-tela-e-na-mesma-vista) —
-      upstream só com o não modelado, abaixo da tela e na mesma vista.
 - [ ] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
       sai a barra do upstream (V5) — bloqueado por MT-KV-14: sem ele, nenhum comando de desenho.
 - [ ] [MT-KV-13c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13c-aviso-das-entidades-que-a-tela-não-exibe-v6) —
@@ -60,6 +58,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-13a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13a-upstream-desenha-só-o-não-modelado-abaixo-da-tela-e-na-mesma-vista) —
+      upstream só com o não modelado, abaixo da tela e na mesma vista.
 - [x] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
       texto em fonte de traço Hershey (ADR 0010); V1 completo.
 - [x] [MT-KV-12](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-12-refletir-edição-desfazer-e-refazer) —

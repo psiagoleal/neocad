@@ -18,7 +18,10 @@ export interface Desenhista {
 	/** Guarda (ou troca) o bloco de segmentos `x1, y1, x2, y2` da chave. */
 	definirBloco(chave: string, segmentos: Float32Array, cor: Rgb): void;
 	removerBloco(chave: string): void;
-	/** Desenha todos os blocos; largura e altura em pixels do dispositivo. */
-	desenhar(t: Transformacao, largura: number, altura: number, fundo: Rgb): void;
+	/**
+	 * Desenha todos os blocos; largura e altura em pixels do dispositivo. Fundo
+	 * `null` deixa a tela transparente, para o que estiver por baixo aparecer.
+	 */
+	desenhar(t: Transformacao, largura: number, altura: number, fundo: Rgb | null): void;
 	destruir(): void;
 }

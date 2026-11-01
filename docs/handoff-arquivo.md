@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-01: texto na tela](#rodada-de-2026-11-01-texto-na-tela) — MT-KV-11
 - [Rodada de 2026-11-01: a tela acompanha a edição](#rodada-de-2026-11-01-a-tela-acompanha-a-edição) —
   MT-KV-12: sonda, `data-caixa`, V2, V3 e N2.
 - [Rodada de 2026-11-01: orçamento e tela própria](#rodada-de-2026-11-01-orçamento-e-tela-própria) —
@@ -24,6 +25,25 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-01: texto na tela
+
+Commit `607604c`.
+
+- **MT-KV-11:** o texto do kernel aparece na tela, nos dois caminhos de desenho. A fonte
+  é a Hershey Roman Simplex, embutida em `neocad-geometry`
+  ([ADR 0010](adr/0010-texto-da-tela-em-fonte-de-traco.md)). O mantenedor escolheu a
+  fonte e autorizou o download. O kernel compõe os acentos e entende `%%d`, `%%p`,
+  `%%c`, `%%%` e `%%nnn`. O texto vira segmentos no bloco da camada, então o desenhista
+  em TypeScript não mudou.
+- **V1 com texto** provado em `e2e/kernel-view.e2e.ts` (`with-text.dxf`), visto falhar
+  com o texto desligado. Uma amostra com acentos e texto girado foi conferida em
+  captura.
+- Com Chrome em janela na RTX 3070 e 100 mil entidades, a espera de N1 voltou a ser
+  `contagem.modelo`: N1 2,79 / 2,89 / 2,92 s, N2 12,9–15,4 ms, N3 16,7 ms. O `.wasm`
+  passou a 479 595 bytes (+14 872; teto 600 000).
+- A rodada anterior (MT-KV-12) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-a-tela-acompanha-a-edição).
 
 ## Rodada de 2026-11-01: a tela acompanha a edição
 

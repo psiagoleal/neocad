@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- One picture from two renderers (MT-KV-13a) — on a DXF read by the kernel, the upstream viewer now draws only the entity types the kernel screen does not (`CadDocument.getScreenEntityTypes`), underneath it; the kernel screen is transparent in model space and the upstream view follows its pan and zoom, so unsupported entities (SOLID, HATCH, INSERT, …) stay visible without being drawn twice.
+
 - Text on the kernel screen (MT-KV-11, ADR 0010) — TEXT entities are drawn with the embedded Hershey Roman Simplex stroke font, including Portuguese accents and the `%%d`, `%%p`, `%%c` codes; no download needed.
 
 - The kernel screen follows edits (MT-KV-12) — creating, moving or erasing an entity, and Edit › Undo/Redo, update only the blocks that changed; with 100 000 entities a new line shows in about 12 ms. Test builds carry an editing probe (`VITE_NEOCAD_SONDA=1`) that production builds leave out.
