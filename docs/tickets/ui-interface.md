@@ -72,3 +72,36 @@ entram depois do ADR 0008.
 
 Componente da linha de comando (C1b, C6–C8, C10, C12), retirada da barra do upstream, e
 os comandos de desenho básicos da spec 10.
+
+## Planejados para depois de a interface amadurecer
+
+Ideias do mantenedor (2026-11-01), sem data: entram quando a interface estiver
+confortável, prática e bonita o bastante para ser mostrada.
+
+### MT-UI-06: Vitrine do NeoCAD no repositório e no GitHub Pages
+
+- **Objetivo:** quem chega ao repositório ou ao site entende em segundos o que o NeoCAD
+  faz e o vê em uso: README com capturas, e uma página no GitHub Pages com capturas e
+  vídeos curtos (abrir, desenhar, editar, salvar).
+- **Arquivos no escopo:** `README.md`, `docs/site/` (novo), um workflow de publicação do
+  Pages.
+- **Critério de aceite:** a página publica pelo workflow; as capturas e os vídeos saem
+  de roteiros Playwright versionados, para serem refeitos a cada versão sem trabalho
+  manual; nenhuma imagem mostra desenho que não seja sintético ou público.
+- **Fora de escopo:** domínio próprio, analytics, qualquer coleta de dados.
+- **Depende de:** a fase de UI/UX ter a linha de comando própria e a tela sem o upstream
+  (MT-KV-13, MT-KV-14).
+
+### MT-UI-07: Fontes próprias e pacotes de insumos para baixar
+
+- **Objetivo:** fontes de traço próprias, derivadas da Hershey (ADR 0010), parecidas com
+  as mais usadas no AutoCAD (`txt`, `simplex`, `romans`, `isocp`). O instalador traz só as
+  mais usadas; o resto (fontes, tipos de linha, hachuras, blocos) fica em pacotes que o
+  usuário baixa da página do projeto e instala no NeoCAD.
+- **Arquivos no escopo:** a definir no ADR que revisa o ADR 0010.
+- **Critério de aceite:** ADR aceito antes de implementar, cobrindo a licença das
+  derivadas, o formato do pacote, a verificação de integridade (hash publicado) e o
+  funcionamento sem rede. O ADR 0010 hoje proíbe baixar fonte durante o desenho; baixar
+  pacotes por ação do usuário é outra coisa e precisa estar escrito.
+- **Fora de escopo:** fontes TrueType de terceiros sem licença de redistribuição.
+- **Depende de:** fase KP (estilos de texto, tipos de linha, hachura).
