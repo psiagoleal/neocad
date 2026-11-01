@@ -8,6 +8,8 @@
 
 ## Índice
 
+- [Rodada de 2026-10-31: camada da GPU](#rodada-de-2026-10-31-camada-da-gpu) — MT-KV-09
+  (WebGL2 em TypeScript), ADR 0009 proposto e o ADR 0008 aceito.
 - [Rodada de 2026-10-30: KV, prova e medida](#rodada-de-2026-10-30-kv-prova-e-medida) —
   MT-KV-01 a 04: a perda provada, o gerador sintético e os dois spikes.
 - [Rodada de 2026-10-30: K3 fechada](#rodada-de-2026-10-30-k3-fechada) — MT-K3-12 (Rust e
@@ -18,6 +20,41 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-10-31: camada da GPU
+
+- **Último turno:** `9181f3c` (MT-KV-09, só documentação); CI verde nos 8 jobs.
+
+- **MT-KV-09 (spike):** a camada da GPU é **WebGL2 em TypeScript**
+  ([relatório](spikes/kv-camada-gpu.md)). Medido com janela na RTX 3070, 100 mil
+  entidades: abrir 2,2 s (N1 ≤ 5 s; ~2 s são a leitura do DXF), uma linha nova até o
+  quadro 7,5 ms (N2 ≤ 100 ms), pan e zoom no limite do monitor, 16,7 ms (N3 ≤ 33 ms).
+  `wgpu` empata no desempenho e leva o `.wasm` de 463 233 a 2 042 252 bytes. Protótipo
+  no ramo local `spike/kv-camada-gpu` (`d2413f7`), fora de `master`.
+- **[ADR 0009](adr/0009-orcamento-de-tamanho-do-aplicativo.md) proposto:** teto do
+  `.wasm` do kernel de 465 000 para 600 000 bytes, e catraca no total que o aplicativo
+  baixa (hoje 12 921 011 bytes, 95% do upstream), que só desce quando o upstream sai.
+  Aguarda o mantenedor; o MT-KV-16 o aplica.
+- **MT-KV-08** (`fe35d0c`), **MT-KV-07** (`878a7da`) e **MT-KV-06** estão no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-10-30-kv-prova-e-medida).
+- **[ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito pelo mantenedor**,
+  com dois acréscimos pedidos por ele:
+  - **GPU:** desenho por WebGL2, independente de fabricante (AMD, NVIDIA, Intel) pela
+    camada do navegador, com reserva automática em canvas 2D; WebGPU fica para depois.
+  - **Divisão de responsabilidade:** o kernel prepara a geometria para a tela (segmentos,
+    texto, índice espacial, seleção) em blocos `Float32Array`; o TypeScript só os repassa
+    à GPU com a matriz da vista. A camada da GPU (WebGL2 direto ou `wgpu` em Rust) se
+    escolhe por medida no MT-KV-09; three.js descartado.
+- Spec 00 com os não-funcionais N1–N5 em EARS (abrir ≤ 5 s, editar ≤ 100 ms, pan ≥ 30
+  quadros/s, reserva 2D, APIs independentes de fabricante); spec 07 aponta para eles.
+  Por decisão do mantenedor, a verificação é só na NVIDIA dele; AMD e Intel ficam
+  presumidas compatíveis até haver relato em contrário.
+- Bloco B de KV escrito: MT-KV-06 a 15. Crítica GLM-5.2 (duas execuções): uma correção
+  incorporada (no Linux o WebGL do WebKitGTK passa pelo ANGLE); as demais refutadas — o
+  MT-KV-07 falhar antes do desenhista é o teste-primeiro de propósito, as dependências
+  citadas chegam por transitividade, e `wgpu` tem caminho WebGPU no navegador.
+- KV, bloco A (MT-KV-01 a 04), está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-10-30-kv-prova-e-medida).
 
 ## Rodada de 2026-10-30: KV, prova e medida
 

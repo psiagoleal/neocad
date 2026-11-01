@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Size budget enforced by the build (ADR 0009, MT-KV-16) — `pnpm build` fails when the kernel `.wasm` passes 600 000 bytes or the whole `build/` passes the recorded total plus 256 KiB; the numbers live in `scripts/size-budget.json`, and the record goes down as upstream parts leave.
+
 - Screen geometry prepared by the kernel (MT-KV-08) — `tessellate` splits arcs, circles and bulged polylines within a chord error; the facade's `prepareScreen`/`screenBlock`/`updateScreen`/`screenQuery` (and the service methods of the same names) hand the GPU one `Float32Array` of segments per space and layer, relative to a per-space origin so far-from-origin drawings keep their precision, keep a spatial index for view culling, and after each edit rebuild only the blocks it touched; `CommandStack::revision` lets the screen notice a missed operation and rebuild. Natively, 100 000 entities prepare in about 50 ms and one new line reaches its block in about 6 ms.
 
 - Local performance proof, `e2e/desempenho.e2e.ts` (MT-KV-07) — opens the 100 000-entity synthetic drawing and checks spec 00 N1 (open in 5 s), N2 (reflect an edit in 100 ms) and N3 (30 frames per second while panning and zooming) against the kernel-drawn screen; runs only with `NEOCAD_SINTETICO_N`, and fails until that screen exists.

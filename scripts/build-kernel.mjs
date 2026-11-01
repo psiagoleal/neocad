@@ -21,6 +21,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkKernelWasm, readBudget } from './size-budget.mjs';
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CRATE_DIR = resolve(ROOT_DIR, 'kernel/neocad-wasm');
@@ -103,21 +104,12 @@ function isUpToDate() {
 	return statSync(WASM_FILE).mtimeMs >= newestSourceTime(KERNEL_DIR);
 }
 
-/**
- * Teto do `.wasm` de release, em bytes (spec 06, W5): ≈ 303 KiB medidos em
- * 2026-10-29, mais 50%. Só sobe por ADR — cálculo novo pesa, e o peso chega a
- * todo usuário que abre o app.
- */
-const WASM_RELEASE_LIMIT = 465_000;
-
-/** Encerra com erro se o `.wasm` de release passou do teto. */
+/** Encerra com erro se o `.wasm` de release passou do teto (spec 06, W5; ADR 0009). */
 function enforceSizeLimit() {
-	const size = statSync(WASM_FILE).size;
+	const error = checkKernelWasm(statSync(WASM_FILE).size, readBudget());
 
-	if (size > WASM_RELEASE_LIMIT) {
-		console.error(
-			`\nerro: o .wasm de release tem ${size} bytes, acima do teto de ${WASM_RELEASE_LIMIT} (spec 06, W5).`
-		);
+	if (error) {
+		console.error(`\nerro: ${error}`);
 		process.exit(1);
 	}
 }

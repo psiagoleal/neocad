@@ -81,12 +81,16 @@ de spec em comando que falha quando a regra é violada.
 
 ### MT-QP-08: Limite de tamanho do `.wasm` (06, W5)
 
-- **Objetivo:** o build do kernel falha se o `.wasm` de release passar de 465 000 bytes.
+- **Objetivo:** o build do kernel falha se o `.wasm` de release passar do teto (465 000
+  bytes quando escrito; 600 000 pelo ADR 0009).
 - **Arquivos no escopo:** `scripts/build-kernel.mjs`.
 - **Critério de aceite:** `pnpm kernel:build` verde hoje; com o limite rebaixado em
   rascunho, falha (verificado e descartado).
 - **Fora de escopo:** reduzir o tamanho.
 - **Depende de:** nenhum.
+- **Resultado (2026-11-01):** entregue pelo MT-KV-16; com o teto um byte abaixo do
+  `.wasm` (463 232), `node scripts/build-kernel.mjs --force` falhou citando os dois
+  números, e passou de volta com 600 000.
 
 ### MT-QP-09: Testes de propriedade da geometria (review B4)
 

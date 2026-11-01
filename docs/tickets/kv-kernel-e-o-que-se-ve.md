@@ -207,3 +207,7 @@ verificação por fabricante (15).
   conferido do mesmo jeito.
 - **Fora de escopo:** reduzir o upstream.
 - **Depende de:** ADR 0009 aceito.
+- **Resultado (2026-11-01):** `scripts/size-budget.json` guarda o teto (600 000) e o
+  registro do total (12 921 011, folga 262 144, conforme a revisão do ADR);
+  `scripts/size-budget.mjs` confere, chamado no fim do `pnpm build` e pelo build do
+  kernel. Visto falhar com o registro abaixo da medida e o teto um byte abaixo dela.

@@ -2,8 +2,9 @@
 
 # ADR 0009: Orçamento de tamanho: teto do kernel e catraca do total
 
-- **Status:** Proposed <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
-- **Data:** 2026-10-31
+- **Status:** Accepted <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
+- **Data:** 2026-10-31 · **Aceito:** 2026-11-01 · **Revisão:** 2026-11-01, antes de
+  qualquer implementação: o item 2 ganhou a folga fixa (ver o fim do item).
 - **Decisores:** Iago Leal
 - **Tags:** kernel, WebAssembly, tamanho, upstream, desempenho, fase KV
 
@@ -47,8 +48,15 @@ KP. Continua só subindo por ADR, e cada ADR que o suba cita a medida que o just
 
 **2. O total que o aplicativo baixa tem uma catraca.** A soma dos arquivos de `build/`
 fica registrada no repositório (hoje, 12 921 011 bytes) e o build falha se o total
-passar do registro. Quando uma parte do upstream sai, o registro **desce** para a nova
-medida no mesmo trabalho; subir o registro exige ADR, como o teto do kernel.
+passar do **registro mais uma folga fixa de 262 144 bytes (256 KiB)**. Quando uma parte
+do upstream sai, o registro **desce** para a nova medida no mesmo trabalho, e a folga
+volta inteira; subir o registro ou a folga exige ADR, como o teto do kernel.
+
+A folga existe por dois motivos, vistos ao implementar: o build varia algumas dezenas de
+bytes entre execuções idênticas (o carimbo de versão do SvelteKit muda os nomes dos
+pedaços), e todo código próprio em TypeScript também soma ao total. Sem folga, cada
+ticket de interface exigiria um ADR. Com ela, o código próprio gasta a folga aos poucos,
+e esgotá-la é o sinal para decidir.
 
 **3. A medida é a do arquivo bruto.** Comprimido é o que trafega, mas depende do
 servidor; bruto é o que o build vê e o que se compara entre versões. Os relatórios citam
@@ -61,17 +69,25 @@ os dois.
   desce, salvo decisão explícita.
 - **Positivo:** dependência nova de JavaScript passa a ter custo visível no build.
 - **Negativo:** o registro do total precisa ser atualizado à mão quando o upstream sai;
-  esquecer só deixa folga, não quebra nada.
+  esquecer só deixa folga, não quebra nada. A conferência avisa quando o total cai mais
+  que a folga abaixo do registro.
+- **Negativo:** dentro da folga, crescimento do código próprio não aparece como falha;
+  só aparece no número que o build imprime.
 - **Negativo:** o total depende do build do SvelteKit e do Vite; mudança de versão deles
   pode mexer no número sem mudança nossa, e aí o registro é corrigido com a medida.
 
 ## Diretriz de Conformidade de Código
 
+Os números ficam em `scripts/size-budget.json`; a conferência é `scripts/size-budget.mjs`,
+chamada pelo `pnpm build` e pelo build do kernel.
+
 - **Obrigatório** que o build de release falhe com o `.wasm` do kernel acima de 600 000
   bytes.
-- **Obrigatório** que o build falhe com o total de `build/` acima do registro.
+- **Obrigatório** que o build falhe com o total de `build/` acima do registro mais a
+  folga.
 - **Obrigatório** baixar o registro do total, no mesmo commit, quando uma parte do
   upstream ou uma dependência sair.
-- **Proibido** subir o teto do kernel ou o registro do total sem ADR que cite a medida.
+- **Proibido** subir o teto do kernel, o registro do total ou a folga sem ADR que cite
+  a medida.
 - **Proibido** contornar os limites tirando arquivos de `build/` que o aplicativo baixa
   (por exemplo, buscando-os de outro endereço em tempo de execução).
