@@ -54,9 +54,16 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 ## O que os testes observam na tela
 
 A tela própria é um `canvas` com `data-tela="kernel"` que expõe, como atributos, o que
-desenhou no último quadro: `data-caminho` (`webgl2` ou `canvas2d`), `data-entidades`
-(quantas entidades do espaço corrente estão na tela) e `data-quadros` (quantos quadros
-desenhou desde a abertura). Pan é o arrasto com o botão do meio; zoom, a roda do mouse.
+desenhou no último quadro: `data-caminho` (`webgl2` ou `canvas2d`), `data-espaco` (o
+nome do espaço mostrado: `Model` ou o do layout), `data-entidades` (quantas entidades do
+espaço corrente estão na tela: as que têm traço em camada visível) e `data-quadros`
+(quantos quadros desenhou desde a abertura). Pan é o arrasto com o botão do meio; zoom,
+a roda do mouse. Com mais de um espaço, uma lista de abas (`role="tablist"`, nome
+"Espaços do desenho") troca o espaço mostrado, uma aba por espaço com o nome dele.
+
+Até o MT-KV-11 o texto não é desenhado e não entra em `data-entidades`. Até o MT-KV-13,
+a tela própria aparece só para o DXF lido pelo kernel; os demais arquivos seguem no
+desenho do upstream.
 
 Edição pelo serviço, para V2 e N2, enquanto não há linha de comando própria (spec 08):
 no build feito com `VITE_NEOCAD_SONDA=1`, a página expõe `window.__neocadSonda` com

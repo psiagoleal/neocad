@@ -3,6 +3,7 @@
 	import ViewerDropzone from '$lib/components/workspace/ViewerDropzone.svelte';
 	import ViewerToolbar from '$lib/components/workspace/ViewerToolbar.svelte';
 	import type { CadViewerDocumentState, CadViewerProgressState } from '$lib/types/cad';
+	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 
 	type ViewerScreenProps = {
 		currentDocument: CadViewerDocumentState | null;
@@ -20,6 +21,9 @@
 		onDragLeave: (event: DragEvent) => void;
 		onDrop: (event: DragEvent) => void | Promise<void>;
 		onViewerHostReady: (element: HTMLDivElement) => void;
+		isKernelScreenVisible: boolean;
+		onKernelScreenReady: (tela: TelaDoKernel) => void;
+		onKernelScreenError: (message: string) => void;
 	};
 
 	let {
@@ -37,7 +41,10 @@
 		onDragOver,
 		onDragLeave,
 		onDrop,
-		onViewerHostReady
+		onViewerHostReady,
+		isKernelScreenVisible,
+		onKernelScreenReady,
+		onKernelScreenError
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -78,5 +85,9 @@
 		{onDragLeave}
 		{onDrop}
 		onHostReady={onViewerHostReady}
+		{isKernelScreenVisible}
+		isDark={backgroundTheme === 'dark'}
+		{onKernelScreenReady}
+		{onKernelScreenError}
 	/>
 </section>

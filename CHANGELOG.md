@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Drawing drawn by the kernel (MT-KV-10, in progress) — a DXF read by the kernel now shows on its own screen: WebGL2 when the browser offers it, canvas 2D otherwise; middle-button pan, wheel zoom, Fit, background toggle, undo/redo reflected, and one tab per space (model and each layout). Text is not drawn yet (MT-KV-11).
+
 - Size budget enforced by the build (ADR 0009, MT-KV-16) — `pnpm build` fails when the kernel `.wasm` passes 600 000 bytes or the whole `build/` passes the recorded total plus 256 KiB; the numbers live in `scripts/size-budget.json`, and the record goes down as upstream parts leave.
 
 - Screen geometry prepared by the kernel (MT-KV-08) — `tessellate` splits arcs, circles and bulged polylines within a chord error; the facade's `prepareScreen`/`screenBlock`/`updateScreen`/`screenQuery` (and the service methods of the same names) hand the GPU one `Float32Array` of segments per space and layer, relative to a per-space origin so far-from-origin drawings keep their precision, keep a spatial index for view culling, and after each edit rebuild only the blocks it touched; `CommandStack::revision` lets the screen notice a missed operation and rebuild. Natively, 100 000 entities prepare in about 50 ms and one new line reaches its block in about 6 ms.

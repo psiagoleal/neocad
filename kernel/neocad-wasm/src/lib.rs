@@ -1783,6 +1783,28 @@ impl CadSession {
             .map_err(js_error)
     }
 
+    /// Caixa envolvente das entidades do espaço, `[minX, minY, maxX, maxY]`,
+    /// ou vazia se o espaço não tem entidades. É o que o enquadramento usa.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenExtents)]
+    pub fn screen_extents(&self, space: &str) -> Result<Vec<f64>, JsError> {
+        self.try_screen_extents(space).map_err(js_error)
+    }
+
+    /// Quantas entidades do espaço estão desenhadas: as que têm segmentos em
+    /// camada visível.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenEntityCount)]
+    pub fn screen_entity_count(&self, space: &str) -> Result<usize, JsError> {
+        self.try_screen_entity_count(space).map_err(js_error)
+    }
+
     /// Camadas visíveis com segmentos no espaço.
     ///
     /// # Errors
@@ -1861,6 +1883,23 @@ impl CadSession {
             .ok_or_else(|| unknown_space(space))?;
 
         Ok([origin.x, origin.y])
+    }
+
+    fn try_screen_extents(&self, space: &str) -> Result<Vec<f64>, String> {
+        let extents = self
+            .screen()?
+            .extents(&self.document, space)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(extents.map_or_else(Vec::new, |aabb| {
+            vec![aabb.min().x, aabb.min().y, aabb.max().x, aabb.max().y]
+        }))
+    }
+
+    fn try_screen_entity_count(&self, space: &str) -> Result<usize, String> {
+        self.screen()?
+            .drawn_count(&self.document, space)
+            .ok_or_else(|| unknown_space(space))
     }
 
     fn try_screen_layers(&self, space: &str) -> Result<Vec<String>, String> {
@@ -3005,6 +3044,8 @@ mod tests {
         let erros = [
             s.try_screen_spaces().err(),
             s.try_screen_origin("Model").err(),
+            s.try_screen_extents("Model").err(),
+            s.try_screen_entity_count("Model").err(),
             s.try_screen_layers("Model").err(),
             s.try_screen_block("Model", &zero).err(),
             s.try_update_screen().err(),
@@ -3041,6 +3082,11 @@ mod tests {
         );
         assert_eq!(s.try_screen_origin("Model").expect("origem"), [2.0, 0.0]);
         assert_eq!(
+            s.try_screen_extents("Model").expect("caixa"),
+            vec![0.0, 0.0, 4.0, 0.0]
+        );
+        assert_eq!(s.try_screen_entity_count("Model").expect("contagem"), 1);
+        assert_eq!(
             s.try_screen_block("Model", &zero).expect("bloco"),
             vec![-2.0, 0.0, 2.0, 0.0]
         );
@@ -3075,6 +3121,17 @@ mod tests {
             s.try_screen_block("Model", "abc").err().as_deref(),
             Some("identificador de camada inválido")
         );
+        assert_eq!(
+            s.try_screen_extents("Nenhum").err().as_deref(),
+            Some("espaço desconhecido: Nenhum")
+        );
+        assert_eq!(
+            s.try_screen_entity_count("Nenhum").err().as_deref(),
+            Some("espaço desconhecido: Nenhum")
+        );
+        // Espaço vazio: caixa vazia, nenhuma entidade.
+        assert!(s.try_screen_extents("Model").expect("caixa").is_empty());
+        assert_eq!(s.try_screen_entity_count("Model").expect("contagem"), 0);
     }
 
     #[test]

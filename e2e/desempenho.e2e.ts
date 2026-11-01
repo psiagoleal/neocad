@@ -15,7 +15,8 @@
  *
  *     VITE_NEOCAD_SONDA=1 NEOCAD_SINTETICO_N=100000 pnpm test:e2e -- desempenho
  *
- * Até o MT-KV-10 a tela própria não existe e os três testes falham por isso.
+ * O texto só entra na tela no MT-KV-11; até lá, a tela inteira são as
+ * entidades do espaço-modelo menos os textos.
  */
 
 import { writeFile } from 'node:fs/promises';
@@ -45,8 +46,10 @@ async function abrirSintetico(page: Page): Promise<{ ms: number; tela: Locator }
 	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
 	await (await chooser).setFiles(caminho);
 
+	// MT-KV-11: quando o texto for desenhado, a espera volta a ser `contagem.modelo`.
+	const desenhadas = contagem.modelo - contagem.modeloPorTipo.TEXT;
 	const tela = page.locator('canvas[data-tela="kernel"]');
-	await expect(tela).toHaveAttribute('data-entidades', String(contagem.modelo), {
+	await expect(tela).toHaveAttribute('data-entidades', String(desenhadas), {
 		timeout: ESPERA_DA_TELA_MS
 	});
 
@@ -111,6 +114,15 @@ test.describe('desempenho no desenho sintético (spec 00, N1–N3)', () => {
 
 		// N3 vale enquanto a GPU desenha; no caminho de reserva não há meta de pan.
 		await expect(tela).toHaveAttribute('data-caminho', 'webgl2');
+		// WebGL2 emulado em software (SwiftShader) também se anuncia como webgl2,
+		// mas não é a GPU: medir nele diria só quão rápida é a CPU.
+		const renderizador = await page.evaluate(() => {
+			const gl = document.createElement('canvas').getContext('webgl2');
+			const info = gl?.getExtension('WEBGL_debug_renderer_info');
+			return gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+		});
+		test.info().annotations.push({ type: 'N3-renderizador', description: renderizador });
+		expect(renderizador, 'o navegador não está usando a GPU').not.toMatch(/SwiftShader|llvmpipe/i);
 		const quadrosAntes = Number(await tela.getAttribute('data-quadros'));
 
 		await page.evaluate(() => {

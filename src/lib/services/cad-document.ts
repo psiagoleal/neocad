@@ -108,6 +108,8 @@ export interface CadKernelSession {
 	prepareScreen(chordError: number): void;
 	screenSpaces(): string[];
 	screenOrigin(space: string): ArrayLike<number>;
+	screenExtents(space: string): ArrayLike<number>;
+	screenEntityCount(space: string): number;
 	screenLayers(space: string): string[];
 	screenBlock(space: string, layer: string): Float32Array;
 	updateScreen(): unknown;
@@ -475,6 +477,25 @@ function toScreenOrigin(raw: unknown): CadPoint {
 		x: asNumber(pair[0], 'origem da tela[0]'),
 		y: asNumber(pair[1], 'origem da tela[1]')
 	};
+}
+
+/** Converte a caixa de um espaço da tela, `[minX, minY, maxX, maxY]` ou vazia. */
+function toScreenExtents(raw: unknown): CadBounds | null {
+	const values = ArrayBuffer.isView(raw) ? Array.from(raw as Float64Array) : raw;
+	const box = asArray(values, 'caixa da tela');
+
+	if (box.length === 0) {
+		return null;
+	}
+	if (box.length !== 4) {
+		throw new CadKernelContractError('caixa da tela deveria ter quatro números ou nenhum.');
+	}
+
+	const [minX, minY, maxX, maxY] = box.map((value, index) =>
+		asNumber(value, `caixa da tela[${index}]`)
+	);
+
+	return { minX, minY, maxX, maxY };
 }
 
 /** Confere um bloco de segmentos da tela, sem copiá-lo. */
@@ -1023,6 +1044,16 @@ export class CadDocument {
 	/** Origem dos segmentos do espaço, a somar na matriz da vista. */
 	getScreenOrigin(space: string): CadPoint {
 		return this.call(() => toScreenOrigin(this.session.screenOrigin(space)));
+	}
+
+	/** Caixa das entidades do espaço, para enquadrar; `null` se o espaço está vazio. */
+	getScreenExtents(space: string): CadBounds | null {
+		return this.call(() => toScreenExtents(this.session.screenExtents(space)));
+	}
+
+	/** Quantas entidades do espaço estão desenhadas (spec 07, `data-entidades`). */
+	getScreenEntityCount(space: string): number {
+		return this.call(() => asNumber(this.session.screenEntityCount(space), 'contagem da tela'));
 	}
 
 	/** Camadas visíveis com segmentos no espaço. */

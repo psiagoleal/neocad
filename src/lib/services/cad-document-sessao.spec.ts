@@ -59,6 +59,8 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		prepareScreen: () => undefined,
 		screenSpaces: () => [],
 		screenOrigin: () => new Float64Array([0, 0]),
+		screenExtents: () => new Float64Array(),
+		screenEntityCount: () => 0,
 		screenLayers: () => [],
 		screenBlock: () => new Float32Array(),
 		updateScreen: () => [],
@@ -577,5 +579,39 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 
 		expect(achadas).toEqual(['7']);
 		expect(sessao.screenQuery).toHaveBeenCalledWith('Model', -1, -2, 3, 4);
+	});
+
+	it('getScreenExtents converte a caixa do espaço e devolve null se vazio', () => {
+		const sessao = sessaoFalsa({
+			screenExtents: vi.fn((space: string) =>
+				space === 'Model' ? new Float64Array([-2, -4, 3, 6]) : new Float64Array()
+			)
+		});
+		const doc = documentoSobre(sessao);
+
+		expect(doc.getScreenExtents('Model')).toEqual({ minX: -2, minY: -4, maxX: 3, maxY: 6 });
+		expect(doc.getScreenExtents('Prancha A1')).toBeNull();
+		expect(sessao.screenExtents).toHaveBeenCalledWith('Prancha A1');
+	});
+
+	it('caixa com quantidade errada de números é erro de contrato', () => {
+		const sessao = sessaoFalsa({ screenExtents: vi.fn(() => new Float64Array([1, 2, 3])) });
+
+		expect(() => documentoSobre(sessao).getScreenExtents('Model')).toThrow(CadKernelContractError);
+	});
+
+	it('getScreenEntityCount devolve quantas entidades estão desenhadas', () => {
+		const sessao = sessaoFalsa({ screenEntityCount: vi.fn(() => 72_000) });
+
+		expect(documentoSobre(sessao).getScreenEntityCount('Model')).toBe(72_000);
+		expect(sessao.screenEntityCount).toHaveBeenCalledWith('Model');
+	});
+
+	it('contagem que não é número é erro de contrato', () => {
+		const sessao = sessaoFalsa({ screenEntityCount: vi.fn(() => '3' as unknown as number) });
+
+		expect(() => documentoSobre(sessao).getScreenEntityCount('Model')).toThrow(
+			CadKernelContractError
+		);
 	});
 });

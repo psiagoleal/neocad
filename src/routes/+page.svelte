@@ -20,6 +20,7 @@
 	} from '$lib/services/cad-file';
 	import { listCadCommandCatalog } from '$lib/services/cad-commands';
 	import { CadDocument } from '$lib/services/cad-document';
+	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 	import {
 		clearRecentDocuments as clearStoredRecentDocuments,
 		listRecentDocuments,
@@ -62,6 +63,11 @@
 	/** Documento do kernel próprio. Convive com o upstream durante a transição. */
 	let kernelDocument: CadDocument | null = $state(null);
 	let isSaving = $state(false);
+
+	/** Tela desenhada pelo kernel (ADR 0008); criada pelo componente da área de desenho. */
+	let telaDoKernel: TelaDoKernel | null = null;
+	/** Verdadeiro quando o desenho aberto foi lido pelo kernel e está na tela própria. */
+	let isKernelScreenVisible = $state(false);
 
 	/**
 	 * Último retrato carregado no kernel.
@@ -273,6 +279,7 @@
 			}
 
 			refreshHistory();
+			telaDoKernel?.atualizar();
 		} catch (error) {
 			pushNotification(
 				'error',
@@ -288,6 +295,7 @@
 			}
 
 			refreshHistory();
+			telaDoKernel?.atualizar();
 		} catch (error) {
 			pushNotification(
 				'error',
@@ -454,6 +462,8 @@
 				pushNotification('warning', `Leitura DXF: ${erro}.`);
 			}
 
+			showKernelScreen(kernelDocument);
+
 			return report;
 		} catch (error) {
 			kernelReadNatively = false;
@@ -466,6 +476,41 @@
 
 			return null;
 		}
+	}
+
+	/**
+	 * Mostra o desenho do kernel na tela própria, sem esperar o upstream.
+	 *
+	 * Se a tela não puder ser preparada, o upstream continua desenhando: o
+	 * desenho não deixa de aparecer por causa dela.
+	 */
+	function showKernelScreen(documento: CadDocument): void {
+		if (telaDoKernel == null) {
+			return;
+		}
+
+		try {
+			telaDoKernel.mostrar(documento);
+			isKernelScreenVisible = true;
+			hasVisitedViewerWorkspace = true;
+			activeWorkspace = 'viewer';
+		} catch (error) {
+			isKernelScreenVisible = false;
+			pushNotification(
+				'warning',
+				error instanceof Error
+					? `A tela própria não pôde mostrar o desenho: ${error.message}`
+					: 'A tela própria não pôde mostrar o desenho.'
+			);
+		}
+	}
+
+	function handleKernelScreenReady(tela: TelaDoKernel): void {
+		telaDoKernel = tela;
+	}
+
+	function handleKernelScreenError(message: string): void {
+		pushNotification('warning', `Tela própria indisponível: ${message}`);
 	}
 
 	/**
@@ -497,6 +542,7 @@
 		}
 
 		kernelReadNatively = false;
+		isKernelScreenVisible = false;
 
 		// A leitura nativa acontece **antes** do upstream e não depende dele: é o
 		// que faz um arquivo que o parser de terceiro não abre continuar sendo um
@@ -628,7 +674,11 @@
 	}
 
 	function fitDrawingToView(): void {
-		viewerController?.zoomToFit();
+		if (isKernelScreenVisible) {
+			telaDoKernel?.enquadrar();
+		} else {
+			viewerController?.zoomToFit();
+		}
 		pushNotification('info', 'Ajuste de visualização aplicado ao desenho.');
 	}
 
@@ -803,6 +853,9 @@
 				onDragLeave={handleViewerDragLeave}
 				onDrop={handleFileDrop}
 				onViewerHostReady={handleViewerHostReady}
+				{isKernelScreenVisible}
+				onKernelScreenReady={handleKernelScreenReady}
+				onKernelScreenError={handleKernelScreenError}
 			/>
 		</section>
 

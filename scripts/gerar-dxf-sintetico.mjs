@@ -67,7 +67,8 @@ function num(valor) {
  * @param {{ entidades: number, camadas: number, semente?: number }} opcoes
  * @returns {{ texto: string, contagem: {
  *   total: number, modelo: number, papel: Record<string, number>,
- *   porTipo: Record<string, number>, camadas: number } }}
+ *   porTipo: Record<string, number>, modeloPorTipo: Record<string, number>,
+ *   camadas: number } }}
  */
 export function gerarDxfSintetico({ entidades, camadas, semente = 1 }) {
 	if (!Number.isInteger(entidades) || entidades < 0) {
@@ -176,6 +177,7 @@ export function gerarDxfSintetico({ entidades, camadas, semente = 1 }) {
 		modelo: 0,
 		papel: Object.fromEntries(LAYOUTS.map((layout) => [layout.nome, 0])),
 		porTipo: Object.fromEntries(TIPOS.map((tipo) => [tipo, 0])),
+		modeloPorTipo: Object.fromEntries(TIPOS.map((tipo) => [tipo, 0])),
 		camadas: camadas + 1
 	};
 
@@ -205,6 +207,7 @@ export function gerarDxfSintetico({ entidades, camadas, semente = 1 }) {
 			contagem.papel[layout.nome]++;
 		} else {
 			contagem.modelo++;
+			contagem.modeloPorTipo[tipo]++;
 		}
 
 		par(8, camada);

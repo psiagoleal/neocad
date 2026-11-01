@@ -233,6 +233,31 @@ impl Screen {
         )
     }
 
+    /// Quantas entidades do espaço estão desenhadas: as que têm segmentos em
+    /// camada visível.
+    #[must_use]
+    pub fn drawn_count(&self, document: &Document, space: &str) -> Option<usize> {
+        let found = &self.spaces[self.space(space)?];
+        let visible = self.layers(document, space)?;
+
+        Some(
+            visible
+                .iter()
+                .filter_map(|layer| found.layers.get(layer))
+                .map(BTreeMap::len)
+                .sum(),
+        )
+    }
+
+    /// Caixa envolvente das entidades do espaço; `None` se o espaço é
+    /// desconhecido, `Some(None)` se está vazio.
+    #[must_use]
+    pub fn extents(&self, document: &Document, space: &str) -> Option<Option<Aabb>> {
+        let found = &self.spaces[self.space(space)?];
+
+        Some(document.block_bounding_box(found.block))
+    }
+
     /// Acompanha a operação de revisão `revision`, que teve o efeito informado.
     ///
     /// Devolve os blocos que mudaram, em ordem.
@@ -656,6 +681,80 @@ mod tests {
         let mut esperadas = vec![dentro, nova];
         esperadas.sort();
         assert_eq!(achadas, esperadas);
+    }
+
+    #[test]
+    fn contagem_desenhada_e_caixa_de_cada_espaco() {
+        let mut doc = Document::new();
+        let mut pilha = CommandStack::new();
+        let zero = doc.layers().default_layer();
+        let paredes = doc.create_layer("Paredes").expect("camada");
+        let layout = doc.create_layout("Prancha A1").expect("layout");
+        let bloco = doc.layouts().get(layout).expect("registro").block();
+        insere(&mut doc, &mut pilha, zero, reta(-2.0, 1.0, 3.0, 1.0));
+        insere(&mut doc, &mut pilha, paredes, reta(0.0, -4.0, 0.0, 6.0));
+        insere(
+            &mut doc,
+            &mut pilha,
+            zero,
+            Geometry::Text(Text {
+                position: Point2::new(1.0, 1.0),
+                content: "A".to_owned(),
+                height: 1.0,
+                rotation: 0.0,
+            }),
+        );
+        pilha
+            .edit(&mut doc, "Inserir", |editor| {
+                editor.insert_entity(Entity::new(zero, reta(5.0, 5.0, 6.0, 5.0)), bloco)
+            })
+            .expect("insere no papel");
+        let mut tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("erro válido");
+
+        // O texto ainda não é desenhado (MT-KV-11), então não conta.
+        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(2));
+        assert_eq!(tela.drawn_count(&doc, "Prancha A1"), Some(1));
+        assert_eq!(tela.drawn_count(&doc, "Nenhum"), None);
+
+        let caixa = tela
+            .extents(&doc, MODEL_LAYOUT_NAME)
+            .expect("espaço")
+            .expect("não vazio");
+        assert!(perto(
+            [caixa.min().x, caixa.min().y, caixa.max().x, caixa.max().y],
+            [-2.0, -4.0, 3.0, 6.0],
+            1e-9
+        ));
+        let papel = tela
+            .extents(&doc, "Prancha A1")
+            .expect("espaço")
+            .expect("não vazio");
+        assert!(perto(
+            [papel.min().x, papel.min().y, papel.max().x, papel.max().y],
+            [5.0, 5.0, 6.0, 5.0],
+            1e-9
+        ));
+        assert_eq!(tela.extents(&doc, "Nenhum"), None);
+
+        // Camada desligada some da contagem.
+        let mut registro = doc.layers().get(paredes).expect("registro").clone();
+        registro.set_off(true);
+        pilha
+            .edit(&mut doc, "Desligar", |editor| {
+                editor.set_layer_record(paredes, registro)
+            })
+            .expect("desliga");
+        tela.update(&doc, pilha.revision(), pilha.last_effect());
+        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(1));
+    }
+
+    #[test]
+    fn espaco_vazio_nao_tem_caixa() {
+        let doc = Document::new();
+        let tela = Screen::prepare(&doc, 0, ERRO).expect("erro válido");
+
+        assert_eq!(tela.extents(&doc, MODEL_LAYOUT_NAME), Some(None));
+        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(0));
     }
 
     #[test]

@@ -6,10 +6,11 @@
  * \author Iago Leal
  * \date 2026-10-30
  *
- * Hoje o canvas e a barra de comandos são do upstream, e salvar grava o modelo
- * do kernel, que não recebe as edições feitas por essa barra (achado C4). Este
- * arquivo prova o defeito antes de qualquer correção; os demais critérios da
- * spec 07 (V2, V3, V5b, V7) entram aqui quando a fase KV os implementar.
+ * A barra de comandos ainda é do upstream, e salvar grava o modelo do kernel,
+ * que não recebe as edições feitas por essa barra (achado C4); o primeiro teste
+ * prova o defeito antes da correção. Os seguintes conferem a tela desenhada pelo
+ * kernel (V1 sem texto; spec 00, N4). Os demais critérios da spec 07 (V2, V3,
+ * V5b, V7) entram aqui quando a fase KV os implementar.
  */
 
 import path from 'node:path';
@@ -93,4 +94,83 @@ test('a linha desenhada por comando está no arquivo salvo e reaberto (V4)', asy
 
 	await abrirDesenho(page, destino);
 	await expect(page.getByText(/^Kernel: /).first()).toContainText('3 entidade(s)');
+});
+
+/** A tela própria, como a spec 07 a descreve para os testes. */
+function telaDoKernel(page: Page) {
+	return page.locator('canvas[data-tela="kernel"]');
+}
+
+/** Abre pelo diálogo de arquivo, sem esperar o upstream. */
+async function abrirSoPeloKernel(page: Page, caminho: string): Promise<void> {
+	await page.goto('/');
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await (await chooser).setFiles(caminho);
+}
+
+test('a tela do kernel mostra as entidades do modelo (V1, sem texto)', async ({ page }) => {
+	test.setTimeout(60_000);
+	await abrirSoPeloKernel(page, FIXTURE);
+
+	const tela = telaDoKernel(page);
+	// A fixture tem uma LINE e um CIRCLE no espaço-modelo.
+	await expect(tela).toHaveAttribute('data-entidades', '2', { timeout: 30_000 });
+	await expect(tela).toHaveAttribute('data-espaco', 'Model');
+	// Sem GPU, a CI cai na reserva; os dois caminhos valem aqui.
+	await expect(tela).toHaveAttribute('data-caminho', /^(webgl2|canvas2d)$/);
+	await expect(tela).toBeVisible();
+});
+
+test('cada layout tem a sua aba e a sua contagem (V1, sem texto)', async ({ page }) => {
+	test.setTimeout(60_000);
+	await abrirSoPeloKernel(page, path.join(process.cwd(), 'e2e/fixtures/two-layouts.dxf'));
+
+	const tela = telaDoKernel(page);
+	await expect(tela).toHaveAttribute('data-entidades', '2', { timeout: 30_000 });
+
+	const abas = page.getByRole('tablist', { name: 'Espaços do desenho' });
+	await abas.getByRole('tab', { name: 'Prancha A1' }).click();
+	await expect(tela).toHaveAttribute('data-espaco', 'Prancha A1');
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+
+	await abas.getByRole('tab', { name: 'Prancha A2' }).click();
+	await expect(tela).toHaveAttribute('data-espaco', 'Prancha A2');
+	await expect(tela).toHaveAttribute('data-entidades', '1');
+
+	await abas.getByRole('tab', { name: 'Model' }).click();
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+});
+
+test('sem WebGL2, a tela cai sozinha no canvas 2D (N4)', async ({ page }) => {
+	test.setTimeout(60_000);
+	// Tira o WebGL2 só da tela própria. Tirá-lo da página inteira derruba também
+	// o visualizador do upstream, que hoje habilita a abertura de arquivos; isso
+	// deixa de valer quando o upstream sair da tela (MT-KV-13).
+	await page.addInitScript(() => {
+		const original = HTMLCanvasElement.prototype.getContext;
+		HTMLCanvasElement.prototype.getContext = function (
+			this: HTMLCanvasElement,
+			tipo: string,
+			...resto: unknown[]
+		) {
+			if (tipo === 'webgl2' && this.dataset.tela === 'kernel') return null;
+			return (original as (...a: unknown[]) => unknown).call(this, tipo, ...resto);
+		} as typeof HTMLCanvasElement.prototype.getContext;
+	});
+	await abrirSoPeloKernel(page, FIXTURE);
+
+	const tela = telaDoKernel(page);
+	await expect(tela).toHaveAttribute('data-caminho', 'canvas2d', { timeout: 30_000 });
+	await expect(tela).toHaveAttribute('data-entidades', '2', { timeout: 30_000 });
+
+	// Pan e zoom também redesenham pela reserva.
+	const antes = Number(await tela.getAttribute('data-quadros'));
+	const caixa = await tela.boundingBox();
+	expect(caixa).not.toBeNull();
+	await page.mouse.move((caixa?.x ?? 0) + 100, (caixa?.y ?? 0) + 100);
+	await page.mouse.wheel(0, -120);
+	await expect
+		.poll(async () => Number(await tela.getAttribute('data-quadros')))
+		.toBeGreaterThan(antes);
 });
