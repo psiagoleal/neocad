@@ -8,6 +8,8 @@
 
 ## Índice
 
+- [Rodada de 2026-11-01: a tela acompanha a edição](#rodada-de-2026-11-01-a-tela-acompanha-a-edição) —
+  MT-KV-12: sonda, `data-caixa`, V2, V3 e N2.
 - [Rodada de 2026-11-01: orçamento e tela própria](#rodada-de-2026-11-01-orçamento-e-tela-própria) —
   ADR 0009 aceito, MT-KV-16 e MT-KV-10 (tela em WebGL2 e canvas 2D).
 - [Rodada de 2026-10-31: camada da GPU](#rodada-de-2026-10-31-camada-da-gpu) — MT-KV-09
@@ -22,6 +24,20 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-01: a tela acompanha a edição
+
+- **Último turno:** `889be19` (MT-KV-12) e `0a78e09` (hash no handoff).
+
+- **MT-KV-12:** a tela acompanha cada edição do kernel e o desfazer/refazer do menu
+  `Editar`, buscando de novo só os blocos que a operação mudou. O canvas expõe também
+  `data-caixa` (a caixa envolvente do espaço). V2 (criar, mover e apagar uma linha) e V3
+  provados em `e2e/kernel-view.e2e.ts`.
+- **Sonda** (`src/lib/services/sonda.ts`): `desenharLinha`, `mover` e `apagar`, na
+  camada `0`. O build dos testes E2E sempre a traz (`playwright.config.ts`); o de
+  produção não (conferido: nenhum arquivo de `build/` a contém).
+- **N2** com Chrome em janela na RTX 3070, 100 mil entidades, três rodadas: 11,3 / 14,3 /
+  11,2 ms (meta 100 ms). Na mesma rodada, N1 2,70–2,73 s e N3 16,7 ms.
 
 ## Rodada de 2026-11-01: orçamento e tela própria
 

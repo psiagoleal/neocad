@@ -166,6 +166,14 @@ verificação por fabricante (15).
   os textos).
 - **Fora de escopo:** MTEXT e estilos de texto (fase KP).
 - **Depende de:** MT-KV-10.
+- **Resultado (2026-11-01):** fonte de traço Hershey Roman Simplex embutida em
+  `neocad-geometry` ([ADR 0010](../adr/0010-texto-da-tela-em-fonte-de-traco.md)), com
+  acentos compostos e os códigos `%%`; o texto vira segmentos no bloco da camada, então o
+  desenhista não mudou. Provas: `stroke_font` e `tela` em `cargo test`; V1 com texto em
+  `e2e/kernel-view.e2e.ts` (fixture `with-text.dxf`), visto falhar com o texto desligado
+  (1 em vez de 3); amostra conferida em captura. Com Chrome em janela na RTX 3070, 100
+  mil entidades e a espera de N1 de volta a `contagem.modelo`: N1 2,79 / 2,89 / 2,92 s,
+  N2 12,9–15,4 ms, N3 16,7 ms. `.wasm` 479 595 bytes (+14 872).
 
 ### MT-KV-12: Refletir edição, desfazer e refazer
 

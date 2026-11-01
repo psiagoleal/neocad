@@ -9,8 +9,8 @@
  * A barra de comandos ainda é do upstream, e salvar grava o modelo do kernel,
  * que não recebe as edições feitas por essa barra (achado C4); o primeiro teste
  * prova o defeito antes da correção. Os seguintes conferem a tela desenhada pelo
- * kernel (V1 sem texto; spec 00, N4). Os demais critérios da spec 07 (V2, V3,
- * V5b, V7) entram aqui quando a fase KV os implementar.
+ * kernel (V1, V2, V3; spec 00, N4). Os demais critérios da spec 07 (V5b, V7)
+ * entram aqui quando a fase KV os implementar.
  */
 
 import path from 'node:path';
@@ -109,7 +109,7 @@ async function abrirSoPeloKernel(page: Page, caminho: string): Promise<void> {
 	await (await chooser).setFiles(caminho);
 }
 
-test('a tela do kernel mostra as entidades do modelo (V1, sem texto)', async ({ page }) => {
+test('a tela do kernel mostra as entidades do modelo (V1)', async ({ page }) => {
 	test.setTimeout(60_000);
 	await abrirSoPeloKernel(page, FIXTURE);
 
@@ -122,7 +122,15 @@ test('a tela do kernel mostra as entidades do modelo (V1, sem texto)', async ({ 
 	await expect(tela).toBeVisible();
 });
 
-test('cada layout tem a sua aba e a sua contagem (V1, sem texto)', async ({ page }) => {
+test('o texto do kernel também é desenhado (V1)', async ({ page }) => {
+	test.setTimeout(60_000);
+	await abrirSoPeloKernel(page, path.join(process.cwd(), 'e2e/fixtures/with-text.dxf'));
+
+	// Uma LINE e dois TEXT, um deles noutra camada e girado.
+	await expect(telaDoKernel(page)).toHaveAttribute('data-entidades', '3', { timeout: 30_000 });
+});
+
+test('cada layout tem a sua aba e a sua contagem (V1)', async ({ page }) => {
 	test.setTimeout(60_000);
 	await abrirSoPeloKernel(page, path.join(process.cwd(), 'e2e/fixtures/two-layouts.dxf'));
 

@@ -33,8 +33,6 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
-      V1 completo.
 - [ ] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) —
       V5, V6; sai a barra do upstream.
 - [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
@@ -54,6 +52,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
+      texto em fonte de traço Hershey (ADR 0010); V1 completo.
 - [x] [MT-KV-12](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-12-refletir-edição-desfazer-e-refazer) —
       a tela acompanha edição, desfazer e refazer; N2 11–14 ms na RTX 3070.
 - [x] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) —

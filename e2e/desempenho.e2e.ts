@@ -15,9 +15,6 @@
  * (playwright.config.ts):
  *
  *     NEOCAD_SINTETICO_N=100000 pnpm test:e2e -- desempenho
- *
- * O texto só entra na tela no MT-KV-11; até lá, a tela inteira são as
- * entidades do espaço-modelo menos os textos.
  */
 
 import { writeFile } from 'node:fs/promises';
@@ -47,10 +44,8 @@ async function abrirSintetico(page: Page): Promise<{ ms: number; tela: Locator }
 	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
 	await (await chooser).setFiles(caminho);
 
-	// MT-KV-11: quando o texto for desenhado, a espera volta a ser `contagem.modelo`.
-	const desenhadas = contagem.modelo - contagem.modeloPorTipo.TEXT;
 	const tela = page.locator('canvas[data-tela="kernel"]');
-	await expect(tela).toHaveAttribute('data-entidades', String(desenhadas), {
+	await expect(tela).toHaveAttribute('data-entidades', String(contagem.modelo), {
 		timeout: ESPERA_DA_TELA_MS
 	});
 

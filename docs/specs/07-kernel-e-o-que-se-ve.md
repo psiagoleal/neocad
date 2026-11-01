@@ -42,7 +42,7 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 
 | id  | critério                                                                                                                                                                                 | prova                                                                                                                            |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| V1  | QUANDO um desenho é aberto, a tela DEVE exibir as entidades do kernel, com a mesma contagem por tipo e por camada, no espaço-modelo e em cada layout.                                    | `pnpm test:e2e -- kernel-document` (estender)                                                                                    |
+| V1  | QUANDO um desenho é aberto, a tela DEVE exibir as entidades do kernel, com a mesma contagem por tipo e por camada, no espaço-modelo e em cada layout.                                    | `pnpm test:e2e -- kernel-view` (total desenhado em cada espaço, com texto) e `kernel-document` (contagens do kernel)             |
 | V2  | QUANDO o kernel cria, altera ou remove uma entidade, a tela DEVE refletir a mudança sem reabrir o arquivo.                                                                               | `pnpm test:e2e -- kernel-view`: criar, mover e apagar uma linha pelo serviço e conferir a contagem e a caixa envolvente exibidas |
 | V3  | QUANDO o usuário desfaz ou refaz pelo menu `Editar`, a tela DEVE refletir o estado do kernel.                                                                                            | `pnpm test:e2e -- kernel-view`                                                                                                   |
 | V4  | QUANDO uma linha é desenhada por comando e o arquivo é salvo e reaberto, a linha DEVE estar no arquivo.                                                                                  | `pnpm test:e2e -- kernel-view` — falha hoje (achado C4) e fica `test.fail()` até KV fechar                                       |
@@ -62,7 +62,7 @@ espaço corrente estão na tela: as que têm traço em camada visível) e `data-
 a roda do mouse. Com mais de um espaço, uma lista de abas (`role="tablist"`, nome
 "Espaços do desenho") troca o espaço mostrado, uma aba por espaço com o nome dele.
 
-Até o MT-KV-11 o texto não é desenhado e não entra em `data-entidades`. Até o MT-KV-13,
+O texto é desenhado em traços, com a fonte Hershey Roman Simplex (ADR 0010). Até o MT-KV-13,
 a tela própria aparece só para o DXF lido pelo kernel; os demais arquivos seguem no
 desenho do upstream.
 

@@ -28,7 +28,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use neocad_geometry::{tessellate, Aabb, AnyCurve, Point2, SpatialIndex};
+use neocad_geometry::{tessellate, text_strokes, Aabb, AnyCurve, Point2, SpatialIndex};
 use neocad_model::{BlockId, Document, Entity, EntityId, Geometry, LayerId, LayerRecord};
 use neocad_transaction::Effect;
 
@@ -60,21 +60,34 @@ pub struct Screen {
 
 /// Segmentos `x1, y1, x2, y2` da entidade, relativos à origem.
 ///
-/// Texto e janela de layout não viram segmentos aqui: o texto tem caminho
-/// próprio (MT-KV-11) e a janela é moldura de outra vista.
+/// O texto vira os traços da fonte (ADR 0010). A janela de layout não vira
+/// segmentos: é moldura de outra vista.
 fn segments(entity: &Entity, origin: Point2, chord_error: f64) -> Option<Vec<f32>> {
+    // A subtração é feita em f64; só a diferença, pequena, vira f32.
+    #[allow(clippy::cast_possible_truncation)]
+    let relative = |p: Point2| [(p.x - origin.x) as f32, (p.y - origin.y) as f32];
+
     let curve = match &entity.geometry {
         Geometry::Line(line) => AnyCurve::Line(*line),
         Geometry::Circle(circle) => AnyCurve::Circle(*circle),
         Geometry::Arc(arc) => AnyCurve::Arc(*arc),
         Geometry::Polyline(polyline) => AnyCurve::Polyline(polyline.clone()),
-        Geometry::Text(_) | Geometry::Viewport(_) => return None,
+        Geometry::Text(text) => {
+            let strokes = text_strokes(&text.content, text.position, text.height, text.rotation);
+            if strokes.is_empty() {
+                return None;
+            }
+            return Some(
+                strokes
+                    .into_iter()
+                    .flat_map(|(a, b)| relative(a).into_iter().chain(relative(b)))
+                    .collect(),
+            );
+        }
+        Geometry::Viewport(_) => return None,
     };
     let points = tessellate(&curve, chord_error)?;
 
-    // A subtração é feita em f64; só a diferença, pequena, vira f32.
-    #[allow(clippy::cast_possible_truncation)]
-    let relative = |p: Point2| [(p.x - origin.x) as f32, (p.y - origin.y) as f32];
     let mut out = Vec::with_capacity(points.len().saturating_sub(1) * 4);
     for pair in points.windows(2) {
         out.extend(relative(pair[0]));
@@ -526,7 +539,7 @@ mod tests {
     }
 
     #[test]
-    fn texto_nao_entra_nos_blocos_de_segmentos() {
+    fn texto_vira_os_tracos_da_fonte_no_bloco_da_camada() {
         let mut doc = Document::new();
         let mut pilha = CommandStack::new();
         let zero = doc.layers().default_layer();
@@ -545,7 +558,17 @@ mod tests {
 
         let tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("erro válido");
 
-        assert_eq!(absolutos(&tela, MODEL_LAYOUT_NAME, zero).len(), 1);
+        // A reta e os três traços do `A` (duas pernas e a barra).
+        let tracos = neocad_geometry::text_strokes("A", Point2::ORIGIN, 1.0, 0.0);
+        assert_eq!(tracos.len(), 3);
+        let segmentos = absolutos(&tela, MODEL_LAYOUT_NAME, zero);
+        assert_eq!(segmentos.len(), 4);
+        for (a, b) in tracos {
+            assert!(segmentos
+                .iter()
+                .any(|s| perto(*s, [a.x, a.y, b.x, b.y], 1e-5)));
+        }
+        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(2));
     }
 
     #[test]
@@ -711,8 +734,7 @@ mod tests {
             .expect("insere no papel");
         let mut tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("erro válido");
 
-        // O texto ainda não é desenhado (MT-KV-11), então não conta.
-        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(2));
+        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(3));
         assert_eq!(tela.drawn_count(&doc, "Prancha A1"), Some(1));
         assert_eq!(tela.drawn_count(&doc, "Nenhum"), None);
 
@@ -745,7 +767,7 @@ mod tests {
             })
             .expect("desliga");
         tela.update(&doc, pilha.revision(), pilha.last_effect());
-        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(1));
+        assert_eq!(tela.drawn_count(&doc, MODEL_LAYOUT_NAME), Some(2));
     }
 
     #[test]
