@@ -24,11 +24,8 @@
   histórico, sugestões bilíngues, `Enter`/`Espaço`/`Esc`/setas. `L` desenha pelo kernel,
   e o **V4 passa** (saiu o `test.fail()`). C5, C6, C7, C9 e C12 provados em
   `e2e/command-line.e2e.ts`.
-- Em discussão com o mantenedor: um segundo modo de entrada, com vírgula decimal e
-  ponto e vírgula entre coordenadas, aceitando `;` também no modo AutoCAD. A
-  recomendação foi manter o padrão do AutoCAD e ter uma configuração explícita, que
-  também rege a saída (mensagens, barra de status). Registrar na spec 10 e abrir ticket
-  quando ele decidir.
+- Decidido com o mantenedor: a recusa do V5b fica no histórico da linha de comando (spec
+  07); o modo de vírgula decimal entra na spec 10 como decisão e vira o MT-UI-08.
 - A rodada anterior (MT-KV-14a) está no
   [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-motor-de-comandos-e-line).
 

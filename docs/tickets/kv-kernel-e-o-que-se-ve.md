@@ -336,9 +336,8 @@ vez. São cinco objetivos, cada um com prova própria. O `LINE` ganhou critério
 - **Critério de aceite:** spec 07, V5b; spec 08, C10 para cada comando.
 - **Fora de escopo:** comandos de anotação (fase KP).
 - **Depende de:** MT-KV-14c.
-- **A decidir ao abrir:** o V5b pede a recusa do kernel na área de mensagens; o motor
-  (MT-KV-14a) a mostra no histórico da linha de comando, como o AutoCAD. Ou a spec 07
-  passa a aceitar o histórico, ou a recusa vai também ao painel.
+- **Decidido (2026-11-02):** a recusa do V5b aparece no histórico da linha de comando,
+  como no AutoCAD; a spec 07 foi ajustada.
 
 ### MT-KV-14e: Edição sobre entidade não modelada (V7)
 

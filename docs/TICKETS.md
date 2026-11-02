@@ -51,6 +51,8 @@ UI começa pelo que não depende de KV.
       spec 09, S4, em Linux e Windows.
 - [ ] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —
       `Ajuda > Comandos CAD` nos dois idiomas (C11).
+- [ ] [MT-UI-08](tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal) —
+      modo de vírgula decimal e ponto e vírgula.
 - [ ] [MT-UI-06](tickets/ui-interface.md#mt-ui-06-vitrine-do-neocad-no-repositório-e-no-github-pages) —
       README e GitHub Pages com capturas e vídeos — depois de a interface amadurecer.
 - [ ] [MT-UI-07](tickets/ui-interface.md#mt-ui-07-fontes-próprias-e-pacotes-de-insumos-para-baixar) —

@@ -104,6 +104,18 @@ confortável, prática e bonita o bastante para ser mostrada.
 - **Depende de:** a fase de UI/UX ter a linha de comando própria e a tela sem o upstream
   (MT-KV-13, MT-KV-14).
 
+### MT-UI-08: Modo de vírgula decimal
+
+- **Objetivo:** configuração explícita que troca a entrada e a saída de números para
+  vírgula decimal e ponto e vírgula entre coordenadas (`1,5;2`); o padrão continua o do
+  AutoCAD, e o ponto e vírgula também separa coordenadas nele.
+- **Arquivos no escopo:** `src/lib/command-line/pontos.ts` e o teste dele; o lugar da
+  configuração e da formatação de saída, a definir ao abrir.
+- **Critério de aceite:** critérios EARS escritos na spec 10 antes de implementar,
+  partindo da decisão já registrada lá; `pnpm test command-line`.
+- **Fora de escopo:** formato dos números gravados no DXF, que não muda.
+- **Depende de:** MT-KV-14b.
+
 ### MT-UI-07: Fontes próprias e pacotes de insumos para baixar
 
 - **Objetivo:** fontes de traço próprias, derivadas da Hershey (ADR 0010), parecidas com

@@ -39,7 +39,13 @@ Grafia oficial de cada idioma, de [`08-comandos-autocad.tsv`](08-comandos-autoca
 
 - **Coordenadas como no AutoCAD:** ponto é o separador decimal e vírgula separa as
   coordenadas (`1.5,2`), em qualquer idioma. Decidido em 2026-11-02, pela paridade com o
-  AutoCAD (spec 08).
+  AutoCAD (spec 08). É o padrão.
+- **Segundo modo, com vírgula decimal** (decidido em 2026-11-02 com o mantenedor; a
+  implementar no [MT-UI-08](../tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal)):
+  uma configuração explícita troca o decimal para a vírgula e o separador para o ponto e
+  vírgula (`1,5;2`). O ponto e vírgula vale como separador também no modo padrão
+  (`1.5;2`). A configuração rege também a saída: distâncias e coordenadas nas mensagens e
+  na barra de status. Um valor único (distância, raio, fator) usa o decimal do modo.
 - **Camada corrente:** até a spec de camadas (KP1), a reta nova vai para a camada `0`, ou
   para a primeira, se não houver `0`.
 
