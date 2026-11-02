@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Bilingual command resolver (MT-UI-04, spec 08 C1–C5, C9) — typed text resolves to a command by English name, Brazilian Portuguese name or alias, ignoring case and accents, with the `_` and `-` prefixes; catalogue commands not yet implemented answer "ainda não disponível", anything else "comando desconhecido"; suggestions by prefix in both languages. The 225-row table is embedded from the spec itself; 634 typed forms, no collisions. The visible command line comes with MT-UI-05 and MT-KV-14.
+
 - Warning for what the kernel screen does not show (MT-KV-13c, spec 07 V6) — layout viewports and blank texts are counted per space and type; showing a space that has them, or an edit that changes the count, posts "A tela não exibe N entidade(s) de <space>: …" to the messages area.
 
 - One picture from two renderers (MT-KV-13a) — on a DXF read by the kernel, the upstream viewer now draws only the entity types the kernel screen does not (`CadDocument.getScreenEntityTypes`), underneath it; the kernel screen is transparent in model space and the upstream view follows its pan and zoom, so unsupported entities (SOLID, HATCH, INSERT, …) stay visible without being drawn twice.

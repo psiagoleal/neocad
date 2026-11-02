@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-01: aviso do que a tela não exibe](#rodada-de-2026-11-01-aviso-do-que-a-tela-não-exibe) — MT-KV-13c
 - [Rodada de 2026-11-01: upstream por baixo](#rodada-de-2026-11-01-upstream-por-baixo) — MT-KV-13a
 - [Rodada de 2026-11-01: texto na tela](#rodada-de-2026-11-01-texto-na-tela) — MT-KV-11
 - [Rodada de 2026-11-01: a tela acompanha a edição](#rodada-de-2026-11-01-a-tela-acompanha-a-edição) —
@@ -26,6 +27,17 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-01: aviso do que a tela não exibe
+
+Commit `6e71b4c`.
+
+- **MT-KV-13c (V6):** a tela do kernel conta, por espaço e tipo, o que não vira traço (hoje
+  a janela de layout e o texto vazio, em camada visível) e avisa a área de mensagens ao
+  mostrar o espaço e quando uma edição muda a contagem. Fixture nova `with-viewport.dxf`.
+- O `.wasm` foi a 485 816 bytes (+5 719). A primeira versão somava 14 914; o custo vinha
+  de dois mapas de tipo novo, e reaproveitar o mapa da tela resolveu. N1 2,83 s, N2
+  12,2 ms, N3 16,7 ms.
 
 ## Rodada de 2026-11-01: upstream por baixo
 

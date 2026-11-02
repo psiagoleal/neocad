@@ -273,7 +273,7 @@ tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela
 - **Arquivos no escopo:** `src/lib/commands/`, `e2e/kernel-view.e2e.ts`.
 - **Critério de aceite:** spec 07, V4 (sai o `test.fail()`), V5b e V7.
 - **Fora de escopo:** comandos de anotação (fase KP).
-- **Depende de:** MT-KV-13, MT-UI-04.
+- **Depende de:** MT-KV-13a, MT-UI-04 (os dois concluídos).
 
 ### MT-KV-15: Verificação na NVIDIA
 

@@ -10,24 +10,23 @@
 
 ## Último turno
 
-- **Data:** 2026-11-01
+- **Data:** 2026-11-02
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `6e71b4c` (MT-KV-13c); antes, `94c0630` (MT-KV-13a)
+- **Commit:** ver `git log` (MT-UI-04); antes, `6e71b4c` (MT-KV-13c)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
 
 ## Metas cumpridas neste turno
 
-- **MT-KV-13c (V6):** a tela do kernel conta, por espaço e tipo, o que não vira traço (hoje
-  a janela de layout e o texto vazio, em camada visível) e avisa a área de mensagens ao
-  mostrar o espaço e quando uma edição muda a contagem. Fixture nova `with-viewport.dxf`.
-- O `.wasm` foi a 485 816 bytes (+5 719). A primeira versão somava 14 914; o custo vinha
-  de dois mapas de tipo novo, e reaproveitar o mapa da tela resolveu. N1 2,83 s, N2
-  12,2 ms, N3 16,7 ms.
-- A rodada anterior (MT-KV-13a) está no
-  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-upstream-por-baixo).
+- **MT-UI-04:** resolvedor de comandos bilíngue em `src/lib/command-line/` (C1–C5, C9 da
+  spec 08): nome em inglês, em português e apelido, sem caixa nem acento, prefixos `_`
+  e `-`, "ainda não disponível" × "comando desconhecido", sugestões nos dois idiomas. A
+  tabela da spec entra no bundle com `?raw`. 225 linhas testadas; 634 textos, nenhuma
+  colisão. Ainda não está ligado à interface.
+- A rodada anterior (MT-KV-13c) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-aviso-do-que-a-tela-não-exibe).
 
 ## O que mudou de rumo
 
@@ -44,8 +43,9 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-14 (comandos digitados no kernel, fecha o V4; depende do MT-UI-04) e só então
-   MT-KV-13b (sai a barra do upstream).
+1. MT-KV-14 (comandos digitados no kernel, fecha o V4), agora desbloqueado pelo
+   MT-UI-04, e só então MT-KV-13b (sai a barra do upstream). MT-UI-05 (catálogo
+   bilíngue) pode vir antes ou junto.
 2. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos
@@ -66,6 +66,8 @@
   cujo modelo é muito maior que a prancha, os arcos do layout saem poligonais.
 - Um `INSERT` segue inteiro com o upstream, inclusive as linhas do bloco, porque o kernel
   não modela referência de bloco; num layout, o upstream fica escondido sob a tela opaca.
+- No pnpm 11, `pnpm test -- X` roda a suíte inteira (o `--` chega ao Vitest); o filtro é
+  `pnpm test X`. As provas das specs escritas com `--` continuam valendo, só não filtram.
 - MT-HG-07 depende de o mantenedor instalar o `gitleaks` na máquina.
 
 > Painel de tickets (o que existe e o que falta): [`docs/TICKETS.md`](TICKETS.md).

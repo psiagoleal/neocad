@@ -57,6 +57,18 @@ entram depois do ADR 0008.
   verde, com teste parametrizado sobre as 225 linhas e o teste de colisão.
 - **Fora de escopo:** componente visual, despacho para o kernel, palavras-chave de opção.
 - **Depende de:** nenhum.
+- **Resultado (2026-11-02):** `src/lib/command-line/resolver.ts` (`lerTabela`,
+  `normalizar`, `ResolvedorDeComandos.resolver` e `.sugerir`, `mensagemDaResolucao`) e
+  `catalogo.ts`, que embute a tabela no bundle com `?raw`, sem copiá-la. A pasta é
+  `command-line/`, e não `commands/`, para que `pnpm test command-line` ache os testes.
+  Decisões: com `_`, só o nome em inglês vale, sem apelido (`_L` é desconhecido, como diz
+  o C3); prefixo repetido ou sozinho é desconhecido; a variante sem diálogo vem como
+  `semDialogo`, e cabe ao comando dizer se ela existe. A colisão (C4) é verificada ao
+  montar o resolvedor, que recusa o catálogo. Provas: `resolver.spec.ts` (todas as 225
+  linhas em C1; 634 textos e nenhuma colisão em C4) e `catalogo.spec.ts`, vistos falhar
+  antes, com 244 e 1 asserções. O catálogo ainda não é importado pelo app: entra com o
+  MT-UI-05 e o MT-KV-14. Achado: no pnpm 11, `pnpm test -- X` passa o `--` ao Vitest, que
+  então roda a suíte inteira; o filtro é `pnpm test X`.
 
 ### MT-UI-05: Catálogo de comandos bilíngue
 

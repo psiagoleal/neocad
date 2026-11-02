@@ -36,7 +36,7 @@ UI começa pelo que não depende de KV.
 - [ ] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
       sai a barra do upstream (V5) — bloqueado por MT-KV-14: sem ele, nenhum comando de desenho.
 - [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
-      V4, V5b, V7 — depende do MT-UI-04.
+      V4, V5b, V7 — resolvedor pronto (MT-UI-04).
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
       N5 na NVIDIA; AMD e Intel presumidas.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
@@ -45,8 +45,6 @@ UI começa pelo que não depende de KV.
       spec 09, S3, S3b, S6.
 - [ ] [MT-UI-03](tickets/ui-interface.md#mt-ui-03-conferir-a-csp-no-app-empacotado) —
       spec 09, S4, em Linux e Windows.
-- [ ] [MT-UI-04](tickets/ui-interface.md#mt-ui-04-resolvedor-de-comandos-bilíngue) —
-      nomes EN/PT, apelidos e prefixos (spec 08).
 - [ ] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —
       `Ajuda > Comandos CAD` nos dois idiomas (C11).
 - [ ] [MT-UI-06](tickets/ui-interface.md#mt-ui-06-vitrine-do-neocad-no-repositório-e-no-github-pages) —
@@ -56,6 +54,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-UI-04](tickets/ui-interface.md#mt-ui-04-resolvedor-de-comandos-bilíngue) —
+      nomes EN/PT, apelidos e prefixos (spec 08).
 - [x] [MT-KV-13c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13c-aviso-das-entidades-que-a-tela-não-exibe-v6) —
       aviso das entidades não exibidas (V6).
 - [x] [MT-KV-13a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13a-upstream-desenha-só-o-não-modelado-abaixo-da-tela-e-na-mesma-vista) —
