@@ -268,12 +268,61 @@ tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela
 
 ### MT-KV-14: Comandos de edição pelo kernel na linha de comando própria
 
-- **Objetivo:** LINE e os comandos de edição de K3 digitados chegam ao kernel; recusa do
-  kernel e entidade não modelada viram mensagem.
-- **Arquivos no escopo:** `src/lib/commands/`, `e2e/kernel-view.e2e.ts`.
-- **Critério de aceite:** spec 07, V4 (sai o `test.fail()`), V5b e V7.
+Fatiado em 2026-11-02, ao escrever o aceite: o ticket pedia o motor de comandos, a entrada
+de pontos, o componente visível, a seleção na tela e os comandos de edição do K3 de uma
+vez. São cinco objetivos, cada um com prova própria. O `LINE` ganhou critérios na
+[spec 10](../specs/10-desenho-basico.md) (D1–D6).
+
+### MT-KV-14a: Motor de comandos, entrada de pontos e LINE
+
+- **Objetivo:** módulo puro que recebe o texto confirmado e conduz o comando em curso por
+  prompts, com o `LINE` como primeiro comando, despachado pelo `CadDocument`.
+- **Arquivos no escopo:** `src/lib/command-line/motor.ts`, `pontos.ts`, `linha.ts` e os
+  testes deles.
+- **Critério de aceite:** spec 10, D1–D6; spec 08, C1b, C8 e C10 para o `LINE`, e a parte
+  de C7 que não depende de tecla — `pnpm test command-line`.
+- **Fora de escopo:** componente visual, teclas, clique na tela, outros comandos.
+- **Depende de:** MT-UI-04.
+
+### MT-KV-14b: Linha de comando visível, ligada ao motor (V4)
+
+- **Objetivo:** a linha de comando própria, abaixo da tela, com prompt, histórico de
+  mensagens, sugestões e as teclas `Enter`, `Espaço`, `Esc` e setas; `L` desenha pelo
+  kernel e a tela reflete.
+- **Arquivos no escopo:** `src/lib/components/workspace/CommandLine.svelte` (novo),
+  `src/routes/+page.svelte`, `e2e/kernel-view.e2e.ts`, `e2e/command-line.e2e.ts` (novo).
+- **Critério de aceite:** spec 07, V4 com a linha própria (sai o `test.fail()`); spec 08,
+  C6, C7 e C12.
+- **Fora de escopo:** tirar a barra do upstream (MT-KV-13b); clique na tela.
+- **Depende de:** MT-KV-14a.
+
+### MT-KV-14c: Seleção na tela própria e ERASE
+
+- **Objetivo:** selecionar entidades do kernel por clique e por janela na tela própria,
+  com destaque, e apagar a seleção com `ERASE`.
+- **Arquivos no escopo:** a definir no detalhe, ao abrir.
+- **Critério de aceite:** critérios do `ERASE` e da seleção escritos na spec 10 antes de
+  implementar.
+- **Fora de escopo:** grips.
+- **Depende de:** MT-KV-14b.
+
+### MT-KV-14d: Comandos de edição do K3 pela linha (V5b)
+
+- **Objetivo:** `MOVE`, `COPY`, `ROTATE`, `MIRROR`, `SCALE`, `OFFSET`, `TRIM`, `EXTEND`,
+  `FILLET` e `CHAMFER` pela linha de comando, sobre a seleção, despachados pelo kernel.
+- **Arquivos no escopo:** a definir no detalhe, ao abrir.
+- **Critério de aceite:** spec 07, V5b; spec 08, C10 para cada comando.
 - **Fora de escopo:** comandos de anotação (fase KP).
-- **Depende de:** MT-KV-13a, MT-UI-04 (os dois concluídos).
+- **Depende de:** MT-KV-14c.
+
+### MT-KV-14e: Edição sobre entidade não modelada (V7)
+
+- **Objetivo:** pedir edição sobre entidade que só o upstream desenha responde "entidade
+  ainda não editável" com o tipo dela, sem mudar o documento.
+- **Arquivos no escopo:** a definir no detalhe, ao abrir.
+- **Critério de aceite:** spec 07, V7.
+- **Fora de escopo:** editar essas entidades.
+- **Depende de:** MT-KV-14c.
 
 ### MT-KV-15: Verificação na NVIDIA
 

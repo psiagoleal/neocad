@@ -34,9 +34,17 @@ UI começa pelo que não depende de KV.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
 - [ ] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
-      sai a barra do upstream (V5) — bloqueado por MT-KV-14: sem ele, nenhum comando de desenho.
-- [ ] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) —
-      V4, V5b, V7 — resolvedor pronto (MT-UI-04).
+      sai a barra do upstream (V5) — bloqueado por MT-KV-14b: sem ele, nenhum comando de desenho.
+- [>] [MT-KV-14a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14a-motor-de-comandos-entrada-de-pontos-e-line) — falta
+  motor, pontos e LINE (puro).
+- [ ] [MT-KV-14b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14b-linha-de-comando-visível-ligada-ao-motor-v4) —
+      linha de comando visível; V4.
+- [ ] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria-e-erase) —
+      seleção na tela e ERASE.
+- [ ] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) —
+      edição do K3 pela linha; V5b.
+- [ ] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —
+      V7.
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
       N5 na NVIDIA; AMD e Intel presumidas.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
@@ -134,6 +142,8 @@ UI começa pelo que não depende de KV.
 
 ## Abandonados
 
+- [~] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) · motivo:
+  fatiado em MT-KV-14a a 14e.
 - [~] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) · motivo:
 fatiado em MT-KV-13a, 13b e 13c.
 <!-- - [~] [MT-0](plano.md#mt-0) — <frase curta> · motivo: <uma frase> -->
