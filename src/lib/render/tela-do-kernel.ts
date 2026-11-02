@@ -20,6 +20,7 @@ import type { CadEntityId, CadLayerId } from '$lib/types/cad';
 import { DesenhistaCanvas2d } from './canvas2d';
 import { corDaCamada, type Rgb } from './cor';
 import type { Desenhista } from './desenhista';
+import type { Escolha } from '$lib/command-line/motor';
 import { Selecao } from './selecao';
 import { DesenhistaWebgl2 } from './webgl2';
 import {
@@ -89,10 +90,12 @@ export class TelaDoKernel {
 	private escuro: boolean;
 	private arrasto: { x: number; y: number; id: number } | null = null;
 	private aviso: ((mensagem: string) => void) | null = null;
-	private avisoDeSelecao: (() => void) | null = null;
+
 	/** Último aviso de não exibidas dado por espaço, para não repetir. */
 	private readonly avisados = new Map<string, string>();
 	private readonly selecao = new Selecao();
+	/** Com o modo de escolha ligado, o clique vai ao comando (spec 10, T4). */
+	private aoEscolher: ((escolha: Escolha) => void) | null = null;
 	/** Onde está o cursor, em coordenadas do desenho, enquanto a janela está aberta. */
 	private cursor: { x: number; y: number } | null = null;
 	/** Quem desenha por baixo o que o kernel não modela (o upstream) e segue a vista. */
@@ -225,9 +228,28 @@ export class TelaDoKernel {
 		this.pedirQuadro();
 	}
 
-	/** Quem quer saber quando um clique muda a seleção (o comando em curso). */
-	aoMudarSelecao(aviso: () => void): void {
-		this.avisoDeSelecao = aviso;
+	/**
+	 * Põe a tela no modo de escolha: o clique esquerdo vai ao comando, com o que
+	 * está sob ele, o ponto e o raio, e não mexe na seleção (spec 10, T4); `null`
+	 * volta ao modo de seleção.
+	 */
+	definirEscolha(aoEscolher: ((escolha: Escolha) => void) | null): void {
+		this.aoEscolher = aoEscolher;
+		if (aoEscolher != null) {
+			// Uma janela aberta antes não continua no modo de escolha.
+			this.selecao.esvaziarJanela();
+			this.cursor = null;
+			this.atualizarJanela();
+			this.pedirQuadro();
+		}
+	}
+
+	/** Todas as entidades desenhadas no espaço mostrado. */
+	todas(): CadEntityId[] {
+		const documento = this.documento;
+		const caixa = documento?.getScreenExtents(this.espaco) ?? null;
+		if (documento == null || caixa == null) return [];
+		return documento.selectOnScreen(this.espaco, caixa, true);
 	}
 
 	/** Para onde vai o aviso das entidades que a tela não exibe (spec 07, V6). */
@@ -384,8 +406,12 @@ export class TelaDoKernel {
 
 		const espaco = this.espaco;
 		const ponto = this.pontoDoDesenho(e);
-		const antes = this.selecao.ids.join();
-		this.selecao.clicar(ponto, RAIO_DO_CLIQUE_PX / this.vista.escala, e.shiftKey, {
+		const raio = RAIO_DO_CLIQUE_PX / this.vista.escala;
+		if (this.aoEscolher != null) {
+			this.aoEscolher({ ids: documento.pickOnScreen(espaco, ponto, raio), ponto, raio });
+			return;
+		}
+		this.selecao.clicar(ponto, raio, e.shiftKey, {
 			clique: (p, raio) => documento.pickOnScreen(espaco, p, raio),
 			area: (area, cruzada) => documento.selectOnScreen(espaco, area, cruzada)
 		});
@@ -393,7 +419,6 @@ export class TelaDoKernel {
 		this.atualizarDestaque();
 		this.atualizarJanela();
 		this.pedirQuadro();
-		if (this.selecao.ids.join() !== antes) this.avisoDeSelecao?.();
 	}
 
 	// -- quadro ----------------------------------------------------------------

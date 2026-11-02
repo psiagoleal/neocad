@@ -244,3 +244,32 @@ test('OFFSET: o objeto é escolhido pelo clique, sem Enter (O1)', async ({ page 
 	await digitar(page, '');
 	await expect(linha).toHaveAttribute('data-prompt', LIVRE);
 });
+
+test('TRIM e EXTEND: arestas por todas, objeto pelo clique (T1, T2, T4)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	await digitar(page, 'APARAR', '');
+	await expect(linha).toHaveAttribute('data-prompt', 'Selecione o objeto a aparar ou [Desfazer]:');
+	await clicarNoDesenho(page, 5, 5);
+	// O trecho da reta até o círculo sai: a caixa passa a começar no círculo.
+	await expect(tela).toHaveAttribute('data-caixa', '10 10 100 100');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+	await digitar(page, '');
+
+	// Uma reta à direita do círculo, em y = 50, estendida para a esquerda até ele (x = 90).
+	await digitar(page, 'L', '150,50', '130,50', '');
+	await digitar(page, 'EX', '');
+	await expect(linha).toHaveAttribute(
+		'data-prompt',
+		'Selecione o objeto a estender ou [Desfazer]:'
+	);
+	await clicarNoDesenho(page, 131, 50);
+	await digitar(page, '');
+	await expect(linha).toHaveAttribute('data-prompt', LIVRE);
+	// O clique de escolha não selecionou nada (T4).
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+	// O trecho novo existe: clicar nele seleciona a reta.
+	await clicarNoDesenho(page, 100, 50);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+});

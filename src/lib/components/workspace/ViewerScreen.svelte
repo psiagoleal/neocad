@@ -3,7 +3,7 @@
 	import ViewerDropzone from '$lib/components/workspace/ViewerDropzone.svelte';
 	import ViewerToolbar from '$lib/components/workspace/ViewerToolbar.svelte';
 	import CommandLine from '$lib/components/workspace/CommandLine.svelte';
-	import type { DocumentoDosComandos } from '$lib/command-line/motor';
+	import type { DocumentoDosComandos, Escolha } from '$lib/command-line/motor';
 	import type { CadEntityId } from '$lib/types/cad';
 	import type { CadViewerDocumentState, CadViewerProgressState } from '$lib/types/cad';
 	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
@@ -32,7 +32,8 @@
 		onCommandEdit: () => void;
 		onClearSelection: () => void;
 		selectedEntities: () => CadEntityId[];
-		selectionVersion: number;
+		allEntities: () => CadEntityId[];
+		setChoiceMode: (onChoose: ((choice: Escolha) => void) | null) => void;
 	};
 
 	let {
@@ -58,7 +59,8 @@
 		onCommandEdit,
 		onClearSelection,
 		selectedEntities,
-		selectionVersion
+		allEntities,
+		setChoiceMode
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -110,6 +112,7 @@
 		aposEditar={onCommandEdit}
 		esvaziarSelecao={onClearSelection}
 		selecionados={selectedEntities}
-		versaoDaSelecao={selectionVersion}
+		todas={allEntities}
+		definirEscolha={setChoiceMode}
 	/>
 </section>

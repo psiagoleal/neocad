@@ -36,29 +36,28 @@ function montar() {
 		mensagem: (m) => mensagens.push(m)
 	});
 	const digitar = (...t: string[]) => t.forEach((x) => motor.confirmar(x));
-	/** O clique na tela: a seleção muda e o motor é avisado. */
-	const clicar = (id: string) => {
-		sel.estado.ids = [...sel.estado.ids, id as never];
-		motor.selecaoMudou();
-	};
+	/** O clique de escolha na tela: o objeto sob ele, o ponto e o raio. */
+	const clicar = (id: string) =>
+		motor.escolher({ ids: [id as never], ponto: { x: 5, y: 0 }, raio: 0.5 });
 	const erro = () => mensagens.filter((m) => m.tipo === 'erro').at(-1)?.texto;
 	return { motor, falso, a, passos, sel, digitar, clicar, erro };
 }
 
 describe('OFFSET (spec 10)', () => {
 	it('distância, clique no objeto, lado digitado; cria a paralela e volta a pedir objeto (O1)', () => {
-		const { motor, falso, a, passos, sel, digitar, clicar } = montar();
+		const { motor, falso, a, passos, digitar, clicar } = montar();
 		digitar('DESLOCAMENTO');
 		expect(motor.prompt).toBe(DISTANCIA);
 		digitar('2.5');
 		expect(motor.prompt).toBe(OBJETO);
+		expect(motor.querEscolha).toBe(true);
 		clicar(a);
 		expect(motor.prompt).toBe(LADO);
+		expect(motor.querEscolha).toBe(false);
 		digitar('5,-1');
 		expect(falso.retas.map((r) => r.de.y)).toEqual([0, -2.5]);
 		expect(falso.pilha).toHaveLength(passos + 1);
 		expect(motor.prompt).toBe(OBJETO);
-		expect(sel.estado.ids).toEqual([]);
 	});
 
 	it('Desfazer tira a última paralela; o vazio encerra (O2)', () => {
@@ -108,12 +107,20 @@ describe('OFFSET (spec 10)', () => {
 		expect(motor.prompt).toBe(OBJETO);
 	});
 
-	it('mudar a seleção sem comando que a queira não faz nada', () => {
+	it('clique de escolha sem comando que o queira não faz nada', () => {
 		const { motor, falso, a, clicar, passos } = montar();
+		expect(motor.querEscolha).toBe(false);
 		clicar(a);
 		motor.confirmar('L');
 		clicar(a);
 		expect(motor.emCurso).toBeNull();
 		expect(falso.pilha).toHaveLength(passos);
+	});
+
+	it('clique no vazio, no pedido de objeto, não escolhe nada', () => {
+		const { motor, digitar } = montar();
+		digitar('O', '1');
+		motor.escolher({ ids: [], ponto: { x: 0, y: 9 }, raio: 0.5 });
+		expect(motor.prompt).toBe(OBJETO);
 	});
 });

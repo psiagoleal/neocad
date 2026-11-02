@@ -61,6 +61,11 @@ export class Selecao {
 		return this.inicio;
 	}
 
+	/** Fecha a janela aberta sem mexer na seleção. */
+	esvaziarJanela(): void {
+		this.inicio = null;
+	}
+
 	esvaziar(): void {
 		this.selecionados.clear();
 		this.inicio = null;

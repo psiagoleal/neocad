@@ -5,12 +5,13 @@
 	 * sugestões e as teclas Enter, Espaço, Esc e setas. A lógica mora no motor
 	 * (`$lib/command-line/motor`); aqui ficam só a tela e o teclado.
 	 */
-	import { tick, untrack } from 'svelte';
+	import { tick } from 'svelte';
 	import { CATALOGO_DA_SPEC } from '$lib/command-line/catalogo';
 	import { COMANDOS } from '$lib/command-line/comandos';
 	import {
 		MotorDeComandos,
 		type DocumentoDosComandos,
+		type Escolha,
 		type Mensagem
 	} from '$lib/command-line/motor';
 	import type { CadEntityId } from '$lib/types/cad';
@@ -22,12 +23,20 @@
 		esvaziarSelecao: () => void;
 		/** Ids selecionados na tela, para os comandos que trabalham sobre a seleção. */
 		selecionados: () => CadEntityId[];
-		/** Muda a cada clique que muda a seleção; o comando em curso pode tomá-la. */
-		versaoDaSelecao: number;
+		/** Todas as entidades do espaço mostrado (o "<selecionar todos>"). */
+		todas: () => CadEntityId[];
+		/** Liga (com quem recebe o clique) ou desliga o modo de escolha da tela. */
+		definirEscolha: (aoEscolher: ((escolha: Escolha) => void) | null) => void;
 	};
 
-	let { documento, aposEditar, esvaziarSelecao, selecionados, versaoDaSelecao }: CommandLineProps =
-		$props();
+	let {
+		documento,
+		aposEditar,
+		esvaziarSelecao,
+		selecionados,
+		todas,
+		definirEscolha
+	}: CommandLineProps = $props();
 
 	/** Linhas guardadas no histórico; as mais antigas saem. */
 	const LIMITE_DO_HISTORICO = 200;
@@ -46,20 +55,29 @@
 		comandos: COMANDOS,
 		documento: () => documento(),
 		aposEditar: () => aposEditar(),
-		selecao: { ids: () => selecionados(), esvaziar: () => esvaziarSelecao() },
+		selecao: {
+			ids: () => selecionados(),
+			esvaziar: () => esvaziarSelecao(),
+			todas: () => todas()
+		},
 		mensagem: (m) => {
 			historico = [...historico, m].slice(-LIMITE_DO_HISTORICO);
 		}
 	});
 
-	$effect(() => {
-		void versaoDaSelecao;
-		untrack(() => {
-			motor.selecaoMudou();
-			prompt = motor.prompt;
-			void rolarHistorico();
-		});
-	});
+	/** Depois de cada passo: o prompt novo e o modo do clique na tela (spec 10, T4). */
+	function sincronizar(): void {
+		prompt = motor.prompt;
+		definirEscolha(
+			motor.querEscolha
+				? (escolha) => {
+						motor.escolher(escolha);
+						sincronizar();
+					}
+				: null
+		);
+		void rolarHistorico();
+	}
 
 	const sugestoes = $derived.by(() => {
 		void prompt;
@@ -79,8 +97,7 @@
 		indiceRecente = -1;
 		texto = '';
 		motor.confirmar(valor);
-		prompt = motor.prompt;
-		void rolarHistorico();
+		sincronizar();
 	}
 
 	function navegarRecentes(passo: -1 | 1): void {
@@ -118,8 +135,7 @@
 				texto = '';
 				if (motor.emCurso == null) esvaziarSelecao();
 				motor.cancelar();
-				prompt = motor.prompt;
-				void rolarHistorico();
+				sincronizar();
 				break;
 			case 'ArrowUp':
 				evento.preventDefault();

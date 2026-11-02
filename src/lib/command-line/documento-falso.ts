@@ -111,6 +111,65 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 			pilha.push(() => retas.splice(retas.indexOf(nova), 1));
 			return [nova.id];
 		},
+		// Aparar e estender nos testes: retas horizontais cortadas por arestas verticais.
+		trimEntity: (id, arestas, clique, captura) => {
+			const r = retas.find((x) => x.id === id);
+			if (r == null || Math.abs(clique.y - r.de.y) > captura) {
+				throw new CadKernelOperationError('o clique não está sobre o objeto');
+			}
+			const [x0, x1] = [Math.min(r.de.x, r.ate.x), Math.max(r.de.x, r.ate.x)];
+			const cortes = retas
+				.filter((x) => arestas.includes(x.id) && x.de.x === x.ate.x && x.de.x > x0 && x.de.x < x1)
+				.map((x) => x.de.x)
+				.sort((a, b) => a - b);
+			if (cortes.length === 0) throw new CadKernelOperationError('nenhuma aresta corta o objeto');
+			const antes = cortes.filter((c) => c < clique.x).at(-1);
+			const depois = cortes.find((c) => c > clique.x);
+			const copia = { ...r };
+			const pedacos: Array<[number, number]> = [];
+			if (antes != null) pedacos.push([x0, antes]);
+			if (depois != null) pedacos.push([depois, x1]);
+			const y = r.de.y;
+			const [primeiro, segundo] = pedacos;
+			const ids: CadEntityId[] = [];
+			r.de = { x: primeiro[0], y };
+			r.ate = { x: primeiro[1], y };
+			ids.push(r.id);
+			let nova: RetaFalsa | null = null;
+			if (segundo != null) {
+				nova = {
+					id: String(proximo++) as CadEntityId,
+					camada: r.camada,
+					de: { x: segundo[0], y },
+					ate: { x: segundo[1], y }
+				};
+				retas.push(nova);
+				ids.push(nova.id);
+			}
+			pilha.push(() => {
+				Object.assign(r, copia);
+				if (nova != null) retas.splice(retas.indexOf(nova), 1);
+			});
+			return ids;
+		},
+		extendEntity: (id, contornos, clique, captura) => {
+			const r = retas.find((x) => x.id === id);
+			if (r == null || Math.abs(clique.y - r.de.y) > captura) {
+				throw new CadKernelOperationError('o clique não está sobre o objeto');
+			}
+			const ponta = Math.abs(clique.x - r.de.x) < Math.abs(clique.x - r.ate.x) ? 'de' : 'ate';
+			const outra = ponta === 'de' ? r.ate : r.de;
+			const x = r[ponta].x;
+			const para = x < outra.x ? -1 : 1;
+			const alvo = retas
+				.filter((c) => contornos.includes(c.id) && c.de.x === c.ate.x && (c.de.x - x) * para > 0)
+				.map((c) => c.de.x)
+				.sort((a, b) => (a - b) * para)[0];
+			if (alvo == null) throw new CadKernelOperationError('nenhum contorno alcançado');
+			const copia = { ...r };
+			r[ponta] = { x: alvo, y: r[ponta].y };
+			pilha.push(() => Object.assign(r, copia));
+		},
 		eraseEntities: (ids) => {
 			if (ids.some((id) => !retas.some((r) => r.id === id))) {
 				throw new CadKernelOperationError('entidade inexistente');
@@ -146,16 +205,17 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 	return { documento, retas, pilha };
 }
 
-/** Seleção falsa, que os testes enchem à mão. */
-export function selecaoFalsa(ids: string[] = []) {
-	const estado = { ids: [...ids] as CadEntityId[] };
+/** Seleção falsa, que os testes enchem à mão; `todas` é o que o espaço tem. */
+export function selecaoFalsa(ids: string[] = [], todas: string[] = []) {
+	const estado = { ids: [...ids] as CadEntityId[], todas: [...todas] as CadEntityId[] };
 	return {
 		estado,
 		selecao: {
 			ids: () => [...estado.ids],
 			esvaziar: () => {
 				estado.ids = [];
-			}
+			},
+			todas: () => [...estado.todas]
 		}
 	};
 }

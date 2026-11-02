@@ -8,7 +8,7 @@
  */
 
 import { CadKernelOperationError, type CadDocument } from '$lib/services/cad-document';
-import type { CadEntityId } from '$lib/types/cad';
+import type { CadEntityId, CadPoint } from '$lib/types/cad';
 import {
 	mensagemDaResolucao,
 	normalizar,
@@ -33,8 +33,10 @@ export interface ComandoEmCurso {
 	iniciar?(): Resposta;
 	/** O prompt de agora, já com as opções entre colchetes. */
 	prompt(): string;
-	/** A seleção da tela mudou por um clique; o comando pode tomá-la como resposta. */
-	aoSelecionar?(ids: CadEntityId[]): Resposta;
+	/** Verdadeiro quando o prompt de agora pede um objeto pelo clique (spec 10, T4). */
+	querEscolha?(): boolean;
+	/** O clique na tela, enquanto `querEscolha`: o que está sob ele, o ponto e o raio. */
+	aoEscolher?(escolha: Escolha): Resposta;
 	responder(texto: string): Resposta;
 	/** `Esc`: o comando para; o que já confirmou permanece. */
 	encerrar(): void;
@@ -53,6 +55,8 @@ export type DocumentoDosComandos = Pick<
 	| 'mirrorCopyEntities'
 	| 'scaleEntities'
 	| 'offsetEntity'
+	| 'trimEntity'
+	| 'extendEntity'
 	| 'listLayers'
 	| 'getHistory'
 	| 'undo'
@@ -62,7 +66,12 @@ export type DocumentoDosComandos = Pick<
 export interface SelecaoDosComandos {
 	ids(): CadEntityId[];
 	esvaziar(): void;
+	/** Todas as entidades desenhadas no espaço mostrado (o "<selecionar todos>"). */
+	todas(): CadEntityId[];
 }
+
+/** Um clique de escolha: o que está sob ele (do mais perto), o ponto e o raio do clique. */
+export type Escolha = { ids: CadEntityId[]; ponto: CadPoint; raio: number };
 
 export type ContextoDeComando = {
 	documento: DocumentoDosComandos;
@@ -133,12 +142,17 @@ export class MotorDeComandos {
 		return this.emCursoAgora == null ? this.resolvedor.sugerir(texto) : [];
 	}
 
-	/** Avisa o comando em curso que a seleção da tela mudou por um clique. */
-	selecaoMudou(): void {
+	/** Verdadeiro quando o comando em curso pede um objeto pelo clique. */
+	get querEscolha(): boolean {
+		return this.emCursoAgora?.comando.querEscolha?.() ?? false;
+	}
+
+	/** Entrega ao comando em curso o clique de escolha. */
+	escolher(escolha: Escolha): void {
 		const atual = this.emCursoAgora;
-		const aoSelecionar = atual?.comando.aoSelecionar;
-		if (atual == null || aoSelecionar == null) return;
-		this.executar(atual, () => aoSelecionar.call(atual.comando, this.opcoes.selecao.ids()));
+		const aoEscolher = atual?.comando.aoEscolher;
+		if (atual == null || aoEscolher == null || !this.querEscolha) return;
+		this.executar(atual, () => aoEscolher.call(atual.comando, escolha));
 	}
 
 	/** O texto que o usuário confirmou (`Enter`). */

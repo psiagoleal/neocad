@@ -21,7 +21,7 @@ const DESFAZER: Opcao = { pt: 'Desfazer', abreviacaoPt: 'D', en: 'Undo', abrevia
 /** As paralelas de um lado, e a altura da pilha logo depois delas. */
 type Paralela = { ids: CadEntityId[]; profundidade: number };
 
-export function deslocar({ documento, aposEditar, selecao }: ContextoDeComando): ComandoEmCurso {
+export function deslocar({ documento, aposEditar }: ContextoDeComando): ComandoEmCurso {
 	let distancia: number | null = null;
 	let objeto: CadEntityId | null = null;
 	const paralelas: Paralela[] = [];
@@ -42,9 +42,11 @@ export function deslocar({ documento, aposEditar, selecao }: ContextoDeComando):
 			return 'Especifique o ponto no lado a deslocar:';
 		},
 
-		aoSelecionar(ids) {
-			const ultimo = ids.at(-1);
-			if (distancia != null && objeto == null && ultimo != null) objeto = ultimo;
+		querEscolha: () => distancia != null && objeto == null,
+
+		aoEscolher({ ids }) {
+			const [maisPerto] = ids;
+			if (maisPerto != null) objeto = maisPerto;
 			return { tipo: 'continua' };
 		},
 
@@ -81,15 +83,12 @@ export function deslocar({ documento, aposEditar, selecao }: ContextoDeComando):
 			// ao histórico e a linha volta a pedir objeto (O3).
 			const escolhido = objeto;
 			objeto = null;
-			selecao.esvaziar();
 			const ids = documento.offsetEntity(escolhido, distancia, lado);
 			paralelas.push({ ids, profundidade: documento.getHistory().undoDepth });
 			aposEditar();
 			return { tipo: 'continua' };
 		},
 
-		encerrar() {
-			selecao.esvaziar();
-		}
+		encerrar: () => undefined
 	};
 }

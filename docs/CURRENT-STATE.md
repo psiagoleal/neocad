@@ -13,7 +13,7 @@
 - **Data:** 2026-11-02
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `7052035` (MT-KV-14d3); antes, `c879a87` (MT-KV-14d2)
+- **Commit:** ver `git log` (MT-KV-14d4); antes, `7052035` (MT-KV-14d3)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
@@ -38,6 +38,8 @@
   novo `mirrorCopyEntities`) e `SCALE` pela linha.
 - **MT-KV-14d3:** `OFFSET` pela linha, com o objeto escolhido pelo clique; o motor passou
   a receber da tela o aviso de seleção. Aberto o MT-KV-14h (pontos pelo clique na tela).
+- **MT-KV-14d4:** `TRIM` e `EXTEND`; a tela ganhou o modo de escolha (o clique vai ao
+  comando com o ponto e não seleciona), que também passou a servir ao `OFFSET`.
 - A rodada anterior (MT-KV-13b e MT-UI-05) está no
   [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-upstream-sem-comandos).
 
@@ -56,8 +58,8 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-14d4 (`TRIM`, `EXTEND`) e 14d5 (`FILLET`, `CHAMFER`), com critérios na spec 10
-   antes; depois 14h (pontos pelo clique, que faz falta ao LINE).
+1. MT-KV-14d5 (`FILLET`, `CHAMFER`), com critérios na spec 10 antes; o modo de escolha
+   já serve aos dois cliques. Depois 14h (pontos pelo clique, que faz falta ao LINE).
    Depois 14e (V7) e 14g (seleção no kernel).
 2. MT-UI-08 (vírgula decimal) quando couber.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.

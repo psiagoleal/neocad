@@ -478,6 +478,18 @@ no histórico) já está no motor e vale para todas.
 - **Critério de aceite:** spec 10, T1–T4 (e O1 continua valendo).
 - **Fora de escopo:** modo rápido, cerca, projeção.
 - **Depende de:** MT-KV-14d3.
+- **Resultado (2026-11-02):** a tela ganhou o modo de escolha (`definirEscolha`): com ele
+  ligado, o clique vai ao comando com o que está sob ele, o ponto e o raio, e não mexe na
+  seleção; e `todas()`, as entidades do espaço mostrado. O motor ganhou `querEscolha` e
+  `escolher`, e a `CommandLine` liga e desliga o modo a cada passo. Isso substituiu o
+  aviso de seleção do MT-KV-14d3 (o `OFFSET` passou a usar a escolha), para não ficarem
+  dois mecanismos. `aparar.ts`: `TRIM` e `EXTEND` numa forma comum (arestas pela
+  seleção ou todas; objeto pelo clique, repetido; `Desfazer` só do que é dele). Provas:
+  `aparar.spec.ts`, `deslocar.spec.ts` e `tela-do-kernel.spec.ts` atualizados, e o e2e
+  "TRIM e EXTEND", vistos falhar antes. O e2e passou uma vez sem o `EXTEND` registrado,
+  porque o vazio repetia o `LINE` e o clique o selecionava; ganhou a verificação do
+  prompt e da seleção vazia, e então falhou sem o comando e passou com ele. Kernel
+  inalterado.
 
 ### MT-KV-14d5: FILLET e CHAMFER
 

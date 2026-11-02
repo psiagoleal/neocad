@@ -193,16 +193,28 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		expect(dados.selecao).toBe('2');
 	});
 
-	it('avisa quando um clique muda a seleção, e só então (O1)', () => {
-		const { tela } = montar();
-		const aviso = vi.fn();
-		tela.aoMudarSelecao(aviso);
+	it('no modo de escolha, o clique vai ao comando e não seleciona (T4)', () => {
+		const { tela, doc, dados } = montar();
+		const escolha = vi.fn();
+		tela.definirEscolha(escolha);
+		clicar(410, 302);
+		quadro();
+		expect(escolha).toHaveBeenCalledWith({ ids: ['1'], ponto: { x: 10, y: -2 }, raio: 5 });
+		expect(dados.selecao).toBe('0');
+		expect(doc.selectOnScreen).not.toHaveBeenCalled();
+
+		tela.definirEscolha(null);
 		clicar(410, 300);
-		expect(aviso).toHaveBeenCalledTimes(1);
-		clicar(390, 250);
-		expect(aviso).toHaveBeenCalledTimes(1);
-		tela.esvaziarSelecao();
-		expect(aviso).toHaveBeenCalledTimes(1);
+		quadro();
+		expect(dados.selecao).toBe('1');
+	});
+
+	it('todas devolve as entidades do espaço mostrado, por uma janela em volta da caixa dele', () => {
+		const { tela, doc } = montar();
+		const caixa = { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+		(doc as unknown as { getScreenExtents: () => typeof caixa }).getScreenExtents = () => caixa;
+		expect(tela.todas()).toEqual(['1', '2']);
+		expect(doc.selectOnScreen).toHaveBeenCalledWith('Model', caixa, true);
 	});
 
 	it('trocar de espaço e esvaziarSelecao esvaziam (S3, S5)', () => {
