@@ -20,6 +20,8 @@ export function girar(contexto: ContextoDeComando): ComandoEmCurso {
 
 		return {
 			prompt: () => (base == null ? PROMPT_DA_BASE : 'Especifique o ângulo de rotação:'),
+			// O ângulo também vale como ponto (R1).
+			querPonto: () => true,
 			responder(texto) {
 				if (base == null) {
 					if (texto.trim() === '') return { tipo: 'fim' };

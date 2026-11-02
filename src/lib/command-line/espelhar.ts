@@ -24,6 +24,7 @@ export function espelhar(contexto: ContextoDeComando): ComandoEmCurso {
 		let segundo: CadPoint | null = null;
 
 		return {
+			querPonto: () => segundo == null,
 			prompt() {
 				if (primeiro == null) return 'Especifique o primeiro ponto da linha de espelhamento:';
 				if (segundo == null) return 'Especifique o segundo ponto da linha de espelhamento:';

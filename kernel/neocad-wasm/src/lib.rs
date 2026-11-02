@@ -1693,7 +1693,7 @@ impl CadSession {
 }
 
 /// A geometria como curva, quando ela é uma.
-fn curve_of_geometry(geometry: &Geometry) -> Option<AnyCurve> {
+pub(crate) fn curve_of_geometry(geometry: &Geometry) -> Option<AnyCurve> {
     match geometry {
         Geometry::Line(line) => Some(AnyCurve::Line(*line)),
         Geometry::Circle(circle) => Some(AnyCurve::Circle(*circle)),
@@ -1934,6 +1934,29 @@ impl CadSession {
             .map_err(js_error)
     }
 
+    /// O ponto notável ao alcance do cursor no espaço da tela, ou `null` (spec 10,
+    /// P2). Olha só as entidades perto do cursor, pelo índice da tela.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada, o espaço não existe ou um modo é
+    /// desconhecido.
+    #[wasm_bindgen(js_name = screenSnap)]
+    pub fn screen_snap(
+        &mut self,
+        space: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+        modes: Vec<String>,
+    ) -> Result<JsValue, JsError> {
+        to_js(
+            &self
+                .try_screen_snap(space, x, y, radius, &modes)
+                .map_err(js_error)?,
+        )
+    }
+
     /// Segmentos das entidades no espaço, para o destaque da seleção.
     ///
     /// # Errors
@@ -2118,6 +2141,33 @@ impl CadSession {
             .ok_or_else(|| unknown_space(space))?;
 
         Ok(found.into_iter().map(encode_entity).collect())
+    }
+
+    fn try_screen_snap(
+        &mut self,
+        space: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+        modes: &[String],
+    ) -> Result<Option<SnapView>, String> {
+        let modes = modes
+            .iter()
+            .map(|name| decode_snap_mode(name))
+            .collect::<Result<Vec<_>, _>>()?;
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let found = screen
+            .snap(&self.document, space, Point2::new(x, y), radius, &modes)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(found.map(|(mode, point, entity)| SnapView {
+            mode: encode_snap_mode(mode).to_owned(),
+            point: point.into(),
+            entity: encode_entity(entity),
+        }))
     }
 
     fn try_screen_segments_of(&self, space: &str, ids: &[String]) -> Result<Vec<f32>, String> {
@@ -3310,11 +3360,38 @@ mod tests {
             s.try_screen_pick("Model", 0.0, 0.0, 1.0).err(),
             s.try_screen_select("Model", 0.0, 0.0, 1.0, 1.0, true).err(),
             s.try_screen_segments_of("Model", &[]).err(),
+            s.try_screen_snap("Model", 0.0, 0.0, 1.0, &[]).err(),
         ];
 
         for erro in erros {
             assert_eq!(erro.as_deref(), Some("tela não preparada"));
         }
+    }
+
+    #[test]
+    fn prendimento_pela_tela_na_fachada() {
+        let mut s = sessao();
+        s.try_open_dxf(&fixture("minimal.dxf")).expect("abre");
+        s.try_prepare_screen(0.01).expect("prepara");
+        let modos = ["endpoint".to_owned(), "center".to_owned()];
+
+        // A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+        let fim = s
+            .try_screen_snap("Model", 99.0, 100.5, 2.0, &modos)
+            .expect("modelo")
+            .expect("prende");
+        assert_eq!(fim.mode, "endpoint");
+        assert!((fim.point.x - 100.0).abs() < 1e-9 && (fim.point.y - 100.0).abs() < 1e-9);
+        assert!(s
+            .try_screen_snap("Model", 300.0, 300.0, 2.0, &modos)
+            .expect("modelo")
+            .is_none());
+        assert!(s
+            .try_screen_snap("Model", 0.0, 0.0, 1.0, &["voar".to_owned()])
+            .is_err());
+        assert!(s
+            .try_screen_snap("Inexistente", 0.0, 0.0, 1.0, &modos)
+            .is_err());
     }
 
     #[test]

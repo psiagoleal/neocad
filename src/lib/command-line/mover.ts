@@ -22,6 +22,7 @@ export function mover(contexto: ContextoDeComando): ComandoEmCurso {
 
 		return {
 			prompt: () => (base == null ? PROMPT_DA_BASE : PROMPT_DO_SEGUNDO),
+			querPonto: () => true,
 			responder(texto) {
 				if (base == null) {
 					if (texto.trim() === '') return { tipo: 'fim' };

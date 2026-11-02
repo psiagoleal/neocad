@@ -4,7 +4,7 @@
 	import ViewerToolbar from '$lib/components/workspace/ViewerToolbar.svelte';
 	import CommandLine from '$lib/components/workspace/CommandLine.svelte';
 	import type { DocumentoDosComandos, Escolha } from '$lib/command-line/motor';
-	import type { CadEntityId } from '$lib/types/cad';
+	import type { CadEntityId, CadPoint } from '$lib/types/cad';
 	import type { CadViewerDocumentState, CadViewerProgressState } from '$lib/types/cad';
 	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 
@@ -34,6 +34,7 @@
 		selectedEntities: () => CadEntityId[];
 		allEntities: () => CadEntityId[];
 		setChoiceMode: (onChoose: ((choice: Escolha) => void) | null) => void;
+		setPointMode: (onPoint: ((point: CadPoint) => void) | null) => void;
 	};
 
 	let {
@@ -60,7 +61,8 @@
 		onClearSelection,
 		selectedEntities,
 		allEntities,
-		setChoiceMode
+		setChoiceMode,
+		setPointMode
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -114,5 +116,6 @@
 		selecionados={selectedEntities}
 		todas={allEntities}
 		definirEscolha={setChoiceMode}
+		definirPonto={setPointMode}
 	/>
 </section>

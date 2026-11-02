@@ -524,6 +524,21 @@ no histórico) já está no motor e vale para todas.
 - **Fora de escopo:** rastreamento polar, ortogonal, entrada dinâmica; modos
   perpendicular, tangente e mais próximo.
 - **Depende de:** MT-KV-14d5.
+- **Resultado (2026-11-02):** o kernel ganhou `Screen::snap` (e `screenSnap` na fachada,
+  `snapOnScreen` no serviço): prendimento por espaço, só entre entidades desenhadas em
+  camada visível, pelas candidatas do índice da tela. A primeira versão passou nos
+  testes de unidade, mas o P4 a reprovou: com o desenho todo enquadrado, os 10 pixels
+  de alcance valiam ~520 unidades, e a interseção entre milhares de candidatas levou
+  5,5 s num movimento. Agora entram só as que têm o traço (ou o centro) ao alcance, e as
+  32 mais perto (`SNAP_LIMIT`): pior movimento 13,4 ms, mediana 0,15 ms. A tela ganhou o
+  modo de ponto (`definirPonto`), com marcador amarelo e `data-clique` e
+  `data-prendimento`; os modos de seleção, escolha e ponto se excluem. Os comandos dizem
+  quando querem ponto (`querPonto`), a etapa de seleção passou a repassar ponto e escolha
+  ao comando de dentro, e a `CommandLine` entra com o ponto clicado como texto
+  (`formatarPonto`, sem perder precisão). Provas: Rust (prendimento por espaço, desenho
+  denso), fachada, serviço, `tela-do-kernel.spec.ts`, `pontos-clique.spec.ts`, os e2e
+  "LINE pelos cliques" e P4, vistos falhar antes. Pendências de aparência: um marcador
+  por modo e a linha elástica até o cursor. `.wasm` 512 624 bytes (+6 913).
 
 ### MT-KV-14e: Edição sobre entidade não modelada (V7)
 

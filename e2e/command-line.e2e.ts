@@ -314,3 +314,32 @@ test('a recusa do kernel aparece no histórico e a tela não muda (V5b)', async 
 	await expect(tela).toHaveAttribute('data-entidades', '4');
 	await expect(linha).toHaveAttribute('data-prompt', 'Selecione o primeiro objeto ou [Raio]:');
 });
+
+test('LINE pelos cliques, prendendo nos pontos notáveis (P1, P2)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	await expect(tela).toHaveAttribute('data-clique', 'selecao');
+	await digitar(page, 'L');
+	await expect(tela).toHaveAttribute('data-clique', 'ponto');
+
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	const perto = await pixel(page, 99, 101);
+	await page.mouse.move(perto.x, perto.y);
+	await expect(tela).toHaveAttribute('data-prendimento', 'endpoint 100 100');
+	await page.mouse.click(perto.x, perto.y);
+	await expect(linha).toHaveAttribute('data-prompt', 'Especifique o próximo ponto ou [Desfazer]:');
+
+	// O quadrante direito do círculo, em (90, 50).
+	const quadrante = await pixel(page, 91, 51);
+	await page.mouse.move(quadrante.x, quadrante.y);
+	await expect(tela).toHaveAttribute('data-prendimento', 'quadrant 90 50');
+	await page.mouse.click(quadrante.x, quadrante.y);
+	await digitar(page, '');
+
+	const historico = page.getByRole('log', { name: 'Histórico de comandos' });
+	await expect(historico).toContainText('Especifique o primeiro ponto: 100,100');
+	await expect(historico).toContainText('Especifique o próximo ponto ou [Desfazer]: 90,50');
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+	await expect(tela).toHaveAttribute('data-clique', 'selecao');
+});

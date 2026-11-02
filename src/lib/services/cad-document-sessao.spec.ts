@@ -65,6 +65,7 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		screenPick: () => [],
 		screenSelect: () => [],
 		screenSegmentsOf: () => new Float32Array(),
+		screenSnap: () => null,
 		screenOrigin: () => new Float64Array([0, 0]),
 		screenExtents: () => new Float64Array(),
 		screenEntityCount: () => 0,
@@ -602,6 +603,18 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 		expect(sessao.screenSelect).toHaveBeenCalledWith('Prancha A1', 0, 1, 2, 3, true);
 		expect(Array.from(doc.getScreenSegmentsOf('Model', ['2'] as never))).toEqual([0, 0, 1, 1]);
 		expect(sessao.screenSegmentsOf).toHaveBeenCalledWith('Model', ['2']);
+	});
+
+	it('o prendimento da tela vem do kernel, por espaço (P2)', () => {
+		const sessao = sessaoFalsa({
+			screenSnap: vi.fn(() => ({ mode: 'endpoint', point: { x: 1, y: 2 }, entity: '3' }))
+		});
+		const achado = documentoSobre(sessao).snapOnScreen('Model', { x: 1.1, y: 2 }, 0.5, [
+			'endpoint',
+			'center'
+		]);
+		expect(achado).toEqual({ mode: 'endpoint', point: { x: 1, y: 2 }, entityId: '3' });
+		expect(sessao.screenSnap).toHaveBeenCalledWith('Model', 1.1, 2, 0.5, ['endpoint', 'center']);
 	});
 
 	it('seleção com id que não é texto é erro de contrato', () => {

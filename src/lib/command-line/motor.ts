@@ -35,6 +35,8 @@ export interface ComandoEmCurso {
 	prompt(): string;
 	/** Verdadeiro quando o prompt de agora pede um objeto pelo clique (spec 10, T4). */
 	querEscolha?(): boolean;
+	/** Verdadeiro quando o prompt de agora pede um ponto (spec 10, P1). */
+	querPonto?(): boolean;
 	/** O clique na tela, enquanto `querEscolha`: o que está sob ele, o ponto e o raio. */
 	aoEscolher?(escolha: Escolha): Resposta;
 	responder(texto: string): Resposta;
@@ -142,6 +144,11 @@ export class MotorDeComandos {
 	/** Sugestões para o texto sendo digitado (C9). */
 	sugerir(texto: string): ComandoDoCatalogo[] {
 		return this.emCursoAgora == null ? this.resolvedor.sugerir(texto) : [];
+	}
+
+	/** Verdadeiro quando o comando em curso pede um ponto. */
+	get querPonto(): boolean {
+		return this.emCursoAgora?.comando.querPonto?.() ?? false;
 	}
 
 	/** Verdadeiro quando o comando em curso pede um objeto pelo clique. */

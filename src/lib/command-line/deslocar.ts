@@ -43,6 +43,7 @@ export function deslocar({ documento, aposEditar }: ContextoDeComando): ComandoE
 		},
 
 		querEscolha: () => distancia != null && objeto == null,
+		querPonto: () => distancia != null && objeto != null,
 
 		aoEscolher({ ids }) {
 			const [maisPerto] = ids;

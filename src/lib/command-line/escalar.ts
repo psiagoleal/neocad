@@ -20,6 +20,7 @@ export function escalar(contexto: ContextoDeComando): ComandoEmCurso {
 
 		return {
 			prompt: () => (base == null ? PROMPT_DA_BASE : 'Especifique o fator de escala:'),
+			querPonto: () => base == null,
 			responder(texto) {
 				if (base == null) {
 					if (texto.trim() === '') return { tipo: 'fim' };

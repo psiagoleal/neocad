@@ -48,6 +48,7 @@ export function copiar(contexto: ContextoDeComando): ComandoEmCurso {
 		}
 
 		return {
+			querPonto: () => true,
 			prompt() {
 				if (base == null) return PROMPT_DA_BASE;
 				return !comOpcoes

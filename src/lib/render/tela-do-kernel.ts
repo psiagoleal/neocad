@@ -16,7 +16,7 @@
  */
 
 import type { CadDocument } from '$lib/services/cad-document';
-import type { CadEntityId, CadLayerId } from '$lib/types/cad';
+import type { CadEntityId, CadLayerId, CadPoint, CadSnap, CadSnapMode } from '$lib/types/cad';
 import { DesenhistaCanvas2d } from './canvas2d';
 import { corDaCamada, type Rgb } from './cor';
 import type { Desenhista } from './desenhista';
@@ -51,6 +51,20 @@ const BLOCO_DA_JANELA = '__janela';
 const COR_DO_DESTAQUE: Rgb = [90, 170, 255];
 const COR_DA_JANELA: Rgb = [90, 140, 255];
 const COR_DA_CRUZADA: Rgb = [90, 220, 130];
+
+/** Distância, em pixels, até onde o cursor prende a um ponto notável (spec 10, P2). */
+const RAIO_DO_PRENDIMENTO_PX = 10;
+const MODOS_DO_PRENDIMENTO: CadSnapMode[] = [
+	'endpoint',
+	'midpoint',
+	'center',
+	'quadrant',
+	'intersection'
+];
+const BLOCO_DO_MARCADOR = '__marcador';
+const COR_DO_MARCADOR: Rgb = [255, 210, 60];
+/** Meio lado do quadrado do marcador, em pixels. */
+const MARCADOR_PX = 5;
 
 export type AoMudarEspacos = (espacos: string[], atual: string) => void;
 
@@ -96,6 +110,10 @@ export class TelaDoKernel {
 	private readonly selecao = new Selecao();
 	/** Com o modo de escolha ligado, o clique vai ao comando (spec 10, T4). */
 	private aoEscolher: ((escolha: Escolha) => void) | null = null;
+	/** Com o modo de ponto ligado, o clique entrega o ponto ao comando (spec 10, P1). */
+	private aoApontar: ((ponto: CadPoint) => void) | null = null;
+	/** O ponto notável sob o cursor, no modo de ponto. */
+	private prendimento: CadSnap | null = null;
 	/** Onde está o cursor, em coordenadas do desenho, enquanto a janela está aberta. */
 	private cursor: { x: number; y: number } | null = null;
 	/** Quem desenha por baixo o que o kernel não modela (o upstream) e segue a vista. */
@@ -236,12 +254,35 @@ export class TelaDoKernel {
 	definirEscolha(aoEscolher: ((escolha: Escolha) => void) | null): void {
 		this.aoEscolher = aoEscolher;
 		if (aoEscolher != null) {
-			// Uma janela aberta antes não continua no modo de escolha.
-			this.selecao.esvaziarJanela();
-			this.cursor = null;
-			this.atualizarJanela();
-			this.pedirQuadro();
+			this.aoApontar = null;
+			this.prendimento = null;
+			this.atualizarMarcador();
+			this.fecharJanela();
 		}
+		this.pedirQuadro();
+	}
+
+	/** Uma janela aberta antes não continua nos modos de escolha e de ponto. */
+	private fecharJanela(): void {
+		this.selecao.esvaziarJanela();
+		this.cursor = null;
+		this.atualizarJanela();
+	}
+
+	/**
+	 * Põe a tela no modo de ponto: o cursor prende aos pontos notáveis (com
+	 * marcador) e o clique entrega o ponto ao comando, sem mexer na seleção
+	 * (spec 10, P1, P2); `null` volta ao modo de seleção.
+	 */
+	definirPonto(aoApontar: ((ponto: CadPoint) => void) | null): void {
+		this.aoApontar = aoApontar;
+		if (aoApontar != null) {
+			this.aoEscolher = null;
+			this.fecharJanela();
+		}
+		this.prendimento = null;
+		this.atualizarMarcador();
+		this.pedirQuadro();
 	}
 
 	/** Todas as entidades desenhadas no espaço mostrado. */
@@ -360,6 +401,7 @@ export class TelaDoKernel {
 		this.chaves.clear();
 		this.desenhista.removerBloco(BLOCO_DO_DESTAQUE);
 		this.desenhista.removerBloco(BLOCO_DA_JANELA);
+		this.desenhista.removerBloco(BLOCO_DO_MARCADOR);
 		this.entidades = 0;
 		this.caixa = '';
 	}
@@ -394,6 +436,49 @@ export class TelaDoKernel {
 		);
 	}
 
+	/** O quadrado em volta do ponto notável sob o cursor, por cima de tudo. */
+	private atualizarMarcador(): void {
+		this.desenhista.removerBloco(BLOCO_DO_MARCADOR);
+		const achado = this.prendimento;
+		if (achado == null) return;
+		const m = MARCADOR_PX / this.vista.escala;
+		const [x, y] = [achado.point.x - this.origem.x, achado.point.y - this.origem.y];
+		this.desenhista.definirBloco(
+			BLOCO_DO_MARCADOR,
+			new Float32Array([
+				x - m,
+				y - m,
+				x + m,
+				y - m,
+				x + m,
+				y - m,
+				x + m,
+				y + m,
+				x + m,
+				y + m,
+				x - m,
+				y + m,
+				x - m,
+				y + m,
+				x - m,
+				y - m
+			]),
+			COR_DO_MARCADOR
+		);
+	}
+
+	/** O ponto notável ao alcance do ponto, no espaço mostrado. */
+	private prender(ponto: CadPoint): CadSnap | null {
+		const documento = this.documento;
+		if (documento == null || this.espaco === '') return null;
+		return documento.snapOnScreen(
+			this.espaco,
+			ponto,
+			RAIO_DO_PRENDIMENTO_PX / this.vista.escala,
+			MODOS_DO_PRENDIMENTO
+		);
+	}
+
 	private pontoDoDesenho(e: PointerEvent): { x: number; y: number } {
 		const caixa = this.canvas.getBoundingClientRect();
 		return paraMundo(this.vista, e.clientX - caixa.left, e.clientY - caixa.top);
@@ -407,6 +492,10 @@ export class TelaDoKernel {
 		const espaco = this.espaco;
 		const ponto = this.pontoDoDesenho(e);
 		const raio = RAIO_DO_CLIQUE_PX / this.vista.escala;
+		if (this.aoApontar != null) {
+			this.aoApontar(this.prender(ponto)?.point ?? ponto);
+			return;
+		}
 		if (this.aoEscolher != null) {
 			this.aoEscolher({ ids: documento.pickOnScreen(espaco, ponto, raio), ponto, raio });
 			return;
@@ -452,6 +541,10 @@ export class TelaDoKernel {
 		dados.vista = `${x} ${y} ${escala}`;
 		dados.fundo = transparente ? 'transparente' : 'opaco';
 		dados.selecao = String(this.selecao.ids.length);
+		dados.clique =
+			this.aoApontar != null ? 'ponto' : this.aoEscolher != null ? 'escolha' : 'selecao';
+		const achado = this.prendimento;
+		dados.prendimento = achado == null ? '' : `${achado.mode} ${achado.point.x} ${achado.point.y}`;
 
 		this.aoMudarVista?.(transparente ? { x, y, escala } : null);
 	}
@@ -492,6 +585,11 @@ export class TelaDoKernel {
 	}
 
 	private aoMover(e: PointerEvent): void {
+		if (this.aoApontar != null) {
+			this.prendimento = this.prender(this.pontoDoDesenho(e));
+			this.atualizarMarcador();
+			this.pedirQuadro();
+		}
 		if (this.selecao.inicioDaJanela != null) {
 			this.cursor = this.pontoDoDesenho(e);
 			this.atualizarJanela();

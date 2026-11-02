@@ -38,6 +38,10 @@ export function sobreASelecao(
 	return {
 		iniciar: () => (selecao.ids().length > 0 ? comecar() : { tipo: 'continua' }),
 		prompt: () => depois?.prompt() ?? 'Selecione objetos:',
+		querPonto: () => depois?.querPonto?.() ?? false,
+		querEscolha: () => depois?.querEscolha?.() ?? false,
+		aoEscolher: (escolha) =>
+			depois?.aoEscolher?.(escolha) ?? { tipo: 'invalida', mensagem: 'Selecione objetos na tela.' },
 		responder(texto) {
 			if (depois != null) return terminar(depois.responder(texto));
 			if (texto.trim() === '') return comecar();

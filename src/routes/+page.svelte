@@ -894,6 +894,7 @@
 				selectedEntities={() => telaDoKernel?.selecionados ?? []}
 				allEntities={() => telaDoKernel?.todas() ?? []}
 				setChoiceMode={(onChoose) => telaDoKernel?.definirEscolha(onChoose)}
+				setPointMode={(onPoint) => telaDoKernel?.definirPonto(onPoint)}
 			/>
 		</section>
 

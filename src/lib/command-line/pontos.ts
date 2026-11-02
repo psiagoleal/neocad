@@ -60,3 +60,9 @@ export function lerPonto(texto: string, anterior: CadPoint | null): LeituraDePon
 export function lerNumero(texto: string): number | null {
 	return numero(texto);
 }
+
+/** O ponto como texto que a linha de comando lê de volta sem perder precisão (spec 10, P3). */
+export function formatarPonto(ponto: CadPoint): string {
+	// `String` dá o menor texto que volta ao mesmo número; o ponto é o decimal.
+	return `${String(ponto.x)},${String(ponto.y)}`;
+}

@@ -28,7 +28,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use neocad_geometry::{tessellate, text_strokes, Aabb, AnyCurve, Point2, SpatialIndex};
+use neocad_geometry::{
+    snap, tessellate, text_strokes, Aabb, AnyCurve, Point2, SnapMode, SpatialIndex, Tolerance,
+};
 use neocad_model::{BlockId, Document, Entity, EntityId, Geometry, LayerId, LayerRecord};
 use neocad_transaction::Effect;
 
@@ -49,6 +51,9 @@ struct SpaceScreen {
     /// para uma edição não custar a reconstrução do índice inteiro.
     stale: BTreeSet<EntityId>,
 }
+
+/// Quantas entidades, as mais perto do cursor, entram no prendimento (spec 10, P4).
+const SNAP_LIMIT: usize = 32;
 
 /// Mexidas além disto fazem o índice ser refeito na próxima consulta.
 const STALE_LIMIT: usize = 1024;
@@ -451,6 +456,58 @@ impl Screen {
                     }
                 })
                 .collect(),
+        )
+    }
+
+    /// O ponto notável mais prioritário ao alcance do cursor, entre as entidades
+    /// desenhadas em camada visível no espaço (spec 10, P2): modo, ponto e a
+    /// entidade que o produziu. `None` se o espaço é desconhecido; `Some(None)`
+    /// se nada prende.
+    pub fn snap(
+        &mut self,
+        document: &Document,
+        space: &str,
+        cursor: Point2,
+        radius: f64,
+        modes: &[SnapMode],
+    ) -> Option<Option<(SnapMode, Point2, EntityId)>> {
+        let found = self.space(space)?;
+        let reach = Aabb::new(
+            Point2::new(cursor.x - radius, cursor.y - radius),
+            Point2::new(cursor.x + radius, cursor.y + radius),
+        );
+        // Só o que o cursor alcança: o traço ao alcance, ou o centro (de um círculo
+        // grande, longe do traço). Dos que sobram, os mais perto, para a interseção,
+        // que testa pares, não crescer com a densidade do desenho.
+        let mut near: Vec<(f64, EntityId, AnyCurve)> = self
+            .candidates(document, found, reach)
+            .into_iter()
+            .filter_map(|id| {
+                let distance = self
+                    .visible_segments(document, found, id)?
+                    .map(|(a, b)| distance_to_segment(cursor, a, b))
+                    .fold(f64::INFINITY, f64::min);
+                let entity = document.entity(id)?;
+                let center_in_reach = match &entity.geometry {
+                    Geometry::Circle(c) => c.center.distance_to(cursor) <= radius,
+                    Geometry::Arc(a) => a.center.distance_to(cursor) <= radius,
+                    _ => false,
+                };
+                if distance > radius && !center_in_reach {
+                    return None;
+                }
+                let curve = crate::curve_of_geometry(&entity.geometry)?;
+                Some((distance, id, curve))
+            })
+            .collect();
+        near.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        near.truncate(SNAP_LIMIT);
+        let (ids, curves): (Vec<EntityId>, Vec<AnyCurve>) =
+            near.into_iter().map(|(_, id, curve)| (id, curve)).unzip();
+
+        Some(
+            snap(&curves, cursor, radius, modes, Tolerance::default())
+                .map(|found| (found.mode, found.point, ids[found.curve])),
         )
     }
 
@@ -1090,6 +1147,91 @@ mod tests {
         let achadas = tela.query(&doc, m, longe).expect("modelo");
         assert_eq!(achadas.len(), 1099);
         assert!(!achadas.contains(&ultima));
+    }
+
+    #[test]
+    fn o_prendimento_olha_so_o_que_esta_perto_e_se_ve_no_espaco() {
+        let (doc, mut tela, [embaixo, _, circulo, escondida]) = desenho_para_selecao();
+        let m = MODEL_LAYOUT_NAME;
+        let todos = [
+            SnapMode::Endpoint,
+            SnapMode::Midpoint,
+            SnapMode::Center,
+            SnapMode::Quadrant,
+            SnapMode::Intersection,
+        ];
+
+        // A reta de baixo vai de (0,0) a (10,0).
+        let fim = tela.snap(&doc, m, Point2::new(9.8, 0.1), 0.5, &todos);
+        assert_eq!(
+            fim,
+            Some(Some((SnapMode::Endpoint, Point2::new(10.0, 0.0), embaixo)))
+        );
+        let meio = tela.snap(&doc, m, Point2::new(5.1, -0.2), 0.5, &todos);
+        assert_eq!(
+            meio,
+            Some(Some((SnapMode::Midpoint, Point2::new(5.0, 0.0), embaixo)))
+        );
+        // O círculo de raio 5 em (30,0): centro e quadrante.
+        let centro = tela.snap(&doc, m, Point2::new(30.2, 0.1), 0.5, &todos);
+        assert_eq!(
+            centro,
+            Some(Some((SnapMode::Center, Point2::new(30.0, 0.0), circulo)))
+        );
+        let quadrante = tela.snap(&doc, m, Point2::new(30.1, 5.2), 0.5, &todos);
+        assert_eq!(
+            quadrante,
+            Some(Some((SnapMode::Quadrant, Point2::new(30.0, 5.0), circulo)))
+        );
+        // A reta escondida (em y = 1) não prende; longe de tudo, nada.
+        let perto_da_escondida = tela.snap(&doc, m, Point2::new(10.0, 1.1), 0.3, &todos);
+        assert!(perto_da_escondida
+            .flatten()
+            .is_none_or(|(_, _, id)| id != escondida));
+        assert_eq!(
+            tela.snap(&doc, m, Point2::new(50.0, 50.0), 0.5, &todos),
+            Some(None)
+        );
+        // No papel, a reta do papel prende; o espaço desconhecido não existe.
+        assert!(matches!(
+            tela.snap(&doc, "Prancha A1", Point2::new(9.9, 0.0), 0.5, &todos),
+            Some(Some((SnapMode::Endpoint, _, _)))
+        ));
+        assert_eq!(
+            tela.snap(&doc, "Inexistente", Point2::ORIGIN, 1.0, &todos),
+            None
+        );
+    }
+
+    #[test]
+    fn o_prendimento_num_desenho_denso_acha_o_mais_perto() {
+        let mut doc = Document::new();
+        let mut pilha = CommandStack::new();
+        let zero = doc.layers().default_layer();
+        // Muitas retas que se cruzam perto do cursor, e uma extremidade nele.
+        for i in 0..400 {
+            let t = f64::from(i) * 0.01;
+            insere(
+                &mut doc,
+                &mut pilha,
+                zero,
+                reta(-50.0, -50.0 + t, 50.0, 50.0 - t),
+            );
+        }
+        let alvo = insere(&mut doc, &mut pilha, zero, reta(10.0, 10.0, 20.0, 15.0));
+        let mut tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("erro válido");
+
+        let achado = tela.snap(
+            &doc,
+            MODEL_LAYOUT_NAME,
+            Point2::new(10.05, 10.02),
+            0.5,
+            &[SnapMode::Endpoint, SnapMode::Intersection],
+        );
+        assert_eq!(
+            achado,
+            Some(Some((SnapMode::Endpoint, Point2::new(10.0, 10.0), alvo)))
+        );
     }
 
     #[test]

@@ -61,6 +61,11 @@ function documentoFalso(recusadas: Record<string, CadUnsupportedCount[]>) {
 			Math.abs(p.y) <= raio && p.x >= 0 && p.x <= 100 ? ['1'] : []
 		),
 		selectOnScreen: vi.fn(() => ['1', '2']),
+		snapOnScreen: vi.fn((_espaco: string, p: { x: number; y: number }, raio: number) =>
+			Math.hypot(p.x - 20, p.y) <= raio
+				? { mode: 'endpoint', point: { x: 20, y: 0 }, entity: '1' }
+				: null
+		),
 		getScreenSegmentsOf: vi.fn(() => new Float32Array([0, 0, 1, 1])),
 		existentes: new Set(['1', '2']),
 		getEntitiesById(ids: string[]) {
@@ -215,6 +220,57 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		(doc as unknown as { getScreenExtents: () => typeof caixa }).getScreenExtents = () => caixa;
 		expect(tela.todas()).toEqual(['1', '2']);
 		expect(doc.selectOnScreen).toHaveBeenCalledWith('Model', caixa, true);
+	});
+
+	const mover = (x: number, y: number) =>
+		ouvintes.get('pointermove')?.({ clientX: x, clientY: y, pointerId: 1 });
+
+	it('no modo de ponto, o cursor prende com marcador e o clique entrega o ponto (P1, P2)', () => {
+		const { tela, doc, dados } = montar();
+		const apontar = vi.fn();
+		expect(dados.clique).toBe('selecao');
+		tela.definirPonto(apontar);
+		quadro();
+		expect(dados.clique).toBe('ponto');
+
+		// Perto de (20, 0): prende, a até 10 pixels (escala 1).
+		mover(428, 303);
+		quadro();
+		expect(doc.snapOnScreen).toHaveBeenLastCalledWith('Model', { x: 28, y: -3 }, 10, [
+			'endpoint',
+			'midpoint',
+			'center',
+			'quadrant',
+			'intersection'
+		]);
+		expect(dados.prendimento).toBe('endpoint 20 0');
+		clicar(428, 303);
+		expect(apontar).toHaveBeenLastCalledWith({ x: 20, y: 0 });
+
+		// Longe de tudo: sem marcador, o ponto do cursor.
+		mover(500, 200);
+		quadro();
+		expect(dados.prendimento).toBe('');
+		clicar(500, 200);
+		expect(apontar).toHaveBeenLastCalledWith({ x: 100, y: 100 });
+		quadro();
+		expect(dados.selecao).toBe('0');
+
+		tela.definirPonto(null);
+		quadro();
+		expect(dados.clique).toBe('selecao');
+		expect(dados.prendimento).toBe('');
+	});
+
+	it('o modo de escolha e o de ponto se excluem', () => {
+		const { tela, dados } = montar();
+		tela.definirPonto(vi.fn());
+		tela.definirEscolha(vi.fn());
+		quadro();
+		expect(dados.clique).toBe('escolha');
+		tela.definirPonto(vi.fn());
+		quadro();
+		expect(dados.clique).toBe('ponto');
 	});
 
 	it('trocar de espaço e esvaziarSelecao esvaziam (S3, S5)', () => {

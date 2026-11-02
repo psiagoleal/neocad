@@ -200,6 +200,42 @@ test.describe('desempenho no desenho sintético (spec 00, N1–N3)', () => {
 		expect(janela).toBeLessThanOrEqual(100);
 	});
 
+	test('P4: o prendimento de um movimento do cursor leva até 16 ms (spec 10)', async ({ page }) => {
+		const { tela } = await abrirSintetico(page);
+		const linha = page.getByRole('textbox', { name: 'Linha de comando' });
+		await linha.fill('L');
+		await linha.press('Enter');
+		await expect(tela).toHaveAttribute('data-clique', 'ponto');
+
+		// Cada movimento é medido no navegador: o tratamento dele inclui o prendimento.
+		const tempos = await page.evaluate(() => {
+			const canvas = document.querySelector('canvas[data-tela="kernel"]') as HTMLCanvasElement;
+			const caixa = canvas.getBoundingClientRect();
+			const medidas: number[] = [];
+			for (let i = 0; i < 40; i++) {
+				const t0 = performance.now();
+				canvas.dispatchEvent(
+					new PointerEvent('pointermove', {
+						pointerId: 1,
+						bubbles: true,
+						clientX: caixa.left + caixa.width * (0.3 + 0.01 * i),
+						clientY: caixa.top + caixa.height * (0.4 + 0.005 * i)
+					})
+				);
+				medidas.push(performance.now() - t0);
+			}
+			return medidas;
+		});
+		const pior = Math.max(...tempos);
+		test
+			.info()
+			.annotations.push(
+				{ type: 'P4-mediana-ms', description: String(mediana(tempos)) },
+				{ type: 'P4-pior-ms', description: String(pior) }
+			);
+		expect(pior).toBeLessThanOrEqual(16);
+	});
+
 	test('N3: pan e zoom a 30 quadros por segundo pela GPU', async ({ page }) => {
 		const { tela } = await abrirSintetico(page);
 

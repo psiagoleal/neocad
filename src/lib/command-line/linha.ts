@@ -51,6 +51,8 @@ export function linha({ documento, aposEditar }: ContextoDeComando): ComandoEmCu
 	}
 
 	return {
+		querPonto: () => true,
+
 		prompt() {
 			if (primeiro == null) return 'Especifique o primeiro ponto:';
 			const lista = opcoes()

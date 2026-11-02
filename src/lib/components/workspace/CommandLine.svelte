@@ -14,7 +14,8 @@
 		type Escolha,
 		type Mensagem
 	} from '$lib/command-line/motor';
-	import type { CadEntityId } from '$lib/types/cad';
+	import { formatarPonto } from '$lib/command-line/pontos';
+	import type { CadEntityId, CadPoint } from '$lib/types/cad';
 
 	type CommandLineProps = {
 		documento: () => DocumentoDosComandos | null;
@@ -27,6 +28,8 @@
 		todas: () => CadEntityId[];
 		/** Liga (com quem recebe o clique) ou desliga o modo de escolha da tela. */
 		definirEscolha: (aoEscolher: ((escolha: Escolha) => void) | null) => void;
+		/** Liga (com quem recebe o ponto) ou desliga o modo de ponto da tela. */
+		definirPonto: (aoApontar: ((ponto: CadPoint) => void) | null) => void;
 	};
 
 	let {
@@ -35,7 +38,8 @@
 		esvaziarSelecao,
 		selecionados,
 		todas,
-		definirEscolha
+		definirEscolha,
+		definirPonto
 	}: CommandLineProps = $props();
 
 	/** Linhas guardadas no histórico; as mais antigas saem. */
@@ -65,17 +69,23 @@
 		}
 	});
 
-	/** Depois de cada passo: o prompt novo e o modo do clique na tela (spec 10, T4). */
+	/**
+	 * Depois de cada passo: o prompt novo e o modo do clique na tela. O ponto
+	 * clicado entra como texto, como se tivesse sido digitado (spec 10, P1, P3); o
+	 * objeto clicado vai ao comando com o ponto (T4).
+	 */
 	function sincronizar(): void {
 		prompt = motor.prompt;
-		definirEscolha(
-			motor.querEscolha
-				? (escolha) => {
-						motor.escolher(escolha);
-						sincronizar();
-					}
-				: null
-		);
+		definirPonto(null);
+		definirEscolha(null);
+		if (motor.querPonto) {
+			definirPonto((ponto) => confirmar(formatarPonto(ponto)));
+		} else if (motor.querEscolha) {
+			definirEscolha((escolha) => {
+				motor.escolher(escolha);
+				sincronizar();
+			});
+		}
 		void rolarHistorico();
 	}
 

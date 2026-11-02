@@ -131,6 +131,7 @@ export interface CadKernelSession {
 		crossing: boolean
 	): unknown;
 	screenSegmentsOf(space: string, ids: string[]): Float32Array;
+	screenSnap(space: string, x: number, y: number, radius: number, modes: string[]): unknown;
 	updateScreen(): unknown;
 	screenQuery(space: string, minX: number, minY: number, maxX: number, maxY: number): string[];
 }
@@ -1144,6 +1145,18 @@ export class CadDocument {
 				this.session.screenSelect(space, area.minX, area.minY, area.maxX, area.maxY, crossing),
 				'janela na tela'
 			)
+		);
+	}
+
+	/** O ponto notável ao alcance do cursor no espaço da tela, ou `null` (spec 10, P2). */
+	snapOnScreen(
+		space: string,
+		point: CadPoint,
+		radius: number,
+		modes: CadSnapMode[]
+	): CadSnap | null {
+		return this.call(() =>
+			toCadSnap(this.session.screenSnap(space, point.x, point.y, radius, [...modes]))
 		);
 	}
 
