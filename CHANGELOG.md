@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- OFFSET (MT-KV-14d3, spec 10 O1–O4) — `OFFSET` / `DESLOCAMENTO` / `O`: distance, then a click on the object (no Enter needed, as in AutoCAD), then the side point; repeats until `Sair`, with `Desfazer`; kernel refusals go to the command history.
+
 - ROTATE, MIRROR and SCALE (MT-KV-14d2, spec 10 R1–R4) — `ROTATE` / `ROTAC` / `RO` (degrees counter-clockwise, or a point giving the direction), `MIRROR` / `ESPELHAR` / `MI` (keeps the originals by default, like AutoCAD; "Sim" mirrors them in place) and `SCALE` / `ESCALA` / `SC`, each in one undo step; the facade gained `mirrorCopyEntities`.
 
 - MOVE and COPY (MT-KV-14d1, spec 10 M1–M4) — `MOVE` / `MOVER` / `M` and `COPY` / `COPIAR` / `CO` work on the selection (or ask for it), with base point and second point; `@` is relative to the base, an empty second point uses the base as displacement; COPY keeps going with `Sair`/`Desfazer`, one undo step per copy.

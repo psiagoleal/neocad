@@ -223,3 +223,24 @@ test('ROTATE, MIRROR e SCALE sobre a seleção, pelo kernel (R1–R3)', async ({
 	await digitar(page, 'SC', '0,0', '0.5');
 	await expect(tela).toHaveAttribute('data-caixa', '-90 0 90 90');
 });
+
+test('OFFSET: o objeto é escolhido pelo clique, sem Enter (O1)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	await digitar(page, 'DESLOCAMENTO', '10');
+	await expect(linha).toHaveAttribute(
+		'data-prompt',
+		'Selecione o objeto a deslocar ou [Sair/Desfazer] <Sair>:'
+	);
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	await clicarNoDesenho(page, 10, 10);
+	await expect(linha).toHaveAttribute('data-prompt', 'Especifique o ponto no lado a deslocar:');
+	await digitar(page, '0,50');
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+	await expect(linha).toHaveAttribute(
+		'data-prompt',
+		'Selecione o objeto a deslocar ou [Sair/Desfazer] <Sair>:'
+	);
+	await digitar(page, '');
+	await expect(linha).toHaveAttribute('data-prompt', LIVRE);
+});

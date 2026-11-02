@@ -32,6 +32,7 @@
 		onCommandEdit: () => void;
 		onClearSelection: () => void;
 		selectedEntities: () => CadEntityId[];
+		selectionVersion: number;
 	};
 
 	let {
@@ -56,7 +57,8 @@
 		commandDocument,
 		onCommandEdit,
 		onClearSelection,
-		selectedEntities
+		selectedEntities,
+		selectionVersion
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -108,5 +110,6 @@
 		aposEditar={onCommandEdit}
 		esvaziarSelecao={onClearSelection}
 		selecionados={selectedEntities}
+		versaoDaSelecao={selectionVersion}
 	/>
 </section>

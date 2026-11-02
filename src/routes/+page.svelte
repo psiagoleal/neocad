@@ -66,6 +66,8 @@
 
 	/** Tela desenhada pelo kernel (ADR 0008); criada pelo componente da área de desenho. */
 	let telaDoKernel: TelaDoKernel | null = null;
+	/** Muda a cada clique que muda a seleção da tela. */
+	let selectionVersion = $state(0);
 	/** Verdadeiro quando o desenho aberto foi lido pelo kernel e está na tela própria. */
 	let isKernelScreenVisible = $state(false);
 
@@ -509,6 +511,8 @@
 		telaDoKernel = tela;
 		// Spec 07, V6: o que a tela não exibe vai para a área de mensagens.
 		tela.avisarCom((mensagem) => pushNotification('warning', mensagem));
+		// O comando em curso pode tomar o clique como resposta (OFFSET, spec 10, O1).
+		tela.aoMudarSelecao(() => (selectionVersion += 1));
 	}
 
 	/** Depois de cada edição pela linha de comando: o menu e a tela releem o kernel. */
@@ -892,6 +896,7 @@
 				onCommandEdit={afterCommandEdit}
 				onClearSelection={() => telaDoKernel?.esvaziarSelecao()}
 				selectedEntities={() => telaDoKernel?.selecionados ?? []}
+				{selectionVersion}
 			/>
 		</section>
 

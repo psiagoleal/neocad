@@ -5,7 +5,7 @@
 	 * sugestões e as teclas Enter, Espaço, Esc e setas. A lógica mora no motor
 	 * (`$lib/command-line/motor`); aqui ficam só a tela e o teclado.
 	 */
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { CATALOGO_DA_SPEC } from '$lib/command-line/catalogo';
 	import { COMANDOS } from '$lib/command-line/comandos';
 	import {
@@ -22,9 +22,12 @@
 		esvaziarSelecao: () => void;
 		/** Ids selecionados na tela, para os comandos que trabalham sobre a seleção. */
 		selecionados: () => CadEntityId[];
+		/** Muda a cada clique que muda a seleção; o comando em curso pode tomá-la. */
+		versaoDaSelecao: number;
 	};
 
-	let { documento, aposEditar, esvaziarSelecao, selecionados }: CommandLineProps = $props();
+	let { documento, aposEditar, esvaziarSelecao, selecionados, versaoDaSelecao }: CommandLineProps =
+		$props();
 
 	/** Linhas guardadas no histórico; as mais antigas saem. */
 	const LIMITE_DO_HISTORICO = 200;
@@ -47,6 +50,15 @@
 		mensagem: (m) => {
 			historico = [...historico, m].slice(-LIMITE_DO_HISTORICO);
 		}
+	});
+
+	$effect(() => {
+		void versaoDaSelecao;
+		untrack(() => {
+			motor.selecaoMudou();
+			prompt = motor.prompt;
+			void rolarHistorico();
+		});
 	});
 
 	const sugestoes = $derived.by(() => {

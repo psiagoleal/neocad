@@ -89,6 +89,7 @@ export class TelaDoKernel {
 	private escuro: boolean;
 	private arrasto: { x: number; y: number; id: number } | null = null;
 	private aviso: ((mensagem: string) => void) | null = null;
+	private avisoDeSelecao: (() => void) | null = null;
 	/** Último aviso de não exibidas dado por espaço, para não repetir. */
 	private readonly avisados = new Map<string, string>();
 	private readonly selecao = new Selecao();
@@ -222,6 +223,11 @@ export class TelaDoKernel {
 	sobrepor(aoMudarVista: AoMudarVista | null): void {
 		this.aoMudarVista = aoMudarVista;
 		this.pedirQuadro();
+	}
+
+	/** Quem quer saber quando um clique muda a seleção (o comando em curso). */
+	aoMudarSelecao(aviso: () => void): void {
+		this.avisoDeSelecao = aviso;
 	}
 
 	/** Para onde vai o aviso das entidades que a tela não exibe (spec 07, V6). */
@@ -378,6 +384,7 @@ export class TelaDoKernel {
 
 		const espaco = this.espaco;
 		const ponto = this.pontoDoDesenho(e);
+		const antes = this.selecao.ids.join();
 		this.selecao.clicar(ponto, RAIO_DO_CLIQUE_PX / this.vista.escala, e.shiftKey, {
 			clique: (p, raio) => documento.pickOnScreen(espaco, p, raio),
 			area: (area, cruzada) => documento.selectOnScreen(espaco, area, cruzada)
@@ -386,6 +393,7 @@ export class TelaDoKernel {
 		this.atualizarDestaque();
 		this.atualizarJanela();
 		this.pedirQuadro();
+		if (this.selecao.ids.join() !== antes) this.avisoDeSelecao?.();
 	}
 
 	// -- quadro ----------------------------------------------------------------

@@ -33,6 +33,8 @@ export interface ComandoEmCurso {
 	iniciar?(): Resposta;
 	/** O prompt de agora, já com as opções entre colchetes. */
 	prompt(): string;
+	/** A seleção da tela mudou por um clique; o comando pode tomá-la como resposta. */
+	aoSelecionar?(ids: CadEntityId[]): Resposta;
 	responder(texto: string): Resposta;
 	/** `Esc`: o comando para; o que já confirmou permanece. */
 	encerrar(): void;
@@ -50,6 +52,7 @@ export type DocumentoDosComandos = Pick<
 	| 'mirrorEntities'
 	| 'mirrorCopyEntities'
 	| 'scaleEntities'
+	| 'offsetEntity'
 	| 'listLayers'
 	| 'getHistory'
 	| 'undo'
@@ -128,6 +131,14 @@ export class MotorDeComandos {
 	/** Sugestões para o texto sendo digitado (C9). */
 	sugerir(texto: string): ComandoDoCatalogo[] {
 		return this.emCursoAgora == null ? this.resolvedor.sugerir(texto) : [];
+	}
+
+	/** Avisa o comando em curso que a seleção da tela mudou por um clique. */
+	selecaoMudou(): void {
+		const atual = this.emCursoAgora;
+		const aoSelecionar = atual?.comando.aoSelecionar;
+		if (atual == null || aoSelecionar == null) return;
+		this.executar(atual, () => aoSelecionar.call(atual.comando, this.opcoes.selecao.ids()));
 	}
 
 	/** O texto que o usuário confirmou (`Enter`). */

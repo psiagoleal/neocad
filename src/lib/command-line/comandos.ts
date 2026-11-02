@@ -13,6 +13,7 @@
 
 import { apagar } from './apagar';
 import { copiar } from './copiar';
+import { deslocar } from './deslocar';
 import { escalar } from './escalar';
 import { espelhar } from './espelhar';
 import { girar } from './girar';
@@ -27,6 +28,7 @@ export const COMANDOS: Readonly<Record<string, FabricaDeComando>> = {
 	LINE: linha,
 	MIRROR: espelhar,
 	MOVE: mover,
+	OFFSET: deslocar,
 	ROTATE: girar,
 	SCALE: escalar
 };

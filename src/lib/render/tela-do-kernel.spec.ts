@@ -193,6 +193,18 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		expect(dados.selecao).toBe('2');
 	});
 
+	it('avisa quando um clique muda a seleção, e só então (O1)', () => {
+		const { tela } = montar();
+		const aviso = vi.fn();
+		tela.aoMudarSelecao(aviso);
+		clicar(410, 300);
+		expect(aviso).toHaveBeenCalledTimes(1);
+		clicar(390, 250);
+		expect(aviso).toHaveBeenCalledTimes(1);
+		tela.esvaziarSelecao();
+		expect(aviso).toHaveBeenCalledTimes(1);
+	});
+
 	it('trocar de espaço e esvaziarSelecao esvaziam (S3, S5)', () => {
 		const { tela, dados } = montar();
 		clicar(410, 300);

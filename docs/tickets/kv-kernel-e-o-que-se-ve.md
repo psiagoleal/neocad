@@ -457,6 +457,15 @@ no histórico) já está no motor e vale para todas.
 - **Fora de escopo:** opções `Através`, `Apagar`, `Camada`, `Múltiplo`; ponto do lado
   pelo clique (MT-KV-14h).
 - **Depende de:** MT-KV-14d1.
+- **Resultado (2026-11-02):** o motor ganhou `selecaoMudou()`, que entrega a seleção ao
+  comando em curso que tenha `aoSelecionar`; a `TelaDoKernel`, `aoMudarSelecao`, chamado
+  só quando um clique muda a seleção; a página conta essas mudanças e a `CommandLine`
+  repassa ao motor. `deslocar.ts`: distância maior que zero, objeto pelo clique (sem
+  `Enter`), lado digitado, uma paralela por passo, `Desfazer` e `Sair`; o objeto sai
+  antes da chamada ao kernel, para a recusa voltar ao pedido de objeto. Provas:
+  `deslocar.spec.ts`, o caso novo em `tela-do-kernel.spec.ts` e o e2e "OFFSET: o objeto é
+  escolhido pelo clique", vistos falhar antes. Kernel inalterado (`offsetEntity` já
+  existia).
 
 ### MT-KV-14d4: TRIM e EXTEND
 

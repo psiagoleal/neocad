@@ -94,6 +94,23 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 				y: pivo.y + (p.y - pivo.y) * fator
 			}));
 		},
+		offsetEntity: (id, distancia, lado) => {
+			const r = retas.find((x) => x.id === id);
+			if (r == null || distancia > 100) {
+				throw new CadKernelOperationError('paralela impossível');
+			}
+			// Só retas horizontais nos testes: a paralela vai para o lado de y do ponto.
+			const dy = lado.y >= r.de.y ? distancia : -distancia;
+			const nova = {
+				id: String(proximo++) as CadEntityId,
+				camada: r.camada,
+				de: { x: r.de.x, y: r.de.y + dy },
+				ate: { x: r.ate.x, y: r.ate.y + dy }
+			};
+			retas.push(nova);
+			pilha.push(() => retas.splice(retas.indexOf(nova), 1));
+			return [nova.id];
+		},
 		eraseEntities: (ids) => {
 			if (ids.some((id) => !retas.some((r) => r.id === id))) {
 				throw new CadKernelOperationError('entidade inexistente');
