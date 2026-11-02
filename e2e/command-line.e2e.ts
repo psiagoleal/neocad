@@ -113,3 +113,10 @@ test('as sugestões aparecem nos dois idiomas e em até 50 ms (C9, C12)', async 
 	test.info().annotations.push({ type: 'C12-ms', description: String(ms) });
 	expect(ms).toBeLessThanOrEqual(50);
 });
+
+test('a barra de comandos do upstream não é oferecida (V5)', async ({ page }) => {
+	test.setTimeout(60_000);
+	await abrir(page);
+	await expect(page.getByRole('textbox', { name: 'Linha de comando' })).toBeVisible();
+	await expect(page.getByPlaceholder('Type command')).toBeHidden();
+});

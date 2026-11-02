@@ -328,34 +328,21 @@ export interface CadSnap {
 /** Categorias de apresentação para os comandos CAD no catálogo do menu `Ajuda`. */
 export type CadCommandCategory = 'navigation' | 'draw' | 'modify' | 'layer' | 'system' | 'other';
 
-/**
- * Descritor cru de um comando, lido do command stack do upstream em tempo de
- * execução. É a fonte de verdade sobre quais comandos existem (ver ADR 0001).
- */
-export interface CadCommandDescriptor {
-	/** Nome global (untranslated) — string enviada ao viewer. */
-	globalName: string;
-	/** Nome local (traduzido pelo upstream), quando disponível. */
-	localName: string;
-	/** Grupo de origem no upstream (ex.: ACAD, USER). */
-	group: string;
-}
-
-/**
- * Item do catálogo de comandos exibido na UI: une o descritor de runtime aos
- * metadados de apresentação em PT-BR.
- */
 export interface CadCommandCatalogItem {
-	/** Identificador estável (nome global normalizado em maiúsculas). */
+	/** Identificador estável: o nome em inglês, em maiúsculas. */
 	id: string;
-	/** Nome global enviado ao viewer via `executeCommand`. */
+	/** Nome em inglês, com a grafia oficial da Autodesk (spec 08). */
 	command: string;
+	/** Nome em português do Brasil, com a grafia oficial da Autodesk. */
+	ptbr: string;
+	/** Apelidos, iguais nos dois idiomas. */
+	aliases: string[];
 	/** Rótulo amigável em PT-BR. */
 	label: string;
 	/** Categoria de apresentação. */
 	category: CadCommandCategory;
-	/** Grupo de origem no upstream. */
-	group: string;
+	/** Verdadeiro quando a linha de comando própria executa o comando (ADR 0011). */
+	available: boolean;
 	/** Observação opcional de uso. */
 	notes?: string;
 }

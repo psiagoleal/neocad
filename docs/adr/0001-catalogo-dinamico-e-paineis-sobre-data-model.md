@@ -2,7 +2,7 @@
 
 # ADR 0001: Catálogo de comandos derivado do upstream e painéis de leitura sobre o `data-model`
 
-- **Status:** Accepted <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
+- **Status:** Accepted; item 1 da Decisão Superseded by ADR-0011 (2026-11-02) <!-- Proposed | Accepted | Deprecated | Superseded by ADR-MMMM -->
 - **Data:** 2026-06-02
 - **Decisores:** Iago Leal
 - **Tags:** upstream, comandos, camadas, seleção, fronteira-de-stack

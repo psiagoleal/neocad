@@ -243,6 +243,21 @@ tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela
 - **Critério de aceite:** spec 07, V5 (`pnpm test -- cad-command-catalog`).
 - **Fora de escopo:** linha de comando própria.
 - **Depende de:** MT-KV-14b (concluído).
+- **Resultado (2026-11-02):** feito junto com o MT-UI-05, sob o
+  [ADR 0011](../adr/0011-catalogo-de-comandos-da-linha-propria.md), que substitui o item 1
+  do ADR 0001 (aceito pelo mantenedor antes de implementar). `desligarComandosDoUpstream`
+  esconde a barra (`AcApSettingManager.isShowCommandLine`) e torna o
+  `sendStringToExecute` do upstream inerte; por ele passavam a barra e a tecla Delete solta
+  no documento, que disparava o `erase` do upstream. Saíram do adaptador
+  `listCommandDescriptors` e `executeCommand`. O registro dos comandos implementados é
+  `src/lib/command-line/comandos.ts`. Achado e corrigido nas capturas: desde o MT-KV-13a,
+  a cor 7 do upstream (a SOLID de `with-unsupported.dxf`) saía preta no tema escuro,
+  porque ele só desenha a cor 7 em branco sobre fundo exatamente preto;
+  `aplicarFundoDoUpstream` põe o fundo do tema e faz o renderizador contar o fundo como
+  preto para a cor 7, com recurso ao preto puro se o renderizador mudar. Provas:
+  `neocad-viewer.spec.ts` (desligar e fundo), `cad-command-catalog.spec.ts` (V5) e o e2e
+  "a barra de comandos do upstream não é oferecida (V5)", visto falhar com a função
+  desfeita. O V4 já usava a linha própria desde o MT-KV-14b.
 
 ### MT-KV-13c: Aviso das entidades que a tela não exibe (V6)
 

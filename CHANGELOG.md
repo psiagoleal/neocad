@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Bilingual command catalogue (MT-UI-05, ADR 0011) — Help › CAD commands lists all 218 commands of the spec 08 table with English name, Portuguese name, aliases and whether they are available; available means the own command line runs it through the kernel.
+
 - Own command line (MT-KV-14b) — below the drawing: prompt, message history, bilingual suggestions as you type, Enter/Space to confirm (empty repeats the last command), Esc to cancel, arrows for previous entries. `L` + points draws through the kernel, and a line drawn this way is now in the saved file (spec 07 V4 passes).
 
 - Command engine and LINE (MT-KV-14a, spec 10 D1–D6) — the command line logic now runs commands through prompts: typed points as `x,y`, `@dx,dy`, `d<a` or `@d<a`, options in Portuguese or English (`Desfazer`/`_U`, `Fechar`/`_C`), invalid input repeats the prompt, kernel refusals become messages, `Esc` cancels and keeps what was drawn, an empty entry repeats the last command. LINE draws through the kernel. The visible command line comes with MT-KV-14b.
@@ -75,6 +77,8 @@ Maintenance rules:
 
 ### Changed
 
+- The upstream viewer no longer offers commands (MT-KV-13b, spec 07 V5) — its command bar is gone and nothing reaches its command stack (the stray Delete key used to start its own erase); every edit goes through the kernel.
+
 - Agent-governance framework updated, and skill adapters removed from version control. `.claude/skills/` and `.agents/skills/` are now ignored: an adapter is a generated pointer, and versioning one writes the **name** of every skill into the repository — which is exactly what a public repository must not do, since protecting a private skill by name is writing the name. The installer's own rule, now applied here. `.prettierignore` gained the framework-managed files for a related reason: the installer fingerprints each file's skeleton in `.agent-profile/baseline.sha256` and, seeing the fingerprint diverge, concludes someone edited the framework text locally — it then stops updating the file and diverts the new version to `<file>.new`. Reformatting those files to satisfy this repository's Prettier config would have silently switched off their automatic updates, so Prettier stops policing what another tool owns, as it already did for `.claude/settings.local.json`. `AGENTS.md` gains contract-before-code and test-before-implementation in §8, a declared directory structure, and a `commit-msg` hook that enforces the provenance rule §7 already stated in prose: the brace marker is the only permitted record, and session links or trailers are refused. `docs/TICKETS.md` is now the ticket panel, filled with the real state of phases K1, K2, KL and K3.
 
 - `CommandStack::edit` now accepts a closure whose error is anything that converts into `TransactionError`, instead of `DocumentError` alone. Parallel construction fails for reasons the document cannot name — an annulled radius is not a defect of the drawing — and forcing it through `DocumentError` would mean inventing a document variant for every geometry that does not close. `TransactionError` gains a `Command` variant for those, while a document failure raised inside a command still arrives as `Edit`, so the same event keeps one name. Existing closures compile unchanged unless their error type was never pinned, which needed a type annotation at three sites in the crate's own tests.
@@ -83,6 +87,8 @@ Maintenance rules:
 - `Makefile` release targets replaced by the pipeline they now front. `release-package`, `release-build` and the all-in-one `release` are gone, since packaging no longer happens on the developer's machine; what remains is triggering (`release-tag` pushes the tag that fires the workflow, `release-run` repackages an existing tag when the change was in the pipeline rather than in the product), observing (`release-watch`, `release-assets`) and approving (`release-publish`, which only lifts the draft). Publishing stays on the local side on purpose: the workflow deliberately stops at a draft, so the deliberate act of whoever reviewed the binaries is the one thing that should not be automated. `scripts/release.sh` keeps `version` and `tag`; its `package`, `build` and `publish` are now referenced by nothing.
 
 ### Fixed
+
+- ACI colour 7 drawn by the upstream layer (e.g. SOLID) came out black on the dark theme since MT-KV-13a; it is white again, and black on the light theme.
 
 - Scale refuses a zero, negative or non-finite factor instead of collapsing or half-turning the geometry (MT-K3-13).
 

@@ -33,8 +33,6 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
-      sai a barra do upstream (V5).
 - [ ] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria-e-erase) —
       seleção na tela e ERASE.
 - [ ] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) —
@@ -49,8 +47,6 @@ UI começa pelo que não depende de KV.
       spec 09, S3, S3b, S6.
 - [ ] [MT-UI-03](tickets/ui-interface.md#mt-ui-03-conferir-a-csp-no-app-empacotado) —
       spec 09, S4, em Linux e Windows.
-- [ ] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —
-      `Ajuda > Comandos CAD` nos dois idiomas (C11).
 - [ ] [MT-UI-08](tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal) —
       modo de vírgula decimal e ponto e vírgula.
 - [ ] [MT-UI-06](tickets/ui-interface.md#mt-ui-06-vitrine-do-neocad-no-repositório-e-no-github-pages) —
@@ -60,6 +56,10 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —
+      `Ajuda > Comandos CAD` nos dois idiomas (C11).
+- [x] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
+      sai a barra do upstream (V5).
 - [x] [MT-KV-14b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14b-linha-de-comando-visível-ligada-ao-motor-v4) —
       linha de comando visível; V4.
 - [x] [MT-KV-14a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14a-motor-de-comandos-entrada-de-pontos-e-line) —

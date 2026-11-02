@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-02: linha de comando visível](#rodada-de-2026-11-02-linha-de-comando-visível) — MT-KV-14b
 - [Rodada de 2026-11-02: motor de comandos e LINE](#rodada-de-2026-11-02-motor-de-comandos-e-line) — MT-KV-14a
 - [Rodada de 2026-11-02: resolvedor de comandos](#rodada-de-2026-11-02-resolvedor-de-comandos) — MT-UI-04
 - [Rodada de 2026-11-01: aviso do que a tela não exibe](#rodada-de-2026-11-01-aviso-do-que-a-tela-não-exibe) — MT-KV-13c
@@ -29,6 +30,17 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-02: linha de comando visível
+
+Commit `8ac0a83`.
+
+- **MT-KV-14b:** linha de comando própria abaixo do canvas, ligada ao motor: prompt,
+  histórico, sugestões bilíngues, `Enter`/`Espaço`/`Esc`/setas. `L` desenha pelo kernel,
+  e o **V4 passa** (saiu o `test.fail()`). C5, C6, C7, C9 e C12 provados em
+  `e2e/command-line.e2e.ts`.
+- Decidido com o mantenedor: a recusa do V5b fica no histórico da linha de comando (spec
+  07); o modo de vírgula decimal entra na spec 10 como decisão e vira o MT-UI-08.
 
 ## Rodada de 2026-11-02: motor de comandos e LINE
 

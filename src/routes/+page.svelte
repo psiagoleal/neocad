@@ -718,15 +718,7 @@
 	}
 
 	function showCommandsHelp(): void {
-		if (!isViewerReady || viewerController == null) {
-			pushNotification(
-				'info',
-				'O catálogo de comandos fica disponível após a inicialização do viewer.'
-			);
-			return;
-		}
-
-		commandCatalog = listCadCommandCatalog(viewerController);
+		commandCatalog = listCadCommandCatalog();
 		isCommandsHelpOpen = true;
 	}
 

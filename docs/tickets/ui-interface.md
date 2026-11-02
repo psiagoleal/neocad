@@ -79,6 +79,12 @@ entram depois do ADR 0008.
 - **Critério de aceite:** C11 — `pnpm test -- cad-command-catalog` verde; `pnpm check`.
 - **Fora de escopo:** despacho.
 - **Depende de:** MT-UI-04.
+- **Resultado (2026-11-02):** feito com o MT-KV-13b, sob o ADR 0011.
+  `buildCadCommandCatalog(tabela, implementados)` lista os 218 comandos da tabela com
+  inglês, português, apelidos e disponibilidade; os disponíveis vêm primeiro em cada
+  categoria. O diálogo `Ajuda > Comandos CAD` mostra os três nomes e "disponível" ou
+  "ainda não disponível", filtra por qualquer deles e ficou mais largo, com quebra de
+  linha nas etiquetas. Provas: `cad-command-catalog.spec.ts` (C11), vistos falhar antes.
 
 ## Depois do ADR 0008
 

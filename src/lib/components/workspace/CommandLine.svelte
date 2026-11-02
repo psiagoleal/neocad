@@ -7,7 +7,7 @@
 	 */
 	import { tick } from 'svelte';
 	import { CATALOGO_DA_SPEC } from '$lib/command-line/catalogo';
-	import { linha } from '$lib/command-line/linha';
+	import { COMANDOS } from '$lib/command-line/comandos';
 	import {
 		MotorDeComandos,
 		type DocumentoDosComandos,
@@ -35,7 +35,7 @@
 
 	const motor = new MotorDeComandos({
 		catalogo: CATALOGO_DA_SPEC,
-		comandos: { LINE: linha },
+		comandos: COMANDOS,
 		documento: () => documento(),
 		aposEditar: () => aposEditar(),
 		mensagem: (m) => {

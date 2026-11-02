@@ -12,7 +12,6 @@ import type {
 	AcEdOpenMode as AcEdOpenModeType
 } from '@mlightcad/cad-simple-viewer';
 import type {
-	CadCommandDescriptor,
 	CadDocumentPayload,
 	CadDocumentSnapshot,
 	CadLayout,
@@ -188,6 +187,56 @@ export function medirVista(vista: VistaDoUpstream): AlvoDaVista {
 	return { x, y, escala: PASSO_DA_MEDIDA / unidadesNoPasso(vista) };
 }
 
+/**
+ * Tira do upstream todo caminho de comando: a barra dele e o \`sendStringToExecute\`,
+ * por onde passam a barra e a tecla Delete solta no documento. Quem edita é o
+ * kernel, pela linha de comando própria (spec 07, V5).
+ */
+export function desligarComandosDoUpstream(
+	docManager: { sendStringToExecute(texto: string): void },
+	configuracao: { isShowCommandLine: boolean }
+): void {
+	configuracao.isShowCommandLine = false;
+	docManager.sendStringToExecute = () => undefined;
+}
+
+/** Vista do upstream, só no que o fundo precisa. */
+export type VistaComFundo = { renderer: unknown; backgroundColor: number };
+
+/**
+ * Põe o fundo do tema no upstream, que é o que aparece sob a tela própria.
+ *
+ * O upstream só desenha a cor 7 em branco quando o fundo é exatamente preto: o
+ * material de cada entidade nova escolhe a cor pelo \`currentBackgroundColor\` do
+ * renderizador. Com o azul-escuro do tema, ela sairia preta. Por isso, no escuro,
+ * a cor de limpeza é a do tema, o renderizador passa a contar o fundo como preto
+ * e as entidades já desenhadas são recoloridas. Sem esse renderizador, o escuro
+ * cai no preto puro, que mantém a cor 7 legível.
+ */
+export function aplicarFundoDoUpstream(vista: VistaComFundo, escuro: boolean): void {
+	const renderer = vista.renderer as {
+		currentBackgroundColor?: number;
+		changeForeground?: (cor: number) => void;
+	} | null;
+
+	if (!escuro) {
+		vista.backgroundColor = LIGHT_BACKGROUND;
+		return;
+	}
+	if (
+		renderer == null ||
+		typeof renderer.changeForeground !== 'function' ||
+		typeof renderer.currentBackgroundColor !== 'number'
+	) {
+		vista.backgroundColor = 0;
+		return;
+	}
+
+	vista.backgroundColor = DARK_BACKGROUND;
+	renderer.currentBackgroundColor = 0;
+	renderer.changeForeground(0xffffff);
+}
+
 export class NeoCadViewer {
 	private cadModule: CadSimpleViewerModule | null = null;
 	private docManager: AcApDocManagerType | null = null;
@@ -216,6 +265,8 @@ export class NeoCadViewer {
 	/** Vista da tela do kernel que o upstream segue; `null` quando não há o que seguir. */
 	private alvo: AlvoDaVista | null = null;
 	private aplicandoVista = false;
+	/** Tema do fundo do upstream. */
+	private escuro = true;
 	private readonly aoMudarVistaDoUpstream = () => this.reaplicarVista();
 	private documentActivatedHandler?: (payload: {
 		doc: { fileName: string; docTitle: string };
@@ -309,9 +360,11 @@ export class NeoCadViewer {
 		};
 
 		this.host = container;
-		// O tema começa escuro (a página e a tela do kernel também); agora que a
-		// tela do kernel é transparente, é o fundo do upstream que aparece.
-		this.docManager.curView.backgroundColor = DARK_BACKGROUND;
+		desligarComandosDoUpstream(this.docManager, cadModule.AcApSettingManager.instance);
+		// O tema começa escuro (a página e a tela do kernel também); como a tela do
+		// kernel é transparente, é o fundo do upstream que aparece.
+		aplicarFundoDoUpstream(this.docManager.curView, true);
+		this.escuro = true;
 		this.docManager.curView.events.viewChanged.addEventListener(this.aoMudarVistaDoUpstream);
 		this.docManager.curView.events.viewResize.addEventListener(this.aoMudarVistaDoUpstream);
 		this.docManager.events.documentActivated.addEventListener(this.documentActivatedHandler);
@@ -332,8 +385,8 @@ export class NeoCadViewer {
 		this.activeDocumentPath = payload.path;
 
 		// Durante a leitura, o que a tela do kernel desenha não chega à cena do
-		// upstream. Depois dela, o filtro sai: o que a barra de comandos do upstream
-		// desenhar continua aparecendo até o MT-KV-13b.
+		// upstream. Depois dela, nada mais entra na cena: o upstream não executa
+		// comando algum (MT-KV-13b).
 		const vista = this.docManager.curView;
 		const original = vista.addEntity;
 		const tipos = this.tiposDoKernel;
@@ -401,20 +454,9 @@ export class NeoCadViewer {
 			return 'dark';
 		}
 
-		const nextColor =
-			this.docManager.curView.backgroundColor === DARK_BACKGROUND
-				? LIGHT_BACKGROUND
-				: DARK_BACKGROUND;
-		this.docManager.curView.backgroundColor = nextColor;
-		return nextColor === LIGHT_BACKGROUND ? 'light' : 'dark';
-	}
-
-	executeCommand(command: string): void {
-		if (this.docManager == null) {
-			throw new Error('Viewer CAD ainda não foi inicializado.');
-		}
-
-		this.docManager.sendStringToExecute(command);
+		this.escuro = !this.escuro;
+		aplicarFundoDoUpstream(this.docManager.curView, this.escuro);
+		return this.escuro ? 'dark' : 'light';
 	}
 
 	/**
@@ -465,44 +507,6 @@ export class NeoCadViewer {
 				return record == null ? null : record.newIterator().count;
 			}
 		});
-	}
-
-	/**
-	 * Enumera os comandos registrados no command stack do upstream em tempo de
-	 * execução. É a fonte de verdade sobre quais comandos existem (ADR 0001).
-	 *
-	 * Retorna lista vazia quando o viewer ainda não foi inicializado.
-	 */
-	listCommandDescriptors(): CadCommandDescriptor[] {
-		if (this.docManager == null) {
-			return [];
-		}
-
-		const descriptors: CadCommandDescriptor[] = [];
-		const seenGlobalNames = new Set<string>();
-
-		for (const item of this.docManager.commandManager.iterator()) {
-			const command = item.command;
-			const globalName = command?.globalName?.trim();
-
-			if (command == null || globalName == null || globalName.length === 0) {
-				continue;
-			}
-
-			const normalizedName = globalName.toUpperCase();
-			if (seenGlobalNames.has(normalizedName)) {
-				continue;
-			}
-
-			seenGlobalNames.add(normalizedName);
-			descriptors.push({
-				globalName,
-				localName: command.localName?.trim() || globalName,
-				group: item.commandGroup ?? ''
-			});
-		}
-
-		return descriptors;
 	}
 
 	async destroy(): Promise<void> {

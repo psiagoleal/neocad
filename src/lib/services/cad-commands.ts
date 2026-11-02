@@ -2,36 +2,20 @@
 
 /**
  * \file src/lib/services/cad-commands.ts
- * \brief Serviço de comandos CAD: ponte entre a UI e o adaptador do viewer.
+ * \brief Catálogo de comandos CAD para a UI (ADR 0011).
  * \author Iago Leal
  * \date 2026-06-02
  *
- * Mantém a fronteira do ADR 0001: a UI consome estes contratos NeoCAD e nunca
- * importa `@mlightcad/*` diretamente. O serviço delega a enumeração ao
- * adaptador `NeoCadViewer` e funde com os metadados de apresentação.
+ * Os comandos vêm da tabela da spec 08 e a disponibilidade, do registro da linha
+ * de comando própria. O upstream não participa mais (MT-KV-13b).
  */
 
+import { CATALOGO_DA_SPEC } from '$lib/command-line/catalogo';
+import { COMANDOS } from '$lib/command-line/comandos';
 import { buildCadCommandCatalog } from '$lib/config/cad-command-catalog';
 import type { CadCommandCatalogItem } from '$lib/types/cad';
-import type { NeoCadViewer } from '$lib/viewer/neocad-viewer';
 
-/**
- * Lista o catálogo de comandos disponíveis no viewer ativo, já com rótulos de
- * apresentação. Retorna lista vazia quando o viewer não está inicializado.
- */
-export function listCadCommandCatalog(viewer: NeoCadViewer | null): CadCommandCatalogItem[] {
-	if (viewer == null) {
-		return [];
-	}
-
-	return buildCadCommandCatalog(viewer.listCommandDescriptors());
-}
-
-/** Dispara um comando CAD pelo seu nome global, via adaptador do viewer. */
-export function executeCadCommand(viewer: NeoCadViewer | null, command: string): void {
-	if (viewer == null) {
-		throw new Error('Viewer CAD ainda não foi inicializado.');
-	}
-
-	viewer.executeCommand(command);
+/** O catálogo de `Ajuda > Comandos CAD`, com rótulos de apresentação. */
+export function listCadCommandCatalog(): CadCommandCatalogItem[] {
+	return buildCadCommandCatalog(CATALOGO_DA_SPEC, Object.keys(COMANDOS));
 }
