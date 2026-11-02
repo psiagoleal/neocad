@@ -429,10 +429,12 @@ no histórico) já está no motor e vale para todas.
 ### MT-KV-14d2: ROTATE, MIRROR e SCALE
 
 - **Objetivo:** `ROTATE` / `ROTAC` / `RO`, `MIRROR` / `ESPELHAR` / `MI` e `SCALE` /
-  `ESCALA` / `SC` sobre a seleção, pelo kernel.
-- **Arquivos no escopo:** a definir ao abrir, no molde do 14d1.
-- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
-- **Fora de escopo:** opção `Referência`.
+  `ESCALA` / `SC` sobre a seleção, pelo kernel, cada um num só passo de desfazer.
+- **Arquivos no escopo:** fachada e serviço (espelhar mantendo as originais numa edição
+  só), `src/lib/command-line/` (`girar.ts`, `espelhar.ts`, `escalar.ts`, `pontos.ts`,
+  registro) e os testes; `e2e/command-line.e2e.ts`.
+- **Critério de aceite:** spec 10, R1–R4.
+- **Fora de escopo:** opções `Copiar` e `Referência`.
 - **Depende de:** MT-KV-14d1.
 
 ### MT-KV-14d3: OFFSET

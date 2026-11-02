@@ -35,8 +35,8 @@ UI começa pelo que não depende de KV.
       interseção, paralela e transformação.
 - [ ] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
       seleção no kernel; S6 com 100 mil selecionadas.
-- [ ] [MT-KV-14d2](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d2-rotate-mirror-e-scale) —
-      ROTATE, MIRROR e SCALE.
+- [>] [MT-KV-14d2](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d2-rotate-mirror-e-scale) — falta
+  espelhar com cópia no kernel e os três comandos.
 - [ ] [MT-KV-14d3](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d3-offset) — OFFSET.
 - [ ] [MT-KV-14d4](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d4-trim-e-extend) — TRIM e
       EXTEND.

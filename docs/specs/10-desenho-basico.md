@@ -105,6 +105,21 @@ Os prompts seguem a versão em português do AutoCAD: "Especifique o ponto base:
 depois da primeira cópia, "Especifique o segundo ponto ou [Sair/Desfazer] <Sair>:". A
 opção `Deslocamento` do ponto base e a `Matriz` do `COPY` ficam para depois.
 
+## Critérios de aceite (EARS) — `ROTATE`, `MIRROR` e `SCALE`
+
+| id  | critério                                                                                                                                                                                                                                                                                                                                    | prova                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| R1  | QUANDO o `ROTATE` (`ROTAC`, `RO`) recebe a seleção (como em M1), o ponto base e o ângulo, as entidades DEVEM girar pelo kernel em torno da base, num só passo de desfazer. O ângulo DEVE ser aceito em graus, no sentido anti-horário, ou como um ponto, valendo a direção da base até ele.                                                 | `pnpm test command-line`; `pnpm test:e2e command-line` |
+| R2  | QUANDO o `MIRROR` (`ESPELHAR`, `MI`) recebe a seleção e os dois pontos da linha de espelhamento, a linha DEVE perguntar "Apagar objetos de origem? [Sim/Não] <Não>:"; com `Não` ou o vazio, DEVEM ficar as originais e entrar as cópias espelhadas; com `Sim`, as originais DEVEM ser espelhadas. Nos dois casos, num só passo de desfazer. | idem                                                   |
+| R3  | QUANDO o `SCALE` (`ESCALA`, `SC`) recebe a seleção, o ponto base e o fator, as entidades DEVEM ser escaladas pelo kernel em torno da base, num só passo de desfazer.                                                                                                                                                                        | idem                                                   |
+| R4  | SE o ângulo, o fator ou a linha de espelhamento é inválido (texto que não é número nem ponto, fator zero ou negativo, os dois pontos iguais), ENTÃO a linha DEVE dizer o que se esperava e repetir o prompt; `Esc` antes da última resposta NÃO DEVE mudar o documento.                                                                     | `pnpm test command-line`                               |
+
+Os prompts seguem a versão em português do AutoCAD: "Especifique o ponto base:",
+"Especifique o ângulo de rotação:", "Especifique o primeiro ponto da linha de
+espelhamento:", "Especifique o segundo ponto da linha de espelhamento:" e "Especifique o
+fator de escala:". As opções `Copiar` e `Referência` de `ROTATE` e `SCALE` ficam para
+depois.
+
 ## Questões em aberto
 
 - Variantes de `ARC` e `CIRCLE` que entram primeiro.
