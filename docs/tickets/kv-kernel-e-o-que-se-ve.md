@@ -448,10 +448,14 @@ no histórico) já está no motor e vale para todas.
 
 ### MT-KV-14d3: OFFSET
 
-- **Objetivo:** `OFFSET` / `DESLOCAMENTO` / `O` pela linha, com distância e lado.
-- **Arquivos no escopo:** a definir ao abrir.
-- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
-- **Fora de escopo:** opções `Através`, `Apagar` e `Camada`.
+- **Objetivo:** `OFFSET` / `DESLOCAMENTO` / `O` pela linha: distância, objeto escolhido
+  pelo clique na tela, lado digitado; repete até `Sair`.
+- **Arquivos no escopo:** `src/lib/command-line/` (`deslocar.ts`, aviso de seleção no
+  motor, registro), `src/lib/render/tela-do-kernel.ts` (avisar quando a seleção muda),
+  `CommandLine.svelte`, `ViewerScreen.svelte`, `+page.svelte` e os testes.
+- **Critério de aceite:** spec 10, O1–O4.
+- **Fora de escopo:** opções `Através`, `Apagar`, `Camada`, `Múltiplo`; ponto do lado
+  pelo clique (MT-KV-14h).
 - **Depende de:** MT-KV-14d1.
 
 ### MT-KV-14d4: TRIM e EXTEND
@@ -471,6 +475,16 @@ no histórico) já está no motor e vale para todas.
 - **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
 - **Fora de escopo:** polilinha inteira, opção `Múltiplo`.
 - **Depende de:** MT-KV-14d1.
+
+### MT-KV-14h: Pontos pelo clique na tela
+
+- **Objetivo:** quando um prompt pede ponto, o clique na tela própria o entrega ao
+  comando (com prendimento aos pontos notáveis do kernel), e não seleciona; vale para o
+  `LINE` e para os pontos base, segundos pontos e lados dos comandos de edição.
+- **Arquivos no escopo:** a definir ao abrir.
+- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
+- **Fora de escopo:** rastreamento polar, ortogonal e entrada dinâmica.
+- **Depende de:** MT-KV-14d3.
 
 ### MT-KV-14e: Edição sobre entidade não modelada (V7)
 

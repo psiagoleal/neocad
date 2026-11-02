@@ -120,6 +120,18 @@ espelhamento:", "Especifique o segundo ponto da linha de espelhamento:" e "Espec
 fator de escala:". As opções `Copiar` e `Referência` de `ROTATE` e `SCALE` ficam para
 depois.
 
+## Critérios de aceite (EARS) — `OFFSET`
+
+| id  | critério                                                                                                                                                                                                                                                                                                                                                                                               | prova                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| O1  | QUANDO o `OFFSET` (`DESLOCAMENTO`, `O`) começa, a linha DEVE pedir a distância; depois, "Selecione o objeto a deslocar ou [Sair/Desfazer] <Sair>:", e o clique numa entidade da tela DEVE escolhê-la sem precisar de `Enter`; depois, "Especifique o ponto no lado a deslocar:", e a paralela DEVE ser criada pelo kernel do lado do ponto, num passo de desfazer; a linha DEVE voltar a pedir objeto. | `pnpm test command-line`; `pnpm test:e2e command-line` |
+| O2  | QUANDO o usuário escolhe `Desfazer` (`D`, `_U`) no pedido de objeto, a última paralela DEVE ser desfeita; o vazio ou `Sair` (`S`, `_E`) DEVE encerrar.                                                                                                                                                                                                                                                 | `pnpm test command-line`                               |
+| O3  | SE o kernel recusa a paralela (por exemplo, arco que encolheria além do centro), ENTÃO a linha DEVE mostrar o motivo e voltar a pedir objeto, sem mudar o documento.                                                                                                                                                                                                                                   | idem                                                   |
+| O4  | SE a distância não é um número maior que zero, ENTÃO a linha DEVE dizer o que se esperava e repetir o pedido.                                                                                                                                                                                                                                                                                          | idem                                                   |
+
+As opções `Através`, `Apagar`, `Camada` e `Múltiplo` ficam para depois; o ponto do lado é
+digitado até a entrada de pontos pelo clique (MT-KV-14h).
+
 ## Questões em aberto
 
 - Variantes de `ARC` e `CIRCLE` que entram primeiro.
