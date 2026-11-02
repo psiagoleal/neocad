@@ -13,7 +13,7 @@
 - **Data:** 2026-11-02
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** ver `git log` (MT-KV-14b); antes, `9e46d83` (MT-KV-14a)
+- **Commit:** `8ac0a83` (MT-KV-14b); antes, `9e46d83` (MT-KV-14a)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
