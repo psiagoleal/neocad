@@ -55,6 +55,7 @@ export interface CadKernelSession {
 	createLayer(name: string): string;
 	addLine(layer: string, startX: number, startY: number, endX: number, endY: number): string;
 	removeEntity(entity: string): void;
+	removeEntities(entities: string[]): void;
 	setLayerOff(layer: string, off: boolean): void;
 	load(document: unknown): unknown;
 	openDxf(bytes: Uint8Array): unknown;
@@ -828,6 +829,11 @@ export class CadDocument {
 	}
 
 	/** Apaga uma entidade como uma ação desfazível. */
+	/** Apaga as entidades numa só ação desfazível; nenhuma, se alguma não existir (spec 10, E1). */
+	eraseEntities(ids: CadEntityId[]): void {
+		this.call(() => this.session.removeEntities([...ids]));
+	}
+
 	eraseEntity(entityId: CadEntityId): void {
 		this.call(() => this.session.removeEntity(entityId));
 	}

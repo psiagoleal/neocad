@@ -9,7 +9,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { CadKernelOperationError } from '$lib/services/cad-document';
-import { documentoFalso } from './documento-falso';
+import { documentoFalso, selecaoFalsa } from './documento-falso';
 import {
 	lerOpcao,
 	MotorDeComandos,
@@ -57,6 +57,7 @@ function montar(
 		comandos: { LINE: fabrica },
 		documento: () => documento,
 		aposEditar,
+		selecao: selecaoFalsa().selecao,
 		mensagem: (m) => mensagens.push(m)
 	});
 	return { motor, registro, mensagens, aposEditar, fabrica };

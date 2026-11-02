@@ -8,6 +8,7 @@
  */
 
 import { CadKernelOperationError, type CadDocument } from '$lib/services/cad-document';
+import type { CadEntityId } from '$lib/types/cad';
 import {
 	mensagemDaResolucao,
 	normalizar,
@@ -25,6 +26,11 @@ export type Resposta =
 	| { tipo: 'invalida'; mensagem: string };
 
 export interface ComandoEmCurso {
+	/**
+	 * Chamado logo depois de criado; um comando que já tem o que precisa (a
+	 * seleção, no ERASE) responde aqui e pode encerrar sem prompt.
+	 */
+	iniciar?(): Resposta;
 	/** O prompt de agora, já com as opções entre colchetes. */
 	prompt(): string;
 	responder(texto: string): Resposta;
@@ -35,13 +41,20 @@ export interface ComandoEmCurso {
 /** O que os comandos usam do documento; o resto não lhes diz respeito. */
 export type DocumentoDosComandos = Pick<
 	CadDocument,
-	'drawLine' | 'eraseEntity' | 'listLayers' | 'getHistory' | 'undo'
+	'drawLine' | 'eraseEntity' | 'eraseEntities' | 'listLayers' | 'getHistory' | 'undo'
 >;
+
+/** A seleção da tela, como os comandos a veem. */
+export interface SelecaoDosComandos {
+	ids(): CadEntityId[];
+	esvaziar(): void;
+}
 
 export type ContextoDeComando = {
 	documento: DocumentoDosComandos;
 	/** Avisa a página que o kernel mudou (menu, tela). */
 	aposEditar(): void;
+	selecao: SelecaoDosComandos;
 };
 
 export type FabricaDeComando = (contexto: ContextoDeComando) => ComandoEmCurso;
@@ -55,6 +68,7 @@ export type OpcoesDoMotor = {
 	comandos: Record<string, FabricaDeComando>;
 	documento(): DocumentoDosComandos | null;
 	aposEditar(): void;
+	selecao: SelecaoDosComandos;
 	mensagem(m: Mensagem): void;
 };
 
@@ -148,16 +162,29 @@ export class MotorDeComandos {
 		}
 
 		this.ultimoIniciado = nome;
-		this.emCursoAgora = {
+		const atual = (this.emCursoAgora = {
 			nome,
-			comando: fabrica({ documento, aposEditar: () => this.opcoes.aposEditar() })
-		};
+			comando: fabrica({
+				documento,
+				aposEditar: () => this.opcoes.aposEditar(),
+				selecao: this.opcoes.selecao
+			})
+		});
+		if (atual.comando.iniciar != null) {
+			const comando = atual.comando;
+			this.executar(atual, () => comando.iniciar?.() ?? { tipo: 'continua' });
+		}
 	}
 
 	private responder(atual: { nome: string; comando: ComandoEmCurso }, texto: string): void {
+		this.executar(atual, () => atual.comando.responder(texto));
+	}
+
+	/** Roda um passo do comando e trata a resposta e a recusa do kernel. */
+	private executar(atual: { nome: string; comando: ComandoEmCurso }, passo: () => Resposta): void {
 		let resposta: Resposta;
 		try {
-			resposta = atual.comando.responder(texto);
+			resposta = passo();
 		} catch (erro) {
 			// Spec 07, V5b: a recusa do kernel vira mensagem, e o comando continua.
 			if (!(erro instanceof CadKernelOperationError)) throw erro;

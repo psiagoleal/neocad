@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       interseção, paralela e transformação.
 - [ ] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
       seleção no kernel; S6 com 100 mil selecionadas.
-- [ ] [MT-KV-14f](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14f-erase-e-a-tecla-delete) —
-      ERASE e a tecla Delete.
 - [ ] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) —
       edição do K3 pela linha; V5b.
 - [ ] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —
@@ -58,6 +56,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-14f](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14f-erase-e-a-tecla-delete) —
+      ERASE e a tecla Delete.
 - [x] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria) —
       seleção por clique, janela e cruzada, com destaque.
 - [x] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —

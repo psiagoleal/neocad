@@ -31,6 +31,18 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 			pilha.push(() => retas.splice(retas.indexOf(reta), 1));
 			return reta.id;
 		},
+		eraseEntities: (ids) => {
+			if (ids.some((id) => !retas.some((r) => r.id === id))) {
+				throw new CadKernelOperationError('entidade inexistente');
+			}
+			const antes = [...retas];
+			for (const id of ids)
+				retas.splice(
+					retas.findIndex((r) => r.id === id),
+					1
+				);
+			pilha.push(() => retas.splice(0, retas.length, ...antes));
+		},
 		eraseEntity: (id) => {
 			const i = retas.findIndex((r) => r.id === id);
 			const [reta] = retas.splice(i, 1);
@@ -52,4 +64,18 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 	};
 
 	return { documento, retas, pilha };
+}
+
+/** Seleção falsa, que os testes enchem à mão. */
+export function selecaoFalsa(ids: string[] = []) {
+	const estado = { ids: [...ids] as CadEntityId[] };
+	return {
+		estado,
+		selecao: {
+			ids: () => [...estado.ids],
+			esvaziar: () => {
+				estado.ids = [];
+			}
+		}
+	};
 }

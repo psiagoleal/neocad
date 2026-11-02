@@ -120,3 +120,62 @@ test('a barra de comandos do upstream não é oferecida (V5)', async ({ page }) 
 	await expect(page.getByRole('textbox', { name: 'Linha de comando' })).toBeVisible();
 	await expect(page.getByPlaceholder('Type command')).toBeHidden();
 });
+
+/** Pixel da página onde fica o ponto (x, y) do desenho, pela vista exposta em `data-vista`. */
+async function pixel(page: Page, x: number, y: number) {
+	const tela = page.locator('canvas[data-tela="kernel"]');
+	const [cx, cy, escala] = ((await tela.getAttribute('data-vista')) ?? '').split(' ').map(Number);
+	const caixa = await tela.boundingBox();
+	if (caixa == null) throw new Error('a tela não tem área visível');
+	return {
+		x: caixa.x + caixa.width / 2 + (x - cx) * escala,
+		y: caixa.y + caixa.height / 2 - (y - cy) * escala
+	};
+}
+
+async function clicarNoDesenho(page: Page, x: number, y: number) {
+	const p = await pixel(page, x, y);
+	await page.mouse.click(p.x, p.y);
+}
+
+test('ERASE com seleção apaga num só passo de desfazer (E1)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { tela } = await abrir(page);
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	await clicarNoDesenho(page, -3, -3);
+	await clicarNoDesenho(page, 103, 103);
+	await expect(tela).toHaveAttribute('data-selecao', '2');
+
+	await digitar(page, 'apagar');
+	await expect(tela).toHaveAttribute('data-entidades', '0');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+
+	await page.getByRole('button', { name: 'Editar' }).click();
+	await page.getByRole('button', { name: /^Desfazer/ }).click();
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+});
+
+test('ERASE sem seleção pede objetos e apaga ao confirmar (E2)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	await digitar(page, 'E');
+	await expect(linha).toHaveAttribute('data-prompt', 'Selecione objetos:');
+
+	await clicarNoDesenho(page, 10, 10);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+	await digitar(page, '');
+	await expect(tela).toHaveAttribute('data-entidades', '1');
+	await expect(linha).toHaveAttribute('data-prompt', LIVRE);
+});
+
+test('Delete fora de campo de texto apaga a seleção (E3)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { tela } = await abrir(page);
+	await clicarNoDesenho(page, 10, 10);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+
+	await page.locator('body').focus();
+	await page.keyboard.press('Delete');
+	await expect(tela).toHaveAttribute('data-entidades', '1');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+});

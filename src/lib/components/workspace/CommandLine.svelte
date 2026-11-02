@@ -13,15 +13,18 @@
 		type DocumentoDosComandos,
 		type Mensagem
 	} from '$lib/command-line/motor';
+	import type { CadEntityId } from '$lib/types/cad';
 
 	type CommandLineProps = {
 		documento: () => DocumentoDosComandos | null;
 		aposEditar: () => void;
 		/** `Esc` sem comando em curso também esvazia a seleção (spec 08, C7). */
 		esvaziarSelecao: () => void;
+		/** Ids selecionados na tela, para os comandos que trabalham sobre a seleção. */
+		selecionados: () => CadEntityId[];
 	};
 
-	let { documento, aposEditar, esvaziarSelecao }: CommandLineProps = $props();
+	let { documento, aposEditar, esvaziarSelecao, selecionados }: CommandLineProps = $props();
 
 	/** Linhas guardadas no histórico; as mais antigas saem. */
 	const LIMITE_DO_HISTORICO = 200;
@@ -40,6 +43,7 @@
 		comandos: COMANDOS,
 		documento: () => documento(),
 		aposEditar: () => aposEditar(),
+		selecao: { ids: () => selecionados(), esvaziar: () => esvaziarSelecao() },
 		mensagem: (m) => {
 			historico = [...historico, m].slice(-LIMITE_DO_HISTORICO);
 		}
@@ -75,6 +79,20 @@
 		texto = indiceRecente === -1 ? '' : recentes[indiceRecente];
 	}
 
+	/**
+	 * `Delete` fora de campo de texto, sem comando em curso e com seleção, apaga
+	 * como o ERASE (spec 10, E3).
+	 */
+	function aoTeclarNoDocumento(evento: KeyboardEvent): void {
+		const alvo = evento.target as HTMLElement | null;
+		const emCampo =
+			alvo?.tagName === 'INPUT' || alvo?.tagName === 'TEXTAREA' || alvo?.isContentEditable;
+		if (evento.key !== 'Delete' || emCampo || motor.emCurso != null) return;
+		if (selecionados().length === 0) return;
+		evento.preventDefault();
+		confirmar('_ERASE');
+	}
+
 	function aoTeclar(evento: KeyboardEvent): void {
 		switch (evento.key) {
 			case 'Enter':
@@ -102,6 +120,8 @@
 		}
 	}
 </script>
+
+<svelte:document onkeydown={aoTeclarNoDocumento} />
 
 <section class="linha-de-comando">
 	<ul class="historico" role="log" aria-label="Histórico de comandos" bind:this={historicoEl}>

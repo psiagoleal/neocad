@@ -13,7 +13,7 @@
 - **Data:** 2026-11-02
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `5fe9219` (MT-KV-14c); antes, `8d868f6` (MT-KV-13b)
+- **Commit:** ver `git log` (MT-KV-14f); antes, `5fe9219` (MT-KV-14c)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
@@ -29,6 +29,9 @@
 - Corrigido: `getEntitiesById` recusava entidade apagada (`undefined` da fachada).
 - Lacuna registrada: janela em volta do desenho inteiro (~90 mil) leva ~290 ms; fica
   `test.fail()` até o MT-KV-14g (seleção mantida no kernel).
+- **MT-KV-14f:** `ERASE` / `APAGAR` / `E` apaga a seleção num só passo de desfazer, com
+  prompt "Selecione objetos:" quando não há seleção; `Delete` fora de campo faz o mesmo.
+  A fachada ganhou `removeEntities` (tudo ou nada).
 - A rodada anterior (MT-KV-13b e MT-UI-05) está no
   [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-upstream-sem-comandos).
 
@@ -47,8 +50,9 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-14f: `ERASE` e a tecla Delete (E1–E3). Depois 14d (edição do K3 pela linha;
-   V5b no histórico), 14e (V7) e 14g (seleção no kernel, para o S6 com seleção grande).
+1. MT-KV-14d: edição do K3 pela linha (`MOVE`, `COPY`, `ROTATE`, `MIRROR`, `SCALE`,
+   `OFFSET`, `TRIM`, `EXTEND`, `FILLET`, `CHAMFER`; V5b no histórico). É grande: fatiar
+   por grupo de comandos ao abrir. Depois 14e (V7) e 14g (seleção no kernel).
 2. MT-UI-08 (vírgula decimal) quando couber.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 

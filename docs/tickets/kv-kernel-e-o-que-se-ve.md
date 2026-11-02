@@ -389,6 +389,16 @@ prova própria (kernel, tela e desempenho).
 - **Critério de aceite:** spec 10, E1–E3.
 - **Fora de escopo:** opções do prompt de seleção (`L`, `TODOS`…).
 - **Depende de:** MT-KV-14c.
+- **Resultado (2026-11-02):** `removeEntities` na fachada (uma edição só; se uma não
+  existe, nada é apagado) e `CadDocument.eraseEntities`. O motor ganhou `iniciar`, para o
+  comando que já tem o que precisa responder sem prompt, e o contexto dos comandos passou
+  a ver a seleção da tela. `apagar.ts`: com seleção, apaga e encerra; sem ela, pede
+  "Selecione objetos:" e apaga o selecionado ao confirmar o vazio. `ERASE` entrou no
+  registro e aparece disponível no catálogo. A `CommandLine` trata `Delete` fora de campo
+  de texto, sem comando e com seleção, como `_ERASE`. Provas: Rust
+  (`apagar_varias_e_um_so_passo_e_nada_se_uma_falta`), `apagar.spec.ts`,
+  `cad-document-sessao.spec.ts` e os e2e E1–E3, todos vistos falhar antes. `.wasm`
+  504 234 bytes (+1 055).
 
 ### MT-KV-14d: Comandos de edição do K3 pela linha (V5b)
 

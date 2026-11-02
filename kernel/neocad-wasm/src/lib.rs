@@ -680,6 +680,16 @@ impl CadSession {
         self.try_remove_entity(entity).map_err(js_error)
     }
 
+    /// Apaga várias entidades numa só ação desfazível (spec 10, E1).
+    ///
+    /// # Errors
+    ///
+    /// Falha, sem apagar nenhuma, se alguma não existir.
+    #[wasm_bindgen(js_name = removeEntities)]
+    pub fn remove_entities(&mut self, entities: Vec<String>) -> Result<(), JsError> {
+        self.try_remove_entities(&entities).map_err(js_error)
+    }
+
     /// Liga ou desliga uma camada, como uma ação desfazível.
     ///
     /// # Errors
@@ -1096,6 +1106,19 @@ impl CadSession {
         self.stack
             .edit(&mut self.document, "Apagar", |editor| {
                 editor.remove_entity(entity).map(|_| ())
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_remove_entities(&mut self, entities: &[String]) -> Result<(), String> {
+        let entities = decode_entities(entities)?;
+
+        // Uma edição só: falhar numa reverte as já apagadas (spec 10, E1).
+        self.stack
+            .edit(&mut self.document, "Apagar", |editor| {
+                entities
+                    .iter()
+                    .try_for_each(|entity| editor.remove_entity(*entity).map(|_| ()))
             })
             .map_err(|error| error.to_string())
     }
@@ -2451,6 +2474,36 @@ mod tests {
 
         session.try_undo().expect("desfaz");
         assert_eq!(session.entity_count(), 1);
+    }
+
+    #[test]
+    fn apagar_varias_e_um_so_passo_e_nada_se_uma_falta() {
+        let mut session = CadSession::new();
+        let layer = encode_layer(session.document.layers().default_layer());
+        let ids: Vec<String> = (0..3)
+            .map(|i| {
+                let y = f64::from(i);
+                session
+                    .try_add_line(&layer, 0.0, y, 10.0, y)
+                    .expect("camada existe")
+            })
+            .collect();
+        let passos = session.stack.undo_depth();
+
+        session
+            .try_remove_entities(&ids[..2])
+            .expect("as duas existem");
+        assert_eq!(session.entity_count(), 1);
+        assert_eq!(session.stack.undo_depth(), passos + 1);
+
+        session.try_undo().expect("desfaz");
+        assert_eq!(session.entity_count(), 3);
+
+        let com_apagada = [ids[2].clone(), ids[0].clone()];
+        session.try_remove_entities(&ids[..1]).expect("existe");
+        assert!(session.try_remove_entities(&com_apagada).is_err());
+        assert_eq!(session.entity_count(), 2);
+        assert!(session.try_remove_entities(&["x".to_owned()]).is_err());
     }
 
     #[test]

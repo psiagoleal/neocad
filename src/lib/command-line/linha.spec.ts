@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { documentoFalso } from './documento-falso';
+import { documentoFalso, selecaoFalsa } from './documento-falso';
 import { linha } from './linha';
 import { MotorDeComandos, type Mensagem } from './motor';
 import type { ComandoDoCatalogo } from './resolver';
@@ -24,6 +24,7 @@ function montar(camadas?: Array<{ id: string; name: string }>) {
 		comandos: { LINE: linha },
 		documento: () => falso.documento,
 		aposEditar,
+		selecao: selecaoFalsa().selecao,
 		mensagem: (m) => mensagens.push(m)
 	});
 	const digitar = (...textos: string[]) => textos.forEach((t) => motor.confirmar(t));

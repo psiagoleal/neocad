@@ -11,8 +11,12 @@
  * comando registrado edita pelo `CadDocument` (spec 07, V5).
  */
 
+import { apagar } from './apagar';
 import { linha } from './linha';
 import type { FabricaDeComando } from './motor';
 
 /** Comandos implementados, pelo nome em inglês da tabela da spec 08. */
-export const COMANDOS: Readonly<Record<string, FabricaDeComando>> = { LINE: linha };
+export const COMANDOS: Readonly<Record<string, FabricaDeComando>> = {
+	ERASE: apagar,
+	LINE: linha
+};

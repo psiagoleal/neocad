@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- ERASE and the Delete key (MT-KV-14f, spec 10 E1–E3) — `ERASE` / `APAGAR` / `E` erases the selection in one undo step, or asks "Selecione objetos:" and erases what you select when you confirm; Delete outside a text field does the same.
+
 - Selection on the kernel screen (MT-KV-14c, spec 10 S1–S6) — left click picks the stroke under the cursor (Shift removes); clicking empty space opens a window, left-to-right selects what is inside, right-to-left what it crosses; selected entities are highlighted, follow edits and leave the selection when erased; Esc clears. With 100 000 entities a click or a small window responds in about 4–16 ms; a window around the whole drawing still takes ~290 ms (MT-KV-14g).
 
 - Bilingual command catalogue (MT-UI-05, ADR 0011) — Help › CAD commands lists all 218 commands of the spec 08 table with English name, Portuguese name, aliases and whether they are available; available means the own command line runs it through the kernel.

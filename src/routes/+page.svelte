@@ -891,6 +891,7 @@
 				commandDocument={() => kernelDocument}
 				onCommandEdit={afterCommandEdit}
 				onClearSelection={() => telaDoKernel?.esvaziarSelecao()}
+				selectedEntities={() => telaDoKernel?.selecionados ?? []}
 			/>
 		</section>
 

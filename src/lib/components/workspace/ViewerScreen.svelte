@@ -4,6 +4,7 @@
 	import ViewerToolbar from '$lib/components/workspace/ViewerToolbar.svelte';
 	import CommandLine from '$lib/components/workspace/CommandLine.svelte';
 	import type { DocumentoDosComandos } from '$lib/command-line/motor';
+	import type { CadEntityId } from '$lib/types/cad';
 	import type { CadViewerDocumentState, CadViewerProgressState } from '$lib/types/cad';
 	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 
@@ -30,6 +31,7 @@
 		commandDocument: () => DocumentoDosComandos | null;
 		onCommandEdit: () => void;
 		onClearSelection: () => void;
+		selectedEntities: () => CadEntityId[];
 	};
 
 	let {
@@ -53,7 +55,8 @@
 		onKernelScreenError,
 		commandDocument,
 		onCommandEdit,
-		onClearSelection
+		onClearSelection,
+		selectedEntities
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -104,5 +107,6 @@
 		documento={commandDocument}
 		aposEditar={onCommandEdit}
 		esvaziarSelecao={onClearSelection}
+		selecionados={selectedEntities}
 	/>
 </section>

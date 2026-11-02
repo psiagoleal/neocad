@@ -60,6 +60,7 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		screenSpaces: () => [],
 		screenEntityTypes: () => [],
 		screenRefused: () => [],
+		removeEntities: () => undefined,
 		screenPick: () => [],
 		screenSelect: () => [],
 		screenSegmentsOf: () => new Float32Array(),
@@ -485,6 +486,21 @@ describe('CadDocument: o que mudou e consulta pelo id (MT-KV-06)', () => {
 		expect(achadas[0]?.id).toBe('1');
 		expect(achadas[0]?.geometry.kind).toBe('line');
 		expect(achadas[1]).toBeNull();
+	});
+
+	it('eraseEntities manda todas de uma vez ao kernel', () => {
+		const sessao = sessaoFalsa({ removeEntities: vi.fn() });
+		documentoSobre(sessao).eraseEntities([id('1'), id('2')]);
+		expect(sessao.removeEntities).toHaveBeenCalledWith(['1', '2']);
+	});
+
+	it('eraseEntities recusado vira CadKernelOperationError', () => {
+		const sessao = sessaoFalsa({
+			removeEntities: vi.fn(() => {
+				throw new Error('entidade inexistente');
+			})
+		});
+		expect(() => documentoSobre(sessao).eraseEntities([id('9')])).toThrow(CadKernelOperationError);
 	});
 
 	it('getEntitiesById: a entidade que não existe chega como undefined e vira null', () => {
