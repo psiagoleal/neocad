@@ -514,12 +514,16 @@ no histórico) já está no motor e vale para todas.
 ### MT-KV-14h: Pontos pelo clique na tela
 
 - **Objetivo:** quando um prompt pede ponto, o clique na tela própria o entrega ao
-  comando (com prendimento aos pontos notáveis do kernel), e não seleciona; vale para o
-  `LINE` e para os pontos base, segundos pontos e lados dos comandos de edição.
-- **Arquivos no escopo:** a definir ao abrir.
-- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
-- **Fora de escopo:** rastreamento polar, ortogonal e entrada dinâmica.
-- **Depende de:** MT-KV-14d3.
+  comando, com prendimento aos pontos notáveis do kernel e marcador sob o cursor.
+- **Arquivos no escopo:** `kernel/neocad-wasm/src/tela.rs` e `lib.rs` (prendimento pelo
+  índice da tela, por espaço), `src/lib/services/cad-document.ts`,
+  `src/lib/render/tela-do-kernel.ts`, `src/lib/command-line/` (motor, etapa de seleção e
+  os comandos que pedem ponto), `CommandLine.svelte`, `ViewerScreen.svelte`,
+  `+page.svelte`, os testes e `e2e/desempenho.e2e.ts`.
+- **Critério de aceite:** spec 10, P1–P4.
+- **Fora de escopo:** rastreamento polar, ortogonal, entrada dinâmica; modos
+  perpendicular, tangente e mais próximo.
+- **Depende de:** MT-KV-14d5.
 
 ### MT-KV-14e: Edição sobre entidade não modelada (V7)
 

@@ -154,6 +154,18 @@ O modo rápido sem arestas, a cerca e as opções de projeção ficam para depoi
 
 As opções `Polilinha`, `Aparar`, `Múltiplo`, `Ângulo` e `mÉtodo` ficam para depois.
 
+## Critérios de aceite (EARS) — pontos pelo clique
+
+| id  | critério                                                                                                                                                                                                                                                                               | prova                                                                      |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| P1  | ENQUANTO o prompt pede um ponto (os do `LINE`, ponto base, segundo ponto, linha de espelhamento, lado do `OFFSET`, ângulo do `ROTATE`), o clique esquerdo na tela DEVE entregar o ponto ao comando como se tivesse sido digitado, aparecendo no histórico, e NÃO DEVE mudar a seleção. | `pnpm test command-line`; `pnpm test:e2e command-line`                     |
+| P2  | ENQUANTO o prompt pede um ponto e o cursor está a até 10 pixels de um ponto notável (extremidade, ponto médio, centro, quadrante, interseção) de uma entidade desenhada em camada visível no espaço mostrado, a tela DEVE mostrar um marcador nesse ponto e o clique DEVE entregá-lo.  | `cargo test` (`tela.rs`); `pnpm test render`; `pnpm test:e2e command-line` |
+| P3  | O clique DEVE entregar a coordenada absoluta, com a precisão do desenho; a coordenada relativa (`@`) digitada continua partindo do último ponto.                                                                                                                                       | `pnpm test command-line`                                                   |
+| P4  | Com 100 mil entidades, o prendimento de um movimento do cursor DEVE levar até 16 ms.                                                                                                                                                                                                   | `pnpm test:e2e desempenho` (com `NEOCAD_SINTETICO_N`)                      |
+
+A tela expõe o modo do clique em `data-clique` (`selecao`, `escolha` ou `ponto`) e o
+ponto notável sob o cursor em `data-prendimento` (`modo x y`, vazio sem prendimento).
+
 ## Questões em aberto
 
 - Variantes de `ARC` e `CIRCLE` que entram primeiro.
