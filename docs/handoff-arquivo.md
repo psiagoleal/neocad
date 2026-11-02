@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-02: resolvedor de comandos](#rodada-de-2026-11-02-resolvedor-de-comandos) — MT-UI-04
 - [Rodada de 2026-11-01: aviso do que a tela não exibe](#rodada-de-2026-11-01-aviso-do-que-a-tela-não-exibe) — MT-KV-13c
 - [Rodada de 2026-11-01: upstream por baixo](#rodada-de-2026-11-01-upstream-por-baixo) — MT-KV-13a
 - [Rodada de 2026-11-01: texto na tela](#rodada-de-2026-11-01-texto-na-tela) — MT-KV-11
@@ -27,6 +28,16 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-02: resolvedor de comandos
+
+Commit `a54d1fa`.
+
+- **MT-UI-04:** resolvedor de comandos bilíngue em `src/lib/command-line/` (C1–C5, C9 da
+  spec 08): nome em inglês, em português e apelido, sem caixa nem acento, prefixos `_`
+  e `-`, "ainda não disponível" × "comando desconhecido", sugestões nos dois idiomas. A
+  tabela da spec entra no bundle com `?raw`. 225 linhas testadas; 634 textos, nenhuma
+  colisão. Ainda não está ligado à interface.
 
 ## Rodada de 2026-11-01: aviso do que a tela não exibe
 

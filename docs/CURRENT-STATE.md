@@ -13,20 +13,23 @@
 - **Data:** 2026-11-02
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `a54d1fa` (MT-UI-04); antes, `6e71b4c` (MT-KV-13c)
+- **Commit:** ver `git log` (MT-KV-14a); antes, `a54d1fa` (MT-UI-04)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
 
 ## Metas cumpridas neste turno
 
-- **MT-UI-04:** resolvedor de comandos bilíngue em `src/lib/command-line/` (C1–C5, C9 da
-  spec 08): nome em inglês, em português e apelido, sem caixa nem acento, prefixos `_`
-  e `-`, "ainda não disponível" × "comando desconhecido", sugestões nos dois idiomas. A
-  tabela da spec entra no bundle com `?raw`. 225 linhas testadas; 634 textos, nenhuma
-  colisão. Ainda não está ligado à interface.
-- A rodada anterior (MT-KV-13c) está no
-  [arquivo](handoff-arquivo.md#rodada-de-2026-11-01-aviso-do-que-a-tela-não-exibe).
+- **MT-KV-14 fatiado** em 14a–14e (commit `b38bbb8`): motor e LINE; linha visível e V4;
+  seleção e ERASE; edição do K3 e V5b; V7. A spec 10 ganhou os critérios do LINE e da
+  entrada de pontos (D1–D6), com ponto decimal e vírgula entre coordenadas, como no
+  AutoCAD.
+- **MT-KV-14a:** `src/lib/command-line/` tem o motor de comandos (prompts, eco, opção em
+  português ou inglês, recusa do kernel como mensagem, `Esc`, vazio repete), a leitura de
+  pontos e o `LINE`, todos testados sobre um documento falso. Ainda sem componente
+  visível.
+- A rodada anterior (MT-UI-04) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-resolvedor-de-comandos).
 
 ## O que mudou de rumo
 
@@ -43,9 +46,9 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-14 (comandos digitados no kernel, fecha o V4), agora desbloqueado pelo
-   MT-UI-04, e só então MT-KV-13b (sai a barra do upstream). MT-UI-05 (catálogo
-   bilíngue) pode vir antes ou junto.
+1. MT-KV-14b: a linha de comando visível, ligada ao motor; fecha o V4. Depois o
+   MT-KV-13b (sai a barra do upstream), e então 14c (seleção e ERASE), 14d e 14e.
+   MT-UI-05 (catálogo bilíngue) pode vir junto.
 2. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos

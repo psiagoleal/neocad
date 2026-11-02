@@ -242,7 +242,7 @@ tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela
   linha de comando própria).
 - **Critério de aceite:** spec 07, V5 (`pnpm test -- cad-command-catalog`).
 - **Fora de escopo:** linha de comando própria.
-- **Depende de:** MT-KV-14, para o usuário não ficar sem comando de desenho.
+- **Depende de:** MT-KV-14b, para o usuário não ficar sem comando de desenho.
 
 ### MT-KV-13c: Aviso das entidades que a tela não exibe (V6)
 
@@ -283,6 +283,17 @@ vez. São cinco objetivos, cada um com prova própria. O `LINE` ganhou critério
   de C7 que não depende de tecla — `pnpm test command-line`.
 - **Fora de escopo:** componente visual, teclas, clique na tela, outros comandos.
 - **Depende de:** MT-UI-04.
+- **Resultado (2026-11-02):** `pontos.ts` (`x,y`, `@dx,dy`, `d<a`, `@d<a`; ponto decimal),
+  `motor.ts` (`MotorDeComandos`: prompt "Comando:", eco no histórico, resolução pela
+  tabela da spec 08, texto ao comando em curso, inválida repete o prompt, recusa do
+  kernel vira "O kernel recusou: <motivo>." e o comando continua, `Esc` encerra com
+  "_Cancelado_", vazio repete o último iniciado; `lerOpcao` para C8) e `linha.ts` (D1–D6,
+  com os prompts da versão em português do AutoCAD). A regra da camada corrente saiu da
+  sonda para `camada.ts`, usada pelos dois. O `Desfazer` do LINE desfaz o passo quando a
+  pilha está como o LINE a deixou e, se outra ação entrou depois, apaga a reta. O C6 já
+  está no motor; a prova por tecla fica com o MT-KV-14b. Provas: `pontos.spec.ts`,
+  `motor.spec.ts` e `linha.spec.ts` (46 casos, 27 vistos falhar por asserção; os 19 que
+  passaram com o esboço são recusas), sobre `documento-falso.ts`.
 
 ### MT-KV-14b: Linha de comando visível, ligada ao motor (V4)
 

@@ -12,7 +12,8 @@
  */
 
 import type { CadDocument } from '$lib/services/cad-document';
-import type { CadEntityId, CadLayerId } from '$lib/types/cad';
+import { camadaCorrente } from '$lib/command-line/camada';
+import type { CadEntityId } from '$lib/types/cad';
 
 export interface Sonda {
 	desenharLinha(x1: number, y1: number, x2: number, y2: number): CadEntityId;
@@ -48,19 +49,4 @@ export function criarSonda(opcoes: OpcoesDaSonda): Sonda {
 		mover: (ids, dx, dy) => editar((documento) => documento.moveEntities(ids, { x: dx, y: dy })),
 		apagar: (id) => editar((documento) => documento.eraseEntity(id))
 	};
-}
-
-/**
- * A camada onde a linha nova entra.
- *
- * Ainda não há camada corrente escolhida pelo usuário (spec 08); vale a `0`,
- * que todo DXF tem, e na falta dela a primeira.
- */
-function camadaCorrente(documento: CadDocument): CadLayerId {
-	const camadas = documento.listLayers();
-	const camada = camadas.find((c) => c.name === '0') ?? camadas[0];
-	if (camada == null) {
-		throw new Error('O desenho não tem camada onde desenhar.');
-	}
-	return camada.id;
 }

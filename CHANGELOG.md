@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Command engine and LINE (MT-KV-14a, spec 10 D1–D6) — the command line logic now runs commands through prompts: typed points as `x,y`, `@dx,dy`, `d<a` or `@d<a`, options in Portuguese or English (`Desfazer`/`_U`, `Fechar`/`_C`), invalid input repeats the prompt, kernel refusals become messages, `Esc` cancels and keeps what was drawn, an empty entry repeats the last command. LINE draws through the kernel. The visible command line comes with MT-KV-14b.
+
 - Bilingual command resolver (MT-UI-04, spec 08 C1–C5, C9) — typed text resolves to a command by English name, Brazilian Portuguese name or alias, ignoring case and accents, with the `_` and `-` prefixes; catalogue commands not yet implemented answer "ainda não disponível", anything else "comando desconhecido"; suggestions by prefix in both languages. The 225-row table is embedded from the spec itself; 634 typed forms, no collisions. The visible command line comes with MT-UI-05 and MT-KV-14.
 
 - Warning for what the kernel screen does not show (MT-KV-13c, spec 07 V6) — layout viewports and blank texts are counted per space and type; showing a space that has them, or an edit that changes the count, posts "A tela não exibe N entidade(s) de <space>: …" to the messages area.
