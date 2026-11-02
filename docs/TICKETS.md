@@ -33,8 +33,10 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria-e-erase) —
-      seleção na tela e ERASE.
+- [>] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria) — falta
+  consultas no kernel, interação e destaque.
+- [ ] [MT-KV-14f](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14f-erase-e-a-tecla-delete) —
+      ERASE e a tecla Delete.
 - [ ] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) —
       edição do K3 pela linha; V5b.
 - [ ] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —

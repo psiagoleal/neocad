@@ -333,15 +333,31 @@ vez. São cinco objetivos, cada um com prova própria. O `LINE` ganhou critério
   opções. Pendências visuais: o botão flutuante "Mensagens" cobre o canto direito da
   linha, e a barra do upstream continua acima do canvas até o MT-KV-13b.
 
-### MT-KV-14c: Seleção na tela própria e ERASE
+### MT-KV-14c: Seleção na tela própria
 
-- **Objetivo:** selecionar entidades do kernel por clique e por janela na tela própria,
-  com destaque, e apagar a seleção com `ERASE`.
-- **Arquivos no escopo:** a definir no detalhe, ao abrir.
-- **Critério de aceite:** critérios do `ERASE` e da seleção escritos na spec 10 antes de
-  implementar.
-- **Fora de escopo:** grips.
+Fatiado em 2026-11-02: o `ERASE` foi para o MT-KV-14f, porque a seleção sozinha já tem
+prova própria (kernel, tela e desempenho).
+
+- **Objetivo:** selecionar entidades do kernel por clique, janela e cruzada na tela
+  própria, com destaque, consultando o kernel por espaço.
+- **Arquivos no escopo:** `kernel/neocad-wasm/src/tela.rs` e `lib.rs` (consultas da
+  seleção e segmentos do destaque), `src/lib/services/cad-document.ts`,
+  `src/lib/render/tela-do-kernel.ts`, `src/lib/render/selecao.ts` (novo),
+  `e2e/kernel-view.e2e.ts`, `e2e/command-line.e2e.ts`, `e2e/desempenho.e2e.ts`.
+- **Critério de aceite:** spec 10, S1–S6.
+- **Fora de escopo:** `ERASE` e edição; grips; seleção por cerca ou laço.
 - **Depende de:** MT-KV-14b.
+
+### MT-KV-14f: ERASE e a tecla Delete
+
+- **Objetivo:** `ERASE` / `APAGAR` / `E` apaga a seleção num só passo de desfazer, com
+  prompt de seleção quando não há nada selecionado; `Delete` faz o mesmo.
+- **Arquivos no escopo:** fachada e serviço (apagar vários de uma vez),
+  `src/lib/command-line/` (`apagar.ts`, motor, registro),
+  `CommandLine.svelte`, `e2e/command-line.e2e.ts`.
+- **Critério de aceite:** spec 10, E1–E3.
+- **Fora de escopo:** opções do prompt de seleção (`L`, `TODOS`…).
+- **Depende de:** MT-KV-14c.
 
 ### MT-KV-14d: Comandos de edição do K3 pela linha (V5b)
 
@@ -350,7 +366,7 @@ vez. São cinco objetivos, cada um com prova própria. O `LINE` ganhou critério
 - **Arquivos no escopo:** a definir no detalhe, ao abrir.
 - **Critério de aceite:** spec 07, V5b; spec 08, C10 para cada comando.
 - **Fora de escopo:** comandos de anotação (fase KP).
-- **Depende de:** MT-KV-14c.
+- **Depende de:** MT-KV-14f.
 - **Decidido (2026-11-02):** a recusa do V5b aparece no histórico da linha de comando,
   como no AutoCAD; a spec 07 foi ajustada.
 

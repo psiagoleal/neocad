@@ -2,8 +2,8 @@
 
 # 10 — Comandos de desenho básicos
 
-- **Estado:** Parcial — `LINE` e a entrada de pontos com critérios (2026-11-02); os demais
-  comandos fecham os seus quando entrarem
+- **Estado:** Parcial — `LINE`, entrada de pontos, seleção e `ERASE` com critérios
+  (2026-11-02); os demais comandos fecham os seus quando entrarem
 - **Fase:** UI/UX · **ADRs:** 0007 · **Transversais e relacionadas:** 05, 07, 08
 
 ## Problema e resultado esperado
@@ -67,6 +67,29 @@ próximo ponto ou [Fechar/Desfazer]:".
 **Limitação aceita:** cada reta é um passo de desfazer do menu `Editar`; no AutoCAD, um
 `U` depois do `LINE` desfaz o comando inteiro. Agrupar passos entre prompts pede mudança
 na pilha do kernel e fica para quando houver um segundo comando que precise disso.
+
+## Critérios de aceite (EARS) — seleção na tela
+
+| id  | critério                                                                                                                                                                                                                                                                                                                 | prova                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| S1  | QUANDO o usuário clica com o botão esquerdo a até 5 pixels do traço de uma entidade do espaço mostrado, ela DEVE entrar na seleção e ficar destacada; com `Shift`, DEVE sair dela.                                                                                                                                       | `cargo test` (`tela.rs`); `pnpm test:e2e kernel-view` |
+| S2  | QUANDO o usuário clica onde não há traço, a tela DEVE abrir uma janela nesse ponto, e o segundo clique a fecha: da esquerda para a direita, entram as entidades inteiramente dentro dela (janela); da direita para a esquerda, as que ela toca ou contém (cruzada). Com `Shift` no segundo clique, elas saem da seleção. | idem                                                  |
+| S3  | Só DEVEM ser selecionáveis as entidades desenhadas pela tela, em camada visível, no espaço mostrado; trocar de espaço DEVE esvaziar a seleção.                                                                                                                                                                           | idem                                                  |
+| S4  | QUANDO uma edição apaga uma entidade selecionada, ela DEVE sair da seleção; QUANDO a move, o destaque DEVE acompanhá-la.                                                                                                                                                                                                 | `pnpm test:e2e kernel-view`                           |
+| S5  | QUANDO o usuário pressiona `Esc` sem comando em curso, a janela aberta DEVE ser cancelada e a seleção esvaziada (spec 08, C7).                                                                                                                                                                                           | `pnpm test:e2e command-line`                          |
+| S6  | Com 100 mil entidades, um clique ou o fechamento de uma janela DEVE atualizar a seleção na tela em até 100 ms.                                                                                                                                                                                                           | `pnpm test:e2e desempenho` (com `NEOCAD_SINTETICO_N`) |
+
+A tela expõe a quantidade selecionada em `data-selecao` (spec 07, "O que os testes
+observam na tela"). Camada bloqueada ainda não existe na tela (fase KP1); seleção de
+entidade que só o upstream desenha é o V7 (MT-KV-14e).
+
+## Critérios de aceite (EARS) — `ERASE`
+
+| id  | critério                                                                                                                                                               | prova                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| E1  | QUANDO o `ERASE` (`APAGAR`, `E`) começa com seleção não vazia, as entidades selecionadas DEVEM ser apagadas pelo kernel num só passo de desfazer, e o comando encerra. | `pnpm test command-line`; `pnpm test:e2e command-line` |
+| E2  | QUANDO o `ERASE` começa sem seleção, a linha DEVE pedir "Selecione objetos:"; cliques e janelas selecionam, e o texto vazio apaga o que estiver selecionado e encerra. | idem                                                   |
+| E3  | QUANDO há seleção, nenhum comando em curso e o foco não está num campo de texto, `Delete` DEVE apagar a seleção como o `ERASE`.                                        | `pnpm test:e2e command-line`                           |
 
 ## Questões em aberto
 
