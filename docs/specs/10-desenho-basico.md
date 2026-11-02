@@ -91,6 +91,20 @@ entidade que só o upstream desenha é o V7 (MT-KV-14e).
 | E2  | QUANDO o `ERASE` começa sem seleção, a linha DEVE pedir "Selecione objetos:"; cliques e janelas selecionam, e o texto vazio apaga o que estiver selecionado e encerra. | idem                                                   |
 | E3  | QUANDO há seleção, nenhum comando em curso e o foco não está num campo de texto, `Delete` DEVE apagar a seleção como o `ERASE`.                                        | `pnpm test:e2e command-line`                           |
 
+## Critérios de aceite (EARS) — `MOVE` e `COPY`
+
+| id  | critério                                                                                                                                                                                                                                                                                                   | prova                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| M1  | QUANDO o `MOVE` (`MOVER`, `M`) começa com seleção, ou o usuário seleciona e confirma o vazio em "Selecione objetos:", a linha DEVE pedir o ponto base e o segundo ponto; as entidades selecionadas DEVEM ser movidas pelo kernel da diferença entre eles, num só passo de desfazer, e a seleção esvaziada. | `pnpm test command-line`; `pnpm test:e2e command-line` |
+| M2  | No segundo ponto, a coordenada relativa (`@`) DEVE partir do ponto base; o vazio DEVE usar o ponto base como deslocamento.                                                                                                                                                                                 | `pnpm test command-line`                               |
+| M3  | O `COPY` (`COPIAR`, `CO`) DEVE fazer o mesmo criando cópias, e continuar pedindo segundos pontos, uma cópia e um passo de desfazer por ponto; `Desfazer` (`D`, `_U`) desfaz a última cópia; o vazio ou `Sair` (`S`, `_E`) encerra.                                                                         | idem                                                   |
+| M4  | SE o usuário confirma o vazio em "Selecione objetos:" sem nada selecionado, ENTÃO o comando DEVE encerrar sem mudar o documento.                                                                                                                                                                           | `pnpm test command-line`                               |
+
+Os prompts seguem a versão em português do AutoCAD: "Especifique o ponto base:",
+"Especifique o segundo ponto ou <usar o primeiro ponto como deslocamento>:" e, no `COPY`
+depois da primeira cópia, "Especifique o segundo ponto ou [Sair/Desfazer] <Sair>:". A
+opção `Deslocamento` do ponto base e a `Matriz` do `COPY` ficam para depois.
+
 ## Questões em aberto
 
 - Variantes de `ARC` e `CIRCLE` que entram primeiro.

@@ -35,8 +35,15 @@ UI começa pelo que não depende de KV.
       interseção, paralela e transformação.
 - [ ] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
       seleção no kernel; S6 com 100 mil selecionadas.
-- [ ] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) —
-      edição do K3 pela linha; V5b.
+- [>] [MT-KV-14d1](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d1-move-e-copy) — falta
+  MOVE e COPY, com a etapa de seleção comum.
+- [ ] [MT-KV-14d2](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d2-rotate-mirror-e-scale) —
+      ROTATE, MIRROR e SCALE.
+- [ ] [MT-KV-14d3](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d3-offset) — OFFSET.
+- [ ] [MT-KV-14d4](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d4-trim-e-extend) — TRIM e
+      EXTEND.
+- [ ] [MT-KV-14d5](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d5-fillet-e-chamfer) —
+      FILLET e CHAMFER.
 - [ ] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —
       V7.
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
@@ -148,6 +155,8 @@ UI começa pelo que não depende de KV.
 
 ## Abandonados
 
+- [~] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) · motivo:
+  fatiado em MT-KV-14d1 a 14d5.
 - [~] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) · motivo:
   fatiado em MT-KV-14a a 14e.
 - [~] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) · motivo:

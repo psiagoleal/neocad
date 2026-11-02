@@ -402,14 +402,54 @@ prova própria (kernel, tela e desempenho).
 
 ### MT-KV-14d: Comandos de edição do K3 pela linha (V5b)
 
-- **Objetivo:** `MOVE`, `COPY`, `ROTATE`, `MIRROR`, `SCALE`, `OFFSET`, `TRIM`, `EXTEND`,
-  `FILLET` e `CHAMFER` pela linha de comando, sobre a seleção, despachados pelo kernel.
-- **Arquivos no escopo:** a definir no detalhe, ao abrir.
-- **Critério de aceite:** spec 07, V5b; spec 08, C10 para cada comando.
-- **Fora de escopo:** comandos de anotação (fase KP).
+Fatiado em 2026-11-02: dez comandos com prompts e riscos diferentes. Cada fatia escreve
+os critérios dos seus comandos na spec 10 antes de implementar; o V5b (recusa do kernel
+no histórico) já está no motor e vale para todas.
+
+### MT-KV-14d1: MOVE e COPY
+
+- **Objetivo:** `MOVE` / `MOVER` / `M` e `COPY` / `COPIAR` / `CO` sobre a seleção, com
+  ponto base e segundo ponto, pelo kernel.
+- **Arquivos no escopo:** `src/lib/command-line/` (`mover.ts`, `copiar.ts`, a etapa de
+  seleção comum, motor, registro) e os testes; `e2e/command-line.e2e.ts`.
+- **Critério de aceite:** spec 10, M1–M4.
+- **Fora de escopo:** opção `Deslocamento` do ponto base; `Matriz` do `COPY`.
 - **Depende de:** MT-KV-14f.
-- **Decidido (2026-11-02):** a recusa do V5b aparece no histórico da linha de comando,
-  como no AutoCAD; a spec 07 foi ajustada.
+
+### MT-KV-14d2: ROTATE, MIRROR e SCALE
+
+- **Objetivo:** `ROTATE` / `ROTAC` / `RO`, `MIRROR` / `ESPELHAR` / `MI` e `SCALE` /
+  `ESCALA` / `SC` sobre a seleção, pelo kernel.
+- **Arquivos no escopo:** a definir ao abrir, no molde do 14d1.
+- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
+- **Fora de escopo:** opção `Referência`.
+- **Depende de:** MT-KV-14d1.
+
+### MT-KV-14d3: OFFSET
+
+- **Objetivo:** `OFFSET` / `DESLOCAMENTO` / `O` pela linha, com distância e lado.
+- **Arquivos no escopo:** a definir ao abrir.
+- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
+- **Fora de escopo:** opções `Através`, `Apagar` e `Camada`.
+- **Depende de:** MT-KV-14d1.
+
+### MT-KV-14d4: TRIM e EXTEND
+
+- **Objetivo:** `TRIM` / `APARAR` / `TR` e `EXTEND` / `ESTENDER` / `EX`, com arestas e
+  clique no trecho.
+- **Arquivos no escopo:** a definir ao abrir.
+- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
+- **Fora de escopo:** modo rápido sem arestas e cerca.
+- **Depende de:** MT-KV-14d1.
+
+### MT-KV-14d5: FILLET e CHAMFER
+
+- **Objetivo:** `FILLET` / `CONCORD` / `F` e `CHAMFER` / `CHANFRO` / `CHA`, com raio e
+  distâncias.
+- **Arquivos no escopo:** a definir ao abrir.
+- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
+- **Fora de escopo:** polilinha inteira, opção `Múltiplo`.
+- **Depende de:** MT-KV-14d1.
 
 ### MT-KV-14e: Edição sobre entidade não modelada (V7)
 
