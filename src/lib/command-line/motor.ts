@@ -41,7 +41,14 @@ export interface ComandoEmCurso {
 /** O que os comandos usam do documento; o resto não lhes diz respeito. */
 export type DocumentoDosComandos = Pick<
 	CadDocument,
-	'drawLine' | 'eraseEntity' | 'eraseEntities' | 'listLayers' | 'getHistory' | 'undo'
+	| 'drawLine'
+	| 'eraseEntity'
+	| 'eraseEntities'
+	| 'moveEntities'
+	| 'copyEntities'
+	| 'listLayers'
+	| 'getHistory'
+	| 'undo'
 >;
 
 /** A seleção da tela, como os comandos a veem. */

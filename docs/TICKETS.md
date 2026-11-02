@@ -35,8 +35,6 @@ UI começa pelo que não depende de KV.
       interseção, paralela e transformação.
 - [ ] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
       seleção no kernel; S6 com 100 mil selecionadas.
-- [>] [MT-KV-14d1](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d1-move-e-copy) — falta
-  MOVE e COPY, com a etapa de seleção comum.
 - [ ] [MT-KV-14d2](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d2-rotate-mirror-e-scale) —
       ROTATE, MIRROR e SCALE.
 - [ ] [MT-KV-14d3](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d3-offset) — OFFSET.
@@ -63,6 +61,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-14d1](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d1-move-e-copy) — MOVE e
+      COPY sobre a seleção.
 - [x] [MT-KV-14f](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14f-erase-e-a-tecla-delete) —
       ERASE e a tecla Delete.
 - [x] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria) —

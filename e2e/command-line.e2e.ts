@@ -179,3 +179,27 @@ test('Delete fora de campo de texto apaga a seleção (E3)', async ({ page }) =>
 	await expect(tela).toHaveAttribute('data-entidades', '1');
 	await expect(tela).toHaveAttribute('data-selecao', '0');
 });
+
+test('MOVE e COPY sobre a seleção, pelo kernel (M1, M3)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	await clicarNoDesenho(page, 10, 10);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+	await digitar(page, 'mover', '0,0', '@0,50');
+	await expect(tela).toHaveAttribute('data-caixa', '0 10 100 150');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+	await expect(linha).toHaveAttribute('data-prompt', LIVRE);
+
+	await digitar(page, 'CO');
+	await expect(linha).toHaveAttribute('data-prompt', 'Selecione objetos:');
+	await clicarNoDesenho(page, 90, 50);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+	await digitar(page, '', '50,50', '250,50', '');
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+	await expect(tela).toHaveAttribute('data-caixa', '0 10 290 150');
+
+	await page.getByRole('button', { name: 'Editar' }).click();
+	await page.getByRole('button', { name: /^Desfazer/ }).click();
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+});

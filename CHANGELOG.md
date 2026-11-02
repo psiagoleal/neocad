@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- MOVE and COPY (MT-KV-14d1, spec 10 M1–M4) — `MOVE` / `MOVER` / `M` and `COPY` / `COPIAR` / `CO` work on the selection (or ask for it), with base point and second point; `@` is relative to the base, an empty second point uses the base as displacement; COPY keeps going with `Sair`/`Desfazer`, one undo step per copy.
+
 - ERASE and the Delete key (MT-KV-14f, spec 10 E1–E3) — `ERASE` / `APAGAR` / `E` erases the selection in one undo step, or asks "Selecione objetos:" and erases what you select when you confirm; Delete outside a text field does the same.
 
 - Selection on the kernel screen (MT-KV-14c, spec 10 S1–S6) — left click picks the stroke under the cursor (Shift removes); clicking empty space opens a window, left-to-right selects what is inside, right-to-left what it crosses; selected entities are highlighted, follow edits and leave the selection when erased; Esc clears. With 100 000 entities a click or a small window responds in about 4–16 ms; a window around the whole drawing still takes ~290 ms (MT-KV-14g).

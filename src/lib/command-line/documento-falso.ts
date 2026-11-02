@@ -31,6 +31,27 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 			pilha.push(() => retas.splice(retas.indexOf(reta), 1));
 			return reta.id;
 		},
+		moveEntities: (ids, delta) => {
+			const antes = retas.map((r) => ({ ...r }));
+			for (const r of retas.filter((r) => ids.includes(r.id))) {
+				r.de = { x: r.de.x + delta.x, y: r.de.y + delta.y };
+				r.ate = { x: r.ate.x + delta.x, y: r.ate.y + delta.y };
+			}
+			pilha.push(() => retas.splice(0, retas.length, ...antes));
+		},
+		copyEntities: (ids, delta) => {
+			const novas = retas
+				.filter((r) => ids.includes(r.id))
+				.map((r) => ({
+					id: String(proximo++) as CadEntityId,
+					camada: r.camada,
+					de: { x: r.de.x + delta.x, y: r.de.y + delta.y },
+					ate: { x: r.ate.x + delta.x, y: r.ate.y + delta.y }
+				}));
+			retas.push(...novas);
+			pilha.push(() => novas.forEach((n) => retas.splice(retas.indexOf(n), 1)));
+			return novas.map((n) => n.id);
+		},
 		eraseEntities: (ids) => {
 			if (ids.some((id) => !retas.some((r) => r.id === id))) {
 				throw new CadKernelOperationError('entidade inexistente');

@@ -12,11 +12,15 @@
  */
 
 import { apagar } from './apagar';
+import { copiar } from './copiar';
 import { linha } from './linha';
+import { mover } from './mover';
 import type { FabricaDeComando } from './motor';
 
 /** Comandos implementados, pelo nome em inglês da tabela da spec 08. */
 export const COMANDOS: Readonly<Record<string, FabricaDeComando>> = {
+	COPY: copiar,
 	ERASE: apagar,
-	LINE: linha
+	LINE: linha,
+	MOVE: mover
 };

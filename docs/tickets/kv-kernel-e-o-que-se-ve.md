@@ -415,6 +415,16 @@ no histórico) já está no motor e vale para todas.
 - **Critério de aceite:** spec 10, M1–M4.
 - **Fora de escopo:** opção `Deslocamento` do ponto base; `Matriz` do `COPY`.
 - **Depende de:** MT-KV-14f.
+- **Resultado (2026-11-02):** `selecao-etapa.ts` (`sobreASelecao`: segue com a seleção ou
+  pede "Selecione objetos:"; sem nada, encerra sem mudar; ao terminar, esvazia a
+  seleção), `pontos-do-prompt.ts` (ponto ou a mensagem do esperado, comum aos comandos),
+  `mover.ts` e `copiar.ts`, registrados em `comandos.ts`. O `COPY` desfaz a última cópia
+  como o LINE desfaz a última reta (desfaz o passo se a pilha está como ele a deixou;
+  senão, apaga as cópias) e mantém `Sair`/`Desfazer` depois da primeira cópia, mesmo
+  desfeita — defeito pego pelo teste antes do commit. Provas: `mover.spec.ts` (8 casos,
+  7 vistos falhar por asserção; o de M4 o esboço já cumpria) e o e2e "MOVE e COPY sobre a
+  seleção", visto falhar antes do registro. O kernel não mudou: `moveEntities` e
+  `copyEntities` já existiam.
 
 ### MT-KV-14d2: ROTATE, MIRROR e SCALE
 
