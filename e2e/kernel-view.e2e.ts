@@ -6,9 +6,8 @@
  * \author Iago Leal
  * \date 2026-10-30
  *
- * A barra de comandos ainda é do upstream, e salvar grava o modelo do kernel,
- * que não recebe as edições feitas por essa barra (achado C4); o primeiro teste
- * prova o defeito antes da correção. Os seguintes conferem a tela desenhada pelo
+ * O primeiro teste desenha pela linha de comando própria e confere que o arquivo
+ * salvo traz a linha (V4, MT-KV-14b). Os seguintes conferem a tela desenhada pelo
  * kernel (V1, V2, V3; spec 00, N4) e o upstream por baixo dela (MT-KV-13a). Os
  * demais critérios da spec 07 (V5b, V7) entram aqui quando a fase KV os implementar.
  */
@@ -36,44 +35,16 @@ async function abrirDesenho(page: Page, caminho: string): Promise<void> {
 	await expect(page.getByText(/^Kernel: /).first()).toBeVisible({ timeout: 30_000 });
 }
 
-/**
- * Desenha uma linha pela barra de comandos do upstream.
- *
- * O nome do comando vai na barra; os pontos vão nas duas caixas flutuantes
- * junto ao cursor (X e Y). Cada passo espera o prompt seguinte, para que uma
- * falha aqui seja de preparação, e não se confunda com o defeito provado.
- */
-async function desenharLinha(
-	page: Page,
-	de: { x: number; y: number },
-	ate: { x: number; y: number }
-): Promise<void> {
-	const barra = page.locator('.ml-cli-text');
-	const prompt = page.locator('.ml-cli-prompt');
-	const caixas = page.locator('input:visible:not(.ml-cli-text)');
-
-	await barra.fill('LINE');
-	await barra.press('Enter');
-	await expect(prompt).toContainText('first point');
-
-	await caixas.nth(0).fill(String(de.x));
-	await caixas.nth(1).fill(String(de.y));
-	await caixas.nth(1).press('Enter');
-	await expect(prompt).toContainText('next point');
-
-	await caixas.nth(0).fill(String(ate.x));
-	await caixas.nth(1).fill(String(ate.y));
-	await caixas.nth(1).press('Enter');
-	await expect(prompt).toContainText('Close');
-
-	await page.keyboard.press('Escape');
+/** Digita na linha de comando própria e confirma cada texto com Enter. */
+async function digitar(page: Page, ...textos: string[]): Promise<void> {
+	const linha = page.getByRole('textbox', { name: 'Linha de comando' });
+	for (const texto of textos) {
+		await linha.fill(texto);
+		await linha.press('Enter');
+	}
 }
 
 test('a linha desenhada por comando está no arquivo salvo e reaberto (V4)', async ({ page }) => {
-	// Defeito conhecido (achado C4): a barra do upstream edita só o modelo do
-	// upstream, e salvar grava o do kernel. O `test.fail()` sai quando a fase
-	// KV fechar; se este teste passar antes disso, a CI acusa.
-	test.fail();
 	test.setTimeout(120_000);
 
 	await abrirDesenho(page, FIXTURE);
@@ -81,7 +52,8 @@ test('a linha desenhada por comando está no arquivo salvo e reaberto (V4)', asy
 	const original = await readFile(FIXTURE, 'utf-8');
 	expect(contarLinhas(original)).toBe(1);
 
-	await desenharLinha(page, { x: 0, y: 0 }, { x: 100, y: 50 });
+	await digitar(page, 'L', '0,0', '100,50', '');
+	await expect(telaDoKernel(page)).toHaveAttribute('data-entidades', '3');
 
 	const download = page.waitForEvent('download');
 	await page.getByRole('button', { name: 'Arquivo' }).click();

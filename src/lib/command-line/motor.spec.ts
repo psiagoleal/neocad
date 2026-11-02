@@ -175,6 +175,20 @@ describe('motor: com comando em curso', () => {
 	});
 });
 
+describe('motor: sugestões (C9)', () => {
+	it('sem comando em curso, sugere pelo começo do nome nos dois idiomas', () => {
+		const { motor } = montar();
+		expect(motor.sugerir('lin').map((c) => c.en)).toEqual(['LINE']);
+		expect(motor.sugerir('hach').map((c) => c.en)).toEqual(['HATCH']);
+	});
+
+	it('com comando em curso, não sugere comando: o texto é resposta ao prompt', () => {
+		const { motor } = montar();
+		motor.confirmar('L');
+		expect(motor.sugerir('l')).toEqual([]);
+	});
+});
+
 describe('lerOpcao (C8)', () => {
 	const desfazer: Opcao = { pt: 'Desfazer', abreviacaoPt: 'D', en: 'Undo', abreviacaoEn: 'U' };
 	const fechar: Opcao = { pt: 'Fechar', abreviacaoPt: 'F', en: 'Close', abreviacaoEn: 'C' };

@@ -242,7 +242,7 @@ tira entidades da cena dele, e `center`/`zoomTo` permitem seguir a vista da tela
   linha de comando própria).
 - **Critério de aceite:** spec 07, V5 (`pnpm test -- cad-command-catalog`).
 - **Fora de escopo:** linha de comando própria.
-- **Depende de:** MT-KV-14b, para o usuário não ficar sem comando de desenho.
+- **Depende de:** MT-KV-14b (concluído).
 
 ### MT-KV-13c: Aviso das entidades que a tela não exibe (V6)
 
@@ -306,6 +306,17 @@ vez. São cinco objetivos, cada um com prova própria. O `LINE` ganhou critério
   C6, C7 e C12.
 - **Fora de escopo:** tirar a barra do upstream (MT-KV-13b); clique na tela.
 - **Depende de:** MT-KV-14a.
+- **Resultado (2026-11-02):** `CommandLine.svelte`, abaixo do canvas: prompt, histórico
+  (`role="log"`), sugestões (`role="listbox"`, nome em inglês, em português e apelidos)
+  e as teclas `Enter`, `Espaço` (confirma, como no AutoCAD), `Esc` e setas. A página passa
+  o documento do kernel e, depois de cada edição, relê o histórico do menu e a tela. O
+  motor ganhou `sugerir`, que não sugere comando com outro em curso. O contrato que os
+  testes observam está na spec 08. Provas: o V4 de `kernel-view.e2e.ts` desenha com `L` e
+  passa sem `test.fail()`; `command-line.e2e.ts` cobre C5, C6, C7, C9 e C12 (0,8 ms do
+  evento à lista). Os e2e falharam antes contra um esboço só com o contrato; o localizador
+  da sugestão foi estreitado para `/^LINE LINHA/` porque `/LINE/` casava com outras
+  opções. Pendências visuais: o botão flutuante "Mensagens" cobre o canto direito da
+  linha, e a barra do upstream continua acima do canvas até o MT-KV-13b.
 
 ### MT-KV-14c: Seleção na tela própria e ERASE
 
@@ -325,6 +336,9 @@ vez. São cinco objetivos, cada um com prova própria. O `LINE` ganhou critério
 - **Critério de aceite:** spec 07, V5b; spec 08, C10 para cada comando.
 - **Fora de escopo:** comandos de anotação (fase KP).
 - **Depende de:** MT-KV-14c.
+- **A decidir ao abrir:** o V5b pede a recusa do kernel na área de mensagens; o motor
+  (MT-KV-14a) a mostra no histórico da linha de comando, como o AutoCAD. Ou a spec 07
+  passa a aceitar o histórico, ou a recusa vai também ao painel.
 
 ### MT-KV-14e: Edição sobre entidade não modelada (V7)
 

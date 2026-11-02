@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-02: motor de comandos e LINE](#rodada-de-2026-11-02-motor-de-comandos-e-line) — MT-KV-14a
 - [Rodada de 2026-11-02: resolvedor de comandos](#rodada-de-2026-11-02-resolvedor-de-comandos) — MT-UI-04
 - [Rodada de 2026-11-01: aviso do que a tela não exibe](#rodada-de-2026-11-01-aviso-do-que-a-tela-não-exibe) — MT-KV-13c
 - [Rodada de 2026-11-01: upstream por baixo](#rodada-de-2026-11-01-upstream-por-baixo) — MT-KV-13a
@@ -28,6 +29,19 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-02: motor de comandos e LINE
+
+Commit `9e46d83`.
+
+- **MT-KV-14 fatiado** em 14a–14e (commit `b38bbb8`): motor e LINE; linha visível e V4;
+  seleção e ERASE; edição do K3 e V5b; V7. A spec 10 ganhou os critérios do LINE e da
+  entrada de pontos (D1–D6), com ponto decimal e vírgula entre coordenadas, como no
+  AutoCAD.
+- **MT-KV-14a:** `src/lib/command-line/` tem o motor de comandos (prompts, eco, opção em
+  português ou inglês, recusa do kernel como mensagem, `Esc`, vazio repete), a leitura de
+  pontos e o `LINE`, todos testados sobre um documento falso. Ainda sem componente
+  visível.
 
 ## Rodada de 2026-11-02: resolvedor de comandos
 

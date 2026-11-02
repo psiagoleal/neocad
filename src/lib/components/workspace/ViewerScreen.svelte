@@ -2,6 +2,8 @@
 <script lang="ts">
 	import ViewerDropzone from '$lib/components/workspace/ViewerDropzone.svelte';
 	import ViewerToolbar from '$lib/components/workspace/ViewerToolbar.svelte';
+	import CommandLine from '$lib/components/workspace/CommandLine.svelte';
+	import type { DocumentoDosComandos } from '$lib/command-line/motor';
 	import type { CadViewerDocumentState, CadViewerProgressState } from '$lib/types/cad';
 	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 
@@ -24,6 +26,9 @@
 		isKernelScreenVisible: boolean;
 		onKernelScreenReady: (tela: TelaDoKernel) => void;
 		onKernelScreenError: (message: string) => void;
+		/** O documento que a linha de comando edita, ou `null`. */
+		commandDocument: () => DocumentoDosComandos | null;
+		onCommandEdit: () => void;
 	};
 
 	let {
@@ -44,7 +49,9 @@
 		onViewerHostReady,
 		isKernelScreenVisible,
 		onKernelScreenReady,
-		onKernelScreenError
+		onKernelScreenError,
+		commandDocument,
+		onCommandEdit
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -90,4 +97,6 @@
 		{onKernelScreenReady}
 		{onKernelScreenError}
 	/>
+
+	<CommandLine documento={commandDocument} aposEditar={onCommandEdit} />
 </section>

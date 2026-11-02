@@ -511,6 +511,12 @@
 		tela.avisarCom((mensagem) => pushNotification('warning', mensagem));
 	}
 
+	/** Depois de cada edição pela linha de comando: o menu e a tela releem o kernel. */
+	function afterCommandEdit(): void {
+		refreshHistory();
+		telaDoKernel?.atualizar();
+	}
+
 	function handleKernelScreenError(message: string): void {
 		pushNotification('warning', `Tela própria indisponível: ${message}`);
 	}
@@ -890,6 +896,8 @@
 				{isKernelScreenVisible}
 				onKernelScreenReady={handleKernelScreenReady}
 				onKernelScreenError={handleKernelScreenError}
+				commandDocument={() => kernelDocument}
+				onCommandEdit={afterCommandEdit}
 			/>
 		</section>
 

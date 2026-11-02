@@ -100,6 +100,11 @@ export class MotorDeComandos {
 		return this.emCursoAgora?.nome ?? null;
 	}
 
+	/** Sugestões para o texto sendo digitado (C9). */
+	sugerir(texto: string): ComandoDoCatalogo[] {
+		return this.emCursoAgora == null ? this.resolvedor.sugerir(texto) : [];
+	}
+
 	/** O texto que o usuário confirmou (`Enter`). */
 	confirmar(texto: string): void {
 		const atual = this.emCursoAgora;

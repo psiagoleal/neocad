@@ -34,9 +34,7 @@ UI começa pelo que não depende de KV.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
 - [ ] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
-      sai a barra do upstream (V5) — bloqueado por MT-KV-14b: sem ele, nenhum comando de desenho.
-- [ ] [MT-KV-14b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14b-linha-de-comando-visível-ligada-ao-motor-v4) —
-      linha de comando visível; V4.
+      sai a barra do upstream (V5).
 - [ ] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria-e-erase) —
       seleção na tela e ERASE.
 - [ ] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) —
@@ -60,6 +58,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-14b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14b-linha-de-comando-visível-ligada-ao-motor-v4) —
+      linha de comando visível; V4.
 - [x] [MT-KV-14a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14a-motor-de-comandos-entrada-de-pontos-e-line) —
       motor de comandos, entrada de pontos e LINE.
 - [x] [MT-UI-04](tickets/ui-interface.md#mt-ui-04-resolvedor-de-comandos-bilíngue) —
