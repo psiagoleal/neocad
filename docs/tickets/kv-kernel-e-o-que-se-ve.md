@@ -493,12 +493,13 @@ no histórico) já está no motor e vale para todas.
 
 ### MT-KV-14d5: FILLET e CHAMFER
 
-- **Objetivo:** `FILLET` / `CONCORD` / `F` e `CHAMFER` / `CHANFRO` / `CHA`, com raio e
-  distâncias.
-- **Arquivos no escopo:** a definir ao abrir.
-- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
-- **Fora de escopo:** polilinha inteira, opção `Múltiplo`.
-- **Depende de:** MT-KV-14d1.
+- **Objetivo:** `FILLET` / `CONCORD` / `F` e `CHAMFER` / `CHANFRO` / `CHA`, com os dois
+  objetos pelo clique e raio e distâncias que valem para a sessão.
+- **Arquivos no escopo:** `src/lib/command-line/` (`concordar.ts`, registro) e os testes;
+  `e2e/command-line.e2e.ts`.
+- **Critério de aceite:** spec 10, F1–F4.
+- **Fora de escopo:** opções `Polilinha`, `Aparar`, `Múltiplo`, `Ângulo` e `mÉtodo`.
+- **Depende de:** MT-KV-14d4.
 
 ### MT-KV-14h: Pontos pelo clique na tela
 

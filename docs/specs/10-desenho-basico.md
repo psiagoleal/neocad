@@ -143,6 +143,17 @@ digitado até a entrada de pontos pelo clique (MT-KV-14h).
 
 O modo rápido sem arestas, a cerca e as opções de projeção ficam para depois.
 
+## Critérios de aceite (EARS) — `FILLET` e `CHAMFER`
+
+| id  | critério                                                                                                                                                                                                                                                                                                                                               | prova                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| F1  | QUANDO o `FILLET` (`CONCORD`, `F`) começa, a linha DEVE pedir "Selecione o primeiro objeto ou [Raio]:" e depois "Selecione o segundo objeto:", os dois pelo clique; com o segundo, o kernel DEVE concordar os dois com o raio atual, num passo de desfazer, e o comando encerra. O raio começa em 0, que une os dois num canto vivo.                   | `pnpm test command-line`; `pnpm test:e2e command-line` |
+| F2  | QUANDO o usuário escolhe `Raio` (`R`, `_R`), a linha DEVE pedir "Especifique o raio de concordância <r>:"; um número maior ou igual a zero passa a ser o raio das próximas concordâncias da sessão, e o vazio o mantém; depois volta a pedir o primeiro objeto.                                                                                        | `pnpm test command-line`                               |
+| F3  | O `CHAMFER` (`CHANFRO`, `CHA`) DEVE fazer o mesmo com "Selecione a primeira linha ou [Distância]:" e "Selecione a segunda linha:", chanfrando com as distâncias atuais (começam em 0). `Distância` (`D`, `_D`) pede "Especifique a primeira distância de chanfro <d1>:" e "Especifique a segunda distância de chanfro <d2>:"; o vazio mantém cada uma. | idem                                                   |
+| F4  | SE o kernel recusa (curvas paralelas, raio ou distância que não cabe), ENTÃO a linha DEVE mostrar o motivo e voltar a pedir o primeiro objeto, sem mudar o documento; o clique onde não há objeto DEVE dizer "Nenhum objeto sob o clique.".                                                                                                            | `pnpm test command-line`                               |
+
+As opções `Polilinha`, `Aparar`, `Múltiplo`, `Ângulo` e `mÉtodo` ficam para depois.
+
 ## Questões em aberto
 
 - Variantes de `ARC` e `CIRCLE` que entram primeiro.
