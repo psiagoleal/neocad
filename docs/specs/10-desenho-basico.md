@@ -132,6 +132,17 @@ depois.
 As opções `Através`, `Apagar`, `Camada` e `Múltiplo` ficam para depois; o ponto do lado é
 digitado até a entrada de pontos pelo clique (MT-KV-14h).
 
+## Critérios de aceite (EARS) — `TRIM` e `EXTEND`
+
+| id  | critério                                                                                                                                                                                                                                                                                                                                                                          | prova                                                  |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| T1  | QUANDO o `TRIM` (`APARAR`, `TR`) começa, a linha DEVE pedir "Selecione arestas de corte ou <selecionar todos>:"; o vazio fixa como arestas a seleção ou, sem seleção, todas as entidades do espaço mostrado. Depois, "Selecione o objeto a aparar ou [Desfazer]:": cada clique DEVE aparar pelo kernel o trecho clicado, num passo de desfazer, e o pedido se repete até o vazio. | `pnpm test command-line`; `pnpm test:e2e command-line` |
+| T2  | O `EXTEND` (`ESTENDER`, `EX`) DEVE fazer o mesmo com "Selecione arestas de contorno ou <selecionar todos>:" e "Selecione o objeto a estender ou [Desfazer]:", estendendo pelo kernel a ponta mais perto do clique até a aresta.                                                                                                                                                   | idem                                                   |
+| T3  | QUANDO o usuário escolhe `Desfazer` (`D`, `_U`), o último corte ou extensão DEVE ser desfeito; SE o kernel recusa (clique longe do objeto, nada a cortar ou a alcançar), ENTÃO a linha DEVE mostrar o motivo e repetir o pedido.                                                                                                                                                  | `pnpm test command-line`                               |
+| T4  | ENQUANTO um prompt pede um objeto pelo clique (`TRIM`, `EXTEND`, `OFFSET`), o clique na tela DEVE ir ao comando, com o ponto clicado, e NÃO DEVE mudar a seleção.                                                                                                                                                                                                                 | `pnpm test command-line`; `pnpm test render`           |
+
+O modo rápido sem arestas, a cerca e as opções de projeção ficam para depois.
+
 ## Questões em aberto
 
 - Variantes de `ARC` e `CIRCLE` que entram primeiro.

@@ -469,12 +469,15 @@ no histórico) já está no motor e vale para todas.
 
 ### MT-KV-14d4: TRIM e EXTEND
 
-- **Objetivo:** `TRIM` / `APARAR` / `TR` e `EXTEND` / `ESTENDER` / `EX`, com arestas e
-  clique no trecho.
-- **Arquivos no escopo:** a definir ao abrir.
-- **Critério de aceite:** critérios escritos na spec 10 antes de implementar.
-- **Fora de escopo:** modo rápido sem arestas e cerca.
-- **Depende de:** MT-KV-14d1.
+- **Objetivo:** `TRIM` / `APARAR` / `TR` e `EXTEND` / `ESTENDER` / `EX` com arestas pela
+  seleção e objeto pelo clique, que vai ao comando com o ponto clicado (modo de escolha
+  da tela, que passa a servir também ao `OFFSET`).
+- **Arquivos no escopo:** `src/lib/command-line/` (`aparar.ts`, motor, `deslocar.ts`,
+  registro), `src/lib/render/tela-do-kernel.ts`, `CommandLine.svelte`,
+  `ViewerScreen.svelte`, `+page.svelte` e os testes.
+- **Critério de aceite:** spec 10, T1–T4 (e O1 continua valendo).
+- **Fora de escopo:** modo rápido, cerca, projeção.
+- **Depende de:** MT-KV-14d3.
 
 ### MT-KV-14d5: FILLET e CHAMFER
 
