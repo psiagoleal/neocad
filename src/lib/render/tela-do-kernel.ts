@@ -16,10 +16,11 @@
  */
 
 import type { CadDocument } from '$lib/services/cad-document';
-import type { CadLayerId } from '$lib/types/cad';
+import type { CadEntityId, CadLayerId } from '$lib/types/cad';
 import { DesenhistaCanvas2d } from './canvas2d';
 import { corDaCamada, type Rgb } from './cor';
 import type { Desenhista } from './desenhista';
+import { Selecao } from './selecao';
 import { DesenhistaWebgl2 } from './webgl2';
 import {
 	ampliar,
@@ -27,6 +28,7 @@ import {
 	enquadrar,
 	erroDeCorda,
 	fatorDaRoda,
+	paraMundo,
 	redimensionar,
 	transformacao,
 	type Vista
@@ -37,6 +39,17 @@ const FUNDO_CLARO: Rgb = [246, 248, 251];
 
 /** Botão do meio do mouse, o do pan (spec 07). */
 const BOTAO_DO_MEIO = 1;
+const BOTAO_ESQUERDO = 0;
+
+/** Distância, em pixels, até onde o clique pega um traço (spec 10, S1). */
+const RAIO_DO_CLIQUE_PX = 5;
+
+/** Blocos da seleção: desenhados por último, por cima das camadas. */
+const BLOCO_DO_DESTAQUE = '__destaque';
+const BLOCO_DA_JANELA = '__janela';
+const COR_DO_DESTAQUE: Rgb = [90, 170, 255];
+const COR_DA_JANELA: Rgb = [90, 140, 255];
+const COR_DA_CRUZADA: Rgb = [90, 220, 130];
 
 export type AoMudarEspacos = (espacos: string[], atual: string) => void;
 
@@ -78,6 +91,9 @@ export class TelaDoKernel {
 	private aviso: ((mensagem: string) => void) | null = null;
 	/** Último aviso de não exibidas dado por espaço, para não repetir. */
 	private readonly avisados = new Map<string, string>();
+	private readonly selecao = new Selecao();
+	/** Onde está o cursor, em coordenadas do desenho, enquanto a janela está aberta. */
+	private cursor: { x: number; y: number } | null = null;
 	/** Quem desenha por baixo o que o kernel não modela (o upstream) e segue a vista. */
 	private aoMudarVista: AoMudarVista | null = null;
 	private readonly observador: ResizeObserver | null;
@@ -103,6 +119,17 @@ export class TelaDoKernel {
 		this.ouvir('mousedown', (e) => {
 			if ((e as MouseEvent).button === BOTAO_DO_MEIO) e.preventDefault();
 		});
+		// Esc fora de um campo de texto esvazia a seleção (spec 10, S5); dentro da
+		// linha de comando, quem decide é ela.
+		if (typeof document !== 'undefined') {
+			const aoTeclar = (e: KeyboardEvent) => {
+				const alvo = e.target as HTMLElement | null;
+				const emCampo = alvo?.tagName === 'INPUT' || alvo?.tagName === 'TEXTAREA';
+				if (e.key === 'Escape' && !emCampo) this.esvaziarSelecao();
+			};
+			document.addEventListener('keydown', aoTeclar);
+			this.soltar.push(() => document.removeEventListener('keydown', aoTeclar));
+		}
 
 		this.observador =
 			typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.ajustarArea());
@@ -132,6 +159,8 @@ export class TelaDoKernel {
 		if (documento == null || !this.espacos.includes(espaco)) return;
 
 		this.espaco = espaco;
+		this.selecao.esvaziar();
+		this.cursor = null;
 		this.limparBlocos();
 		this.origem = documento.getScreenOrigin(espaco);
 		this.carregarCamadas(documento.getScreenLayers(espaco));
@@ -174,6 +203,13 @@ export class TelaDoKernel {
 		this.entidades = documento.getScreenEntityCount(this.espaco);
 		this.caixa = this.caixaDoEspaco();
 		this.avisarNaoExibidas();
+		// A apagada sai da seleção; a movida leva o destaque junto (spec 10, S4).
+		const ids = this.selecao.ids;
+		if (ids.length > 0) {
+			const existentes = documento.getEntitiesById(ids);
+			this.selecao.podar((id) => existentes[ids.indexOf(id)] != null);
+		}
+		this.atualizarDestaque();
 		this.pedirQuadro();
 	}
 
@@ -191,6 +227,20 @@ export class TelaDoKernel {
 	/** Para onde vai o aviso das entidades que a tela não exibe (spec 07, V6). */
 	avisarCom(aviso: (mensagem: string) => void): void {
 		this.aviso = aviso;
+	}
+
+	/** Esvazia a seleção e fecha a janela aberta (spec 10, S5). */
+	esvaziarSelecao(): void {
+		this.selecao.esvaziar();
+		this.cursor = null;
+		this.atualizarDestaque();
+		this.atualizarJanela();
+		this.pedirQuadro();
+	}
+
+	/** Ids selecionados no espaço mostrado. */
+	get selecionados(): CadEntityId[] {
+		return this.selecao.ids;
 	}
 
 	/** Troca o fundo; a cor 7 acompanha (branca no escuro, preta no claro). */
@@ -280,8 +330,62 @@ export class TelaDoKernel {
 	private limparBlocos(): void {
 		for (const chave of this.chaves) this.desenhista.removerBloco(chave);
 		this.chaves.clear();
+		this.desenhista.removerBloco(BLOCO_DO_DESTAQUE);
+		this.desenhista.removerBloco(BLOCO_DA_JANELA);
 		this.entidades = 0;
 		this.caixa = '';
+	}
+
+	// -- seleção ---------------------------------------------------------------
+
+	/** O destaque vem do kernel; é refeito por último, para ficar por cima. */
+	private atualizarDestaque(): void {
+		this.desenhista.removerBloco(BLOCO_DO_DESTAQUE);
+		const ids = this.selecao.ids;
+		if (this.documento == null || ids.length === 0) return;
+		this.desenhista.definirBloco(
+			BLOCO_DO_DESTAQUE,
+			this.documento.getScreenSegmentsOf(this.espaco, ids),
+			COR_DO_DESTAQUE
+		);
+	}
+
+	/** O retângulo da janela aberta, do início ao cursor, relativo à origem. */
+	private atualizarJanela(): void {
+		this.desenhista.removerBloco(BLOCO_DA_JANELA);
+		const inicio = this.selecao.inicioDaJanela;
+		const cursor = this.cursor;
+		if (inicio == null || cursor == null) return;
+
+		const { x: ox, y: oy } = this.origem;
+		const [x0, y0, x1, y1] = [inicio.x - ox, inicio.y - oy, cursor.x - ox, cursor.y - oy];
+		this.desenhista.definirBloco(
+			BLOCO_DA_JANELA,
+			new Float32Array([x0, y0, x1, y0, x1, y0, x1, y1, x1, y1, x0, y1, x0, y1, x0, y0]),
+			cursor.x < inicio.x ? COR_DA_CRUZADA : COR_DA_JANELA
+		);
+	}
+
+	private pontoDoDesenho(e: PointerEvent): { x: number; y: number } {
+		const caixa = this.canvas.getBoundingClientRect();
+		return paraMundo(this.vista, e.clientX - caixa.left, e.clientY - caixa.top);
+	}
+
+	private aoClicar(e: PointerEvent): void {
+		const documento = this.documento;
+		if (documento == null || this.espaco === '') return;
+		e.preventDefault();
+
+		const espaco = this.espaco;
+		const ponto = this.pontoDoDesenho(e);
+		this.selecao.clicar(ponto, RAIO_DO_CLIQUE_PX / this.vista.escala, e.shiftKey, {
+			clique: (p, raio) => documento.pickOnScreen(espaco, p, raio),
+			area: (area, cruzada) => documento.selectOnScreen(espaco, area, cruzada)
+		});
+		this.cursor = this.selecao.inicioDaJanela == null ? null : ponto;
+		this.atualizarDestaque();
+		this.atualizarJanela();
+		this.pedirQuadro();
 	}
 
 	// -- quadro ----------------------------------------------------------------
@@ -314,6 +418,7 @@ export class TelaDoKernel {
 		dados.caixa = this.caixa;
 		dados.vista = `${x} ${y} ${escala}`;
 		dados.fundo = transparente ? 'transparente' : 'opaco';
+		dados.selecao = String(this.selecao.ids.length);
 
 		this.aoMudarVista?.(transparente ? { x, y, escala } : null);
 	}
@@ -343,6 +448,10 @@ export class TelaDoKernel {
 	}
 
 	private aoPressionar(e: PointerEvent): void {
+		if (e.button === BOTAO_ESQUERDO) {
+			this.aoClicar(e);
+			return;
+		}
 		if (e.button !== BOTAO_DO_MEIO) return;
 		e.preventDefault();
 		this.arrasto = { x: e.clientX, y: e.clientY, id: e.pointerId };
@@ -350,6 +459,11 @@ export class TelaDoKernel {
 	}
 
 	private aoMover(e: PointerEvent): void {
+		if (this.selecao.inicioDaJanela != null) {
+			this.cursor = this.pontoDoDesenho(e);
+			this.atualizarJanela();
+			this.pedirQuadro();
+		}
 		if (this.arrasto == null || e.pointerId !== this.arrasto.id) return;
 		this.vista = deslocar(this.vista, e.clientX - this.arrasto.x, e.clientY - this.arrasto.y);
 		this.arrasto = { ...this.arrasto, x: e.clientX, y: e.clientY };

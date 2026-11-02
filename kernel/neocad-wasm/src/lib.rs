@@ -1836,6 +1836,52 @@ impl CadSession {
         self.try_screen_block(space, layer).map_err(js_error)
     }
 
+    /// Entidades cujo traço passa a até `radius` do ponto, da mais perto à mais
+    /// longe (spec 10, S1).
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenPick)]
+    pub fn screen_pick(
+        &mut self,
+        space: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_screen_pick(space, x, y, radius).map_err(js_error)
+    }
+
+    /// Entidades dentro da área (janela) ou que ela toca (cruzada) (spec 10, S2).
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenSelect)]
+    pub fn screen_select(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        crossing: bool,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_screen_select(space, min_x, min_y, max_x, max_y, crossing)
+            .map_err(js_error)
+    }
+
+    /// Segmentos das entidades no espaço, para o destaque da seleção.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada, o espaço não existe ou um id é inválido.
+    #[wasm_bindgen(js_name = screenSegmentsOf)]
+    pub fn screen_segments_of(&self, space: &str, ids: Vec<String>) -> Result<Vec<f32>, JsError> {
+        self.try_screen_segments_of(space, &ids).map_err(js_error)
+    }
+
     /// Entidades do espaço, em camada visível, que a tela não desenha, por tipo
     /// DXF (spec 07, V6).
     ///
@@ -1971,6 +2017,53 @@ impl CadSession {
                 layer: encode_layer(layer),
             })
             .collect())
+    }
+
+    fn try_screen_pick(
+        &mut self,
+        space: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+    ) -> Result<Vec<String>, String> {
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let found = screen
+            .pick(&self.document, space, Point2::new(x, y), radius)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(found.into_iter().map(encode_entity).collect())
+    }
+
+    fn try_screen_select(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        crossing: bool,
+    ) -> Result<Vec<String>, String> {
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let area = Aabb::new(Point2::new(min_x, min_y), Point2::new(max_x, max_y));
+        let found = screen
+            .select_area(&self.document, space, area, crossing)
+            .ok_or_else(|| unknown_space(space))?;
+
+        Ok(found.into_iter().map(encode_entity).collect())
+    }
+
+    fn try_screen_segments_of(&self, space: &str, ids: &[String]) -> Result<Vec<f32>, String> {
+        let screen = self.screen()?;
+        let ids = decode_entities(ids)?;
+        screen
+            .segments_of(space, &ids)
+            .ok_or_else(|| unknown_space(space))
     }
 
     fn try_screen_query(
@@ -3084,11 +3177,45 @@ mod tests {
             s.try_update_screen().err(),
             s.try_screen_query("Model", 0.0, 0.0, 1.0, 1.0).err(),
             s.try_screen_refused("Model").err(),
+            s.try_screen_pick("Model", 0.0, 0.0, 1.0).err(),
+            s.try_screen_select("Model", 0.0, 0.0, 1.0, 1.0, true).err(),
+            s.try_screen_segments_of("Model", &[]).err(),
         ];
 
         for erro in erros {
             assert_eq!(erro.as_deref(), Some("tela não preparada"));
         }
+    }
+
+    #[test]
+    fn selecao_pela_fachada_por_espaco() {
+        let mut s = sessao();
+        s.try_open_dxf(&fixture("minimal.dxf")).expect("abre");
+        s.try_prepare_screen(0.01).expect("prepara");
+
+        // A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+        let reta = s.try_screen_pick("Model", 25.0, 25.5, 1.0).expect("modelo");
+        assert_eq!(reta.len(), 1);
+        let todas = s
+            .try_screen_select("Model", -1.0, -1.0, 101.0, 101.0, false)
+            .expect("modelo");
+        assert_eq!(todas.len(), 2);
+        let tocadas = s
+            .try_screen_select("Model", 45.0, 45.0, 55.0, 55.0, true)
+            .expect("modelo");
+        assert_eq!(tocadas, reta);
+
+        let segmentos = s.try_screen_segments_of("Model", &reta).expect("modelo");
+        assert_eq!(segmentos.len(), 4);
+        assert_eq!(
+            s.try_screen_pick("Inexistente", 0.0, 0.0, 1.0)
+                .err()
+                .as_deref(),
+            Some("espaço desconhecido: Inexistente")
+        );
+        assert!(s
+            .try_screen_segments_of("Model", &["x".to_owned()])
+            .is_err());
     }
 
     #[test]

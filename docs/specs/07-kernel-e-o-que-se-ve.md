@@ -59,7 +59,8 @@ nome do espaço mostrado: `Model` ou o do layout), `data-caixa` (a caixa envolve
 espaço no kernel, `minX minY maxX maxY`, vazia sem entidades), `data-entidades` (quantas entidades do
 espaço corrente estão na tela: as que têm traço em camada visível) e `data-quadros`
 (quantos quadros desenhou desde a abertura), `data-vista` (centro e escala do quadro,
-`x y pixels-por-unidade`) e `data-fundo` (`transparente` quando o upstream desenha por
+`x y pixels-por-unidade`), `data-selecao` (quantas entidades estão selecionadas; spec 10,
+S1–S6) e `data-fundo` (`transparente` quando o upstream desenha por
 baixo, `opaco` nos demais casos). Pan é o arrasto com o botão do meio; zoom,
 a roda do mouse. Com mais de um espaço, uma lista de abas (`role="tablist"`, nome
 "Espaços do desenho") troca o espaço mostrado, uma aba por espaço com o nome dele.

@@ -43,8 +43,27 @@ struct SpaceScreen {
     origin: Point2,
     /// Segmentos de cada entidade, agrupados por camada.
     layers: BTreeMap<LayerId, BTreeMap<EntityId, Vec<f32>>>,
-    /// Índice do recorte pela vista; refeito na primeira consulta após edição.
+    /// Índice das entidades do espaço, para o recorte pela vista e a seleção.
     index: Option<SpatialIndex<EntityId>>,
+    /// Entidades mexidas desde que o índice foi feito: a consulta as confere à parte,
+    /// para uma edição não custar a reconstrução do índice inteiro.
+    stale: BTreeSet<EntityId>,
+}
+
+/// Mexidas além disto fazem o índice ser refeito na próxima consulta.
+const STALE_LIMIT: usize = 1024;
+
+impl SpaceScreen {
+    fn mark_stale(&mut self, id: EntityId) {
+        if self.index.is_none() {
+            return;
+        }
+        self.stale.insert(id);
+        if self.stale.len() > STALE_LIMIT {
+            self.index = None;
+            self.stale.clear();
+        }
+    }
 }
 
 /// Geometria de todos os espaços, pronta para a tela.
@@ -119,6 +138,50 @@ fn segments(entity: &Entity, origin: Point2, chord_error: f64) -> Option<Vec<f32
     Some(out)
 }
 
+/// Distância do ponto ao segmento `a`–`b`.
+fn distance_to_segment(p: Point2, a: Point2, b: Point2) -> f64 {
+    let (dx, dy) = (b.x - a.x, b.y - a.y);
+    let length2 = dx * dx + dy * dy;
+    let t = if length2 > 0.0 {
+        (((p.x - a.x) * dx + (p.y - a.y) * dy) / length2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let (cx, cy) = (a.x + t * dx, a.y + t * dy);
+    (p.x - cx).hypot(p.y - cy)
+}
+
+/// O segmento `a`–`b` toca a caixa (recorte de Liang–Barsky).
+fn segment_touches_box(a: Point2, b: Point2, area: Aabb) -> bool {
+    let (min, max) = (area.min(), area.max());
+    let (dx, dy) = (b.x - a.x, b.y - a.y);
+    let mut t0: f64 = 0.0;
+    let mut t1: f64 = 1.0;
+    for (p, q) in [
+        (-dx, a.x - min.x),
+        (dx, max.x - a.x),
+        (-dy, a.y - min.y),
+        (dy, max.y - a.y),
+    ] {
+        if p == 0.0 {
+            if q < 0.0 {
+                return false;
+            }
+        } else {
+            let r = q / p;
+            if p < 0.0 {
+                t0 = t0.max(r);
+            } else {
+                t1 = t1.min(r);
+            }
+            if t0 > t1 {
+                return false;
+            }
+        }
+    }
+    true
+}
+
 impl Screen {
     /// Prepara todos os espaços com o erro de corda informado.
     ///
@@ -165,6 +228,7 @@ impl Screen {
                     .map_or(Point2::ORIGIN, Aabb::center),
                 layers: BTreeMap::new(),
                 index: None,
+                stale: BTreeSet::new(),
             })
             .collect();
         self.place.clear();
@@ -175,6 +239,14 @@ impl Screen {
             for (id, entity) in document.entities_in_block(block) {
                 self.add(space, id, entity);
             }
+            // Feito já aqui, para o primeiro clique não pagar a construção.
+            let target = &mut self.spaces[space];
+            target.stale.clear();
+            target.index = Some(SpatialIndex::build(
+                document
+                    .entities_in_block(block)
+                    .map(|(id, entity)| (entity.bounding_box(), id)),
+            ));
         }
     }
 
@@ -191,14 +263,16 @@ impl Screen {
         } else {
             self.refused.insert(id, (space, entity.layer));
         }
-        target.index = None;
+        target.mark_stale(id);
 
         entity.layer
     }
 
     /// Tira os segmentos da entidade; devolve onde estavam.
     fn remove(&mut self, id: EntityId) -> Option<(usize, LayerId)> {
-        self.refused.remove(&id);
+        if let Some((space, _)) = self.refused.remove(&id) {
+            self.spaces[space].mark_stale(id);
+        }
         let (space, layer) = self.place.remove(&id)?;
         let target = &mut self.spaces[space];
         if let Some(entities) = target.layers.get_mut(&layer) {
@@ -207,7 +281,7 @@ impl Screen {
                 target.layers.remove(&layer);
             }
         }
-        target.index = None;
+        target.mark_stale(id);
 
         Some((space, layer))
     }
@@ -317,6 +391,153 @@ impl Screen {
         Some(counts)
     }
 
+    /// Entidades desenhadas, em camada visível, cujo traço passa a até `radius` do
+    /// ponto, da mais perto à mais longe (spec 10, S1). `None` se o espaço é
+    /// desconhecido.
+    pub fn pick(
+        &mut self,
+        document: &Document,
+        space: &str,
+        point: Point2,
+        radius: f64,
+    ) -> Option<Vec<EntityId>> {
+        let found = self.space(space)?;
+        let reach = Aabb::new(
+            Point2::new(point.x - radius, point.y - radius),
+            Point2::new(point.x + radius, point.y + radius),
+        );
+        let candidates = self.candidates(document, found, reach);
+
+        let mut hits: Vec<(f64, EntityId)> = candidates
+            .into_iter()
+            .filter_map(|id| {
+                let distance = self
+                    .visible_segments(document, found, id)?
+                    .map(|(a, b)| distance_to_segment(point, a, b))
+                    .fold(f64::INFINITY, f64::min);
+                (distance <= radius).then_some((distance, id))
+            })
+            .collect();
+        hits.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+
+        Some(hits.into_iter().map(|(_, id)| id).collect())
+    }
+
+    /// Entidades desenhadas, em camada visível, inteiramente dentro da área
+    /// (janela) ou, com `crossing`, que a área toca ou contém (cruzada) (spec 10,
+    /// S2). `None` se o espaço é desconhecido.
+    pub fn select_area(
+        &mut self,
+        document: &Document,
+        space: &str,
+        area: Aabb,
+        crossing: bool,
+    ) -> Option<Vec<EntityId>> {
+        let found = self.space(space)?;
+        let mut candidates = self.candidates(document, found, area);
+        candidates.sort();
+
+        Some(
+            candidates
+                .into_iter()
+                .filter(|id| {
+                    let Some(mut segments) = self.visible_segments(document, found, *id) else {
+                        return false;
+                    };
+                    if crossing {
+                        segments.any(|(a, b)| segment_touches_box(a, b, area))
+                    } else {
+                        segments.all(|(a, b)| area.contains(a) && area.contains(b))
+                    }
+                })
+                .collect(),
+        )
+    }
+
+    /// Segmentos das entidades dadas no espaço, relativos à origem dele, para o
+    /// destaque da seleção; entidade que não está desenhada ali é ignorada.
+    #[must_use]
+    pub fn segments_of(&self, space: &str, ids: &[EntityId]) -> Option<Vec<f32>> {
+        let found = self.space(space)?;
+        let target = &self.spaces[found];
+
+        Some(
+            ids.iter()
+                .filter_map(|id| {
+                    let (place_space, layer) = self.place.get(id)?;
+                    (*place_space == found).then_some(())?;
+                    target.layers.get(layer)?.get(id)
+                })
+                .flatten()
+                .copied()
+                .collect(),
+        )
+    }
+
+    /// Entidades do espaço cuja caixa toca a área: as do índice que não mudaram,
+    /// mais as mexidas desde ele, conferidas pela caixa de agora.
+    fn candidates(&mut self, document: &Document, found: usize, area: Aabb) -> Vec<EntityId> {
+        let space = &mut self.spaces[found];
+        let block = space.block;
+        if space.index.is_none() {
+            space.stale.clear();
+        }
+        let index = space.index.get_or_insert_with(|| {
+            SpatialIndex::build(
+                document
+                    .entities_in_block(block)
+                    .map(|(id, entity)| (entity.bounding_box(), id)),
+            )
+        });
+
+        let mut found: Vec<EntityId> = index
+            .query_box(area)
+            .into_iter()
+            .filter(|id| !space.stale.contains(id))
+            .collect();
+        found.extend(space.stale.iter().copied().filter(|id| {
+            document
+                .entity_placement(*id)
+                .is_some_and(|placement| placement.block == block)
+                && document
+                    .entity(*id)
+                    .is_some_and(|entity| entity.bounding_box().intersects(area))
+        }));
+        found
+    }
+
+    /// Segmentos da entidade em coordenadas do desenho, se ela está desenhada no
+    /// espaço e em camada visível.
+    fn visible_segments<'a>(
+        &'a self,
+        document: &Document,
+        found: usize,
+        id: EntityId,
+    ) -> Option<impl Iterator<Item = (Point2, Point2)> + 'a> {
+        let (place_space, layer) = self.place.get(&id)?;
+        if *place_space != found
+            || !document
+                .layers()
+                .get(*layer)
+                .is_some_and(LayerRecord::is_visible)
+        {
+            return None;
+        }
+        let space = &self.spaces[found];
+        let origin = space.origin;
+        let point =
+            move |x: f32, y: f32| Point2::new(origin.x + f64::from(x), origin.y + f64::from(y));
+
+        Some(
+            space
+                .layers
+                .get(layer)?
+                .get(&id)?
+                .chunks_exact(4)
+                .map(move |s| (point(s[0], s[1]), point(s[2], s[3]))),
+        )
+    }
+
     /// Caixa envolvente das entidades do espaço; `None` se o espaço é
     /// desconhecido, `Some(None)` se está vazio.
     #[must_use]
@@ -384,17 +605,7 @@ impl Screen {
     /// São candidatas: o traço pode passar fora da área mesmo com a caixa dentro.
     pub fn query(&mut self, document: &Document, space: &str, area: Aabb) -> Option<Vec<EntityId>> {
         let found = self.space(space)?;
-        let space = &mut self.spaces[found];
-        let block = space.block;
-        let index = space.index.get_or_insert_with(|| {
-            SpatialIndex::build(
-                document
-                    .entities_in_block(block)
-                    .map(|(id, entity)| (entity.bounding_box(), id)),
-            )
-        });
-
-        Some(index.query_box(area))
+        Some(self.candidates(document, found, area))
     }
 }
 
@@ -719,6 +930,166 @@ mod tests {
             .expect("apaga");
         tela.update(&doc, pilha.revision(), pilha.last_effect());
         assert_eq!(tela.refused(&doc, MODEL_LAYOUT_NAME), Some(vec![]));
+    }
+
+    /// Um desenho para a seleção: duas retas e um círculo no modelo, uma reta em
+    /// camada desligada, uma janela de layout e uma reta no papel.
+    fn desenho_para_selecao() -> (Document, Screen, [EntityId; 4]) {
+        let mut doc = Document::new();
+        let mut pilha = CommandStack::new();
+        let zero = doc.layers().default_layer();
+        let oculta = doc.create_layer("Oculta").expect("camada");
+        let embaixo = insere(&mut doc, &mut pilha, zero, reta(0.0, 0.0, 10.0, 0.0));
+        let em_cima = insere(&mut doc, &mut pilha, zero, reta(0.0, 5.0, 10.0, 5.0));
+        let circulo = insere(
+            &mut doc,
+            &mut pilha,
+            zero,
+            Geometry::Circle(Circle {
+                center: Point2::new(30.0, 0.0),
+                radius: 5.0,
+            }),
+        );
+        let escondida = insere(&mut doc, &mut pilha, oculta, reta(0.0, 1.0, 10.0, 1.0));
+        insere(&mut doc, &mut pilha, zero, texto("   "));
+        let layout = doc.create_layout("Prancha A1").expect("layout");
+        let bloco = doc.layouts().get(layout).expect("registro").block();
+        for g in [janela(), reta(0.0, 0.0, 10.0, 0.0)] {
+            pilha
+                .edit(&mut doc, "Inserir", |editor| {
+                    editor.insert_entity(Entity::new(zero, g), bloco)
+                })
+                .expect("insere no papel");
+        }
+        let mut registro = doc.layers().get(oculta).expect("registro").clone();
+        registro.set_off(true);
+        pilha
+            .edit(&mut doc, "Desligar", |editor| {
+                editor.set_layer_record(oculta, registro)
+            })
+            .expect("desliga");
+        let tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("erro válido");
+        (doc, tela, [embaixo, em_cima, circulo, escondida])
+    }
+
+    #[test]
+    fn o_clique_pega_o_traco_mais_perto_primeiro_so_no_que_se_ve() {
+        let (doc, mut tela, [embaixo, em_cima, _, escondida]) = desenho_para_selecao();
+        let m = MODEL_LAYOUT_NAME;
+
+        assert_eq!(
+            tela.pick(&doc, m, Point2::new(5.0, 0.4), 0.5),
+            Some(vec![embaixo])
+        );
+        assert_eq!(tela.pick(&doc, m, Point2::new(5.0, 2.5), 0.5), Some(vec![]));
+        assert_eq!(
+            tela.pick(&doc, m, Point2::new(5.0, 3.0), 3.5),
+            Some(vec![em_cima, embaixo])
+        );
+        // A reta de camada desligada passa em y = 1 e não é pega.
+        let perto_da_escondida = tela.pick(&doc, m, Point2::new(5.0, 1.0), 0.2);
+        assert_eq!(perto_da_escondida, Some(vec![]));
+        assert!(!tela
+            .pick(&doc, m, Point2::new(5.0, 1.0), 2.0)
+            .expect("modelo")
+            .contains(&escondida));
+        // No papel, só a reta do papel; a janela de layout não vira traço.
+        assert_eq!(
+            tela.pick(&doc, "Prancha A1", Point2::new(5.0, 0.0), 0.5)
+                .map(|ids| ids.len()),
+            Some(1)
+        );
+        assert_eq!(tela.pick(&doc, "Inexistente", Point2::ORIGIN, 1.0), None);
+    }
+
+    #[test]
+    fn janela_pega_o_que_esta_dentro_e_cruzada_o_que_ela_toca() {
+        let (doc, mut tela, [embaixo, em_cima, circulo, _]) = desenho_para_selecao();
+        let m = MODEL_LAYOUT_NAME;
+        let area =
+            |a: (f64, f64), b: (f64, f64)| Aabb::new(Point2::new(a.0, a.1), Point2::new(b.0, b.1));
+
+        // Envolve a reta de baixo inteira (e passa pela escondida, que não conta).
+        let baixo = area((-1.0, -1.0), (11.0, 2.0));
+        assert_eq!(tela.select_area(&doc, m, baixo, false), Some(vec![embaixo]));
+        // Pega metade das duas retas: a janela não pega nenhuma; a cruzada, as duas.
+        let metade = area((5.0, -1.0), (20.0, 6.0));
+        assert_eq!(tela.select_area(&doc, m, metade, false), Some(vec![]));
+        assert_eq!(
+            tela.select_area(&doc, m, metade, true),
+            Some(vec![embaixo, em_cima])
+        );
+        // Dentro do círculo, sem tocar o traço: a caixa dele cruza a área, o traço não.
+        let miolo = area((29.0, -1.0), (31.0, 1.0));
+        assert_eq!(tela.select_area(&doc, m, miolo, true), Some(vec![]));
+        let em_volta = area((24.0, -6.0), (36.0, 6.0));
+        assert_eq!(
+            tela.select_area(&doc, m, em_volta, false),
+            Some(vec![circulo])
+        );
+        assert_eq!(tela.select_area(&doc, "Inexistente", miolo, true), None);
+    }
+
+    #[test]
+    fn os_segmentos_do_destaque_sao_os_da_entidade() {
+        let (doc, tela, [embaixo, _, _, escondida]) = desenho_para_selecao();
+        let _ = doc;
+        let m = MODEL_LAYOUT_NAME;
+        let origem = tela.origin(m).expect("origem");
+
+        let segmentos = tela.segments_of(m, &[embaixo]).expect("modelo");
+        assert_eq!(segmentos.len(), 4);
+        let absolutos: Vec<f64> = segmentos
+            .chunks(2)
+            .flat_map(|p| [origem.x + f64::from(p[0]), origem.y + f64::from(p[1])])
+            .collect();
+        assert!(perto(
+            [absolutos[0], absolutos[1], absolutos[2], absolutos[3]],
+            [0.0, 0.0, 10.0, 0.0],
+            1e-4
+        ));
+        // A escondida tem segmentos guardados, mas em camada desligada também se destaca
+        // só se estiver selecionada; aqui, ids fora do espaço são ignorados.
+        let _ = escondida;
+        assert_eq!(tela.segments_of("Prancha A1", &[embaixo]), Some(vec![]));
+        assert_eq!(tela.segments_of("Inexistente", &[embaixo]), None);
+    }
+
+    #[test]
+    fn o_indice_acompanha_muitas_edicoes_sem_errar_a_consulta() {
+        let mut doc = Document::new();
+        let mut pilha = CommandStack::new();
+        let zero = doc.layers().default_layer();
+        insere(&mut doc, &mut pilha, zero, reta(0.0, 0.0, 1.0, 0.0));
+        let mut tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("erro válido");
+        let m = MODEL_LAYOUT_NAME;
+        let longe = Aabb::new(Point2::new(500.0, -1.0), Point2::new(600.0, 1.0));
+
+        // Passa do limite das mexidas guardadas à parte, para o índice ser refeito.
+        let mut ultima = None;
+        for i in 0..1100 {
+            let x = 500.0 + f64::from(i) * 0.05;
+            ultima = Some(insere(
+                &mut doc,
+                &mut pilha,
+                zero,
+                reta(x, 0.0, x + 0.01, 0.0),
+            ));
+            tela.update(&doc, pilha.revision(), pilha.last_effect());
+            if i == 10 {
+                assert_eq!(tela.query(&doc, m, longe).map(|v| v.len()), Some(11));
+            }
+        }
+        assert_eq!(tela.query(&doc, m, longe).map(|v| v.len()), Some(1100));
+
+        let ultima = ultima.expect("inserida");
+        pilha
+            .edit(&mut doc, "Apagar", |editor| editor.remove_entity(ultima))
+            .expect("apaga");
+        tela.update(&doc, pilha.revision(), pilha.last_effect());
+        let achadas = tela.query(&doc, m, longe).expect("modelo");
+        assert_eq!(achadas.len(), 1099);
+        assert!(!achadas.contains(&ultima));
     }
 
     #[test]

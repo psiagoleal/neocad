@@ -114,6 +114,16 @@ export interface CadKernelSession {
 	screenEntityCount(space: string): number;
 	screenLayers(space: string): string[];
 	screenBlock(space: string, layer: string): Float32Array;
+	screenPick(space: string, x: number, y: number, radius: number): unknown;
+	screenSelect(
+		space: string,
+		minX: number,
+		minY: number,
+		maxX: number,
+		maxY: number,
+		crossing: boolean
+	): unknown;
+	screenSegmentsOf(space: string, ids: string[]): Float32Array;
 	updateScreen(): unknown;
 	screenQuery(space: string, minX: number, minY: number, maxX: number, maxY: number): string[];
 }
@@ -1023,7 +1033,8 @@ export class CadDocument {
 	getEntitiesById(ids: CadEntityId[]): (CadEntity | null)[] {
 		return this.call(() =>
 			asArray(this.session.entitiesById(ids), 'entidades pelo id').map((entity, index) =>
-				entity === null ? null : toCadEntity(entity, `entidade pelo id[${index}]`)
+				// A fachada serializa `None` como `undefined`; os dois são "não existe".
+				entity == null ? null : toCadEntity(entity, `entidade pelo id[${index}]`)
 			)
 		);
 	}
@@ -1095,6 +1106,28 @@ export class CadDocument {
 	 */
 	getScreenBlock(space: string, layer: CadLayerId): Float32Array {
 		return this.call(() => toScreenBlock(this.session.screenBlock(space, layer)));
+	}
+
+	/** Entidades da tela a até `radius` do ponto, da mais perto à mais longe (spec 10, S1). */
+	pickOnScreen(space: string, point: CadPoint, radius: number): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(this.session.screenPick(space, point.x, point.y, radius), 'clique na tela')
+		);
+	}
+
+	/** Entidades dentro da área (janela) ou que ela toca (cruzada) (spec 10, S2). */
+	selectOnScreen(space: string, area: CadBounds, crossing: boolean): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(
+				this.session.screenSelect(space, area.minX, area.minY, area.maxX, area.maxY, crossing),
+				'janela na tela'
+			)
+		);
+	}
+
+	/** Segmentos das entidades no espaço, para o destaque da seleção. */
+	getScreenSegmentsOf(space: string, ids: CadEntityId[]): Float32Array {
+		return this.call(() => toScreenBlock(this.session.screenSegmentsOf(space, [...ids])));
 	}
 
 	/** Blocos que mudaram desde a última chamada. */

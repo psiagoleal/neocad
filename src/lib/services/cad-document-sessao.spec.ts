@@ -60,6 +60,9 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		screenSpaces: () => [],
 		screenEntityTypes: () => [],
 		screenRefused: () => [],
+		screenPick: () => [],
+		screenSelect: () => [],
+		screenSegmentsOf: () => new Float32Array(),
 		screenOrigin: () => new Float64Array([0, 0]),
 		screenExtents: () => new Float64Array(),
 		screenEntityCount: () => 0,
@@ -484,6 +487,12 @@ describe('CadDocument: o que mudou e consulta pelo id (MT-KV-06)', () => {
 		expect(achadas[1]).toBeNull();
 	});
 
+	it('getEntitiesById: a entidade que não existe chega como undefined e vira null', () => {
+		// A fachada serializa `None` como `undefined` (serde-wasm-bindgen), não `null`.
+		const sessao = sessaoFalsa({ entitiesById: vi.fn(() => [undefined]) });
+		expect(documentoSobre(sessao).getEntitiesById([id('2')])).toEqual([null]);
+	});
+
 	it('getEntitiesById lança CadKernelOperationError quando sessão lança erro', () => {
 		const sessao = sessaoFalsa({
 			entitiesById: vi.fn(() => {
@@ -552,6 +561,29 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 		);
 
 		expect(() => doc.getScreenRefused('Model')).toThrow(CadKernelContractError);
+	});
+
+	it('a seleção da tela vem do kernel, por espaço (S1, S2)', () => {
+		const sessao = sessaoFalsa({
+			screenPick: vi.fn(() => ['3', '1']),
+			screenSelect: vi.fn(() => ['2']),
+			screenSegmentsOf: vi.fn(() => new Float32Array([0, 0, 1, 1]))
+		});
+		const doc = documentoSobre(sessao);
+
+		expect(doc.pickOnScreen('Model', { x: 1, y: 2 }, 0.5)).toEqual(['3', '1']);
+		expect(sessao.screenPick).toHaveBeenCalledWith('Model', 1, 2, 0.5);
+		const area = { minX: 0, minY: 1, maxX: 2, maxY: 3 };
+		expect(doc.selectOnScreen('Prancha A1', area, true)).toEqual(['2']);
+		expect(sessao.screenSelect).toHaveBeenCalledWith('Prancha A1', 0, 1, 2, 3, true);
+		expect(Array.from(doc.getScreenSegmentsOf('Model', ['2'] as never))).toEqual([0, 0, 1, 1]);
+		expect(sessao.screenSegmentsOf).toHaveBeenCalledWith('Model', ['2']);
+	});
+
+	it('seleção com id que não é texto é erro de contrato', () => {
+		const doc = documentoSobre(sessaoFalsa({ screenPick: vi.fn(() => [7]) }));
+
+		expect(() => doc.pickOnScreen('Model', { x: 0, y: 0 }, 1)).toThrow(CadKernelContractError);
 	});
 
 	it('tipo que não é texto é erro de contrato', () => {

@@ -7,8 +7,8 @@
  * \date 2026-10-31
  *
  * Mede, contra a tela desenhada pelo kernel (ADR 0008), o tempo de abrir o
- * desenho inteiro (N1), o de refletir uma linha nova (N2) e o tempo entre
- * quadros durante pan e zoom (N3). O que se observa na tela está na spec 07,
+ * desenho inteiro (N1), o de refletir uma linha nova (N2), o tempo entre
+ * quadros durante pan e zoom (N3) e o da seleção (spec 10, S6). O que se observa na tela está na spec 07,
  * seção "O que os testes observam na tela".
  *
  * Só roda com `NEOCAD_SINTETICO_N`; N2 usa a sonda, que o build dos testes já traz
@@ -50,6 +50,52 @@ async function abrirSintetico(page: Page): Promise<{ ms: number; tela: Locator }
 	});
 
 	return { ms: Date.now() - inicio, tela };
+}
+
+/** Desenha uma reta no centro da vista e devolve o centro e a meia janela, em pixels. */
+async function prepararSelecao(page: Page, tela: Locator, fracao: number) {
+	const [cx, cy] = ((await tela.getAttribute('data-vista')) ?? '').split(' ').map(Number);
+	// Uma reta conhecida no centro da vista, para o clique ter onde pegar.
+	await page.evaluate(
+		([x, y]) =>
+			(window as unknown as JanelaDeTeste).__neocadSonda?.desenharLinha(x - 1, y, x + 1, y),
+		[cx, cy]
+	);
+	const caixa = await tela.boundingBox();
+	const meio: [number, number] = [(caixa?.width ?? 0) / 2, (caixa?.height ?? 0) / 2];
+	return { meio, w: (caixa?.width ?? 0) * fracao, h: (caixa?.height ?? 0) * fracao };
+}
+
+/** Do primeiro clique à seleção exposta na tela, medido no navegador. */
+function medirSelecao(page: Page, cliques: Array<[number, number]>): Promise<number> {
+	return page.evaluate(
+		(pontos) =>
+			new Promise<number>((resolve) => {
+				const canvas = document.querySelector('canvas[data-tela="kernel"]') as HTMLCanvasElement;
+				const caixa = canvas.getBoundingClientRect();
+				const antes = canvas.dataset.selecao;
+				const t0 = performance.now();
+				for (const [px, py] of pontos) {
+					canvas.dispatchEvent(
+						new PointerEvent('pointerdown', {
+							button: 0,
+							pointerId: 1,
+							bubbles: true,
+							clientX: caixa.left + px,
+							clientY: caixa.top + py
+						})
+					);
+				}
+				const conferir = () => {
+					const decorrido = performance.now() - t0;
+					if (canvas.dataset.selecao !== antes) resolve(decorrido);
+					else if (decorrido > 2000) resolve(Number.POSITIVE_INFINITY);
+					else requestAnimationFrame(conferir);
+				};
+				conferir();
+			}),
+		cliques
+	);
 }
 
 /** Mediana de uma lista não vazia. */
@@ -103,6 +149,55 @@ test.describe('desempenho no desenho sintético (spec 00, N1–N3)', () => {
 
 		test.info().annotations.push({ type: 'N2-ms', description: String(ms) });
 		expect(ms).toBeLessThanOrEqual(100);
+	});
+
+	test('S6: clique e janela atualizam a seleção em até 100 ms (spec 10)', async ({ page }) => {
+		const { tela } = await abrirSintetico(page);
+		const { meio, w, h } = await prepararSelecao(page, tela, 0.05);
+
+		const clique = await medirSelecao(page, [meio]);
+		await page.keyboard.press('Escape');
+		await expect(tela).toHaveAttribute('data-selecao', '0');
+
+		// Janela de 10% da tela em volta do centro.
+		const janela = await medirSelecao(page, [
+			[meio[0] - w, meio[1] + h],
+			[meio[0] + w, meio[1] - h]
+		]);
+		const selecionadas = Number(await tela.getAttribute('data-selecao'));
+
+		test
+			.info()
+			.annotations.push(
+				{ type: 'S6-clique-ms', description: String(clique) },
+				{ type: 'S6-janela-ms', description: String(janela) },
+				{ type: 'S6-janela-entidades', description: String(selecionadas) }
+			);
+		expect(clique).toBeLessThanOrEqual(100);
+		expect(janela).toBeLessThanOrEqual(100);
+		expect(selecionadas).toBeGreaterThan(1);
+	});
+
+	test('S6: janela em volta do desenho inteiro em até 100 ms (spec 10)', async ({ page }) => {
+		// Lacuna conhecida (MT-KV-14g): com ~90 mil selecionadas, os ids vão e voltam
+		// entre o kernel e a tela, e a seleção leva ~300 ms. O `test.fail()` sai
+		// quando a seleção passar a morar no kernel.
+		test.fail();
+		const { tela } = await abrirSintetico(page);
+		const { meio, w, h } = await prepararSelecao(page, tela, 0.49);
+
+		const janela = await medirSelecao(page, [
+			[meio[0] - w, meio[1] + h],
+			[meio[0] + w, meio[1] - h]
+		]);
+		test.info().annotations.push(
+			{ type: 'S6-janela-total-ms', description: String(janela) },
+			{
+				type: 'S6-janela-total-entidades',
+				description: String(await tela.getAttribute('data-selecao'))
+			}
+		);
+		expect(janela).toBeLessThanOrEqual(100);
 	});
 
 	test('N3: pan e zoom a 30 quadros por segundo pela GPU', async ({ page }) => {

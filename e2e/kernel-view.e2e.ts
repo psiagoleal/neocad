@@ -304,3 +304,78 @@ test('a área de mensagens avisa o que a tela não exibe (V6)', async ({ page })
 	await expect(tela).toHaveAttribute('data-entidades', '2');
 	await expect(aviso).toHaveCount(1);
 });
+
+/** Pixel da página onde fica o ponto (x, y) do desenho, pela vista exposta em `data-vista`. */
+async function pixel(page: Page, x: number, y: number): Promise<{ x: number; y: number }> {
+	const tela = telaDoKernel(page);
+	const [cx, cy, escala] = ((await tela.getAttribute('data-vista')) ?? '').split(' ').map(Number);
+	const caixa = await tela.boundingBox();
+	if (caixa == null) throw new Error('a tela não tem área visível');
+	return {
+		x: caixa.x + caixa.width / 2 + (x - cx) * escala,
+		y: caixa.y + caixa.height / 2 - (y - cy) * escala
+	};
+}
+
+/** Clique esquerdo no ponto (x, y) do desenho. */
+async function clicarNoDesenho(page: Page, x: number, y: number, shift = false): Promise<void> {
+	const p = await pixel(page, x, y);
+	if (shift) await page.keyboard.down('Shift');
+	await page.mouse.click(p.x, p.y);
+	if (shift) await page.keyboard.up('Shift');
+}
+
+test('clique, janela e cruzada selecionam; Esc esvazia (S1, S2, S5)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const tela = await abrirComSonda(page);
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	await clicarNoDesenho(page, 10, 10);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+	await clicarNoDesenho(page, 10, 10, true);
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+
+	// Janela, da esquerda para a direita, em volta de tudo.
+	await clicarNoDesenho(page, -3, -3);
+	await clicarNoDesenho(page, 103, 103);
+	await expect(tela).toHaveAttribute('data-selecao', '2');
+	await page.keyboard.press('Escape');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+
+	// Cruzada, da direita para a esquerda: toca só o fundo do círculo.
+	await clicarNoDesenho(page, 60, 0);
+	await clicarNoDesenho(page, 40, 20);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+
+	// Esc na linha de comando, sem comando em curso, também esvazia.
+	const linha = page.getByRole('textbox', { name: 'Linha de comando' });
+	await linha.focus();
+	await linha.press('Escape');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+});
+
+test('a apagada sai da seleção e a movida continua nela (S4)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const tela = await abrirComSonda(page);
+
+	const id = await page.evaluate(() =>
+		(window as unknown as JanelaComSonda).__neocadSonda!.desenharLinha(0, 90, 30, 90)
+	);
+	await clicarNoDesenho(page, 15, 90);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+
+	await page.evaluate(
+		(linha) => (window as unknown as JanelaComSonda).__neocadSonda!.mover([linha], 0, 5),
+		id
+	);
+	await expect(tela).toHaveAttribute('data-caixa', '0 0 100 100');
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+
+	await page.evaluate(
+		(linha) => (window as unknown as JanelaComSonda).__neocadSonda!.apagar(linha),
+		id
+	);
+	await expect(tela).toHaveAttribute('data-entidades', '2');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+});

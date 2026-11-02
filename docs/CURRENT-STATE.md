@@ -13,23 +13,24 @@
 - **Data:** 2026-11-02
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `8d868f6` (MT-KV-13b); antes, `8ac0a83` (MT-KV-14b)
+- **Commit:** ver `git log` (MT-KV-14c); antes, `8d868f6` (MT-KV-13b)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
 
 ## Metas cumpridas neste turno
 
-- **Decisões do mantenedor:** a recusa do V5b fica no histórico da linha de comando; o
-  modo de vírgula decimal vira o MT-UI-08 (commit `4946991`); o ADR 0011 substitui o item
-  1 do ADR 0001 (catálogo).
-- **MT-KV-13b + MT-UI-05:** o upstream não oferece mais comando algum (barra escondida,
-  `sendStringToExecute` inerte). O catálogo `Ajuda > Comandos CAD` vem da tabela da spec
-  08 e do registro `src/lib/command-line/comandos.ts`, bilíngue, com disponibilidade.
-- Corrigida uma regressão do MT-KV-13a vista nas capturas: a cor 7 do upstream saía
-  preta no tema escuro.
-- A rodada anterior (MT-KV-14b) está no
-  [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-linha-de-comando-visível).
+- **MT-KV-14c fatiado** (commit `75a9f37`): 14c é a seleção; o `ERASE` foi para o 14f.
+  Critérios S1–S6 e E1–E3 na spec 10.
+- **MT-KV-14c:** clique, janela e cruzada na tela própria, com destaque, consultando o
+  kernel por espaço (`pickOnScreen`, `selectOnScreen`, `getScreenSegmentsOf`).
+  `data-selecao` exposto. O índice espacial passou a ser feito ao preparar a tela e
+  atualizado aos poucos depois das edições (clique: 197 → 4–10 ms com 100 mil).
+- Corrigido: `getEntitiesById` recusava entidade apagada (`undefined` da fachada).
+- Lacuna registrada: janela em volta do desenho inteiro (~90 mil) leva ~290 ms; fica
+  `test.fail()` até o MT-KV-14g (seleção mantida no kernel).
+- A rodada anterior (MT-KV-13b e MT-UI-05) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-upstream-sem-comandos).
 
 ## O que mudou de rumo
 
@@ -46,8 +47,8 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-14c: seleção na tela própria e `ERASE` (escrever antes os critérios na spec
-   10). Depois 14d (edição do K3 pela linha; V5b no histórico) e 14e (V7).
+1. MT-KV-14f: `ERASE` e a tecla Delete (E1–E3). Depois 14d (edição do K3 pela linha;
+   V5b no histórico), 14e (V7) e 14g (seleção no kernel, para o S6 com seleção grande).
 2. MT-UI-08 (vírgula decimal) quando couber.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 

@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- Selection on the kernel screen (MT-KV-14c, spec 10 S1–S6) — left click picks the stroke under the cursor (Shift removes); clicking empty space opens a window, left-to-right selects what is inside, right-to-left what it crosses; selected entities are highlighted, follow edits and leave the selection when erased; Esc clears. With 100 000 entities a click or a small window responds in about 4–16 ms; a window around the whole drawing still takes ~290 ms (MT-KV-14g).
+
 - Bilingual command catalogue (MT-UI-05, ADR 0011) — Help › CAD commands lists all 218 commands of the spec 08 table with English name, Portuguese name, aliases and whether they are available; available means the own command line runs it through the kernel.
 
 - Own command line (MT-KV-14b) — below the drawing: prompt, message history, bilingual suggestions as you type, Enter/Space to confirm (empty repeats the last command), Esc to cancel, arrows for previous entries. `L` + points draws through the kernel, and a line drawn this way is now in the saved file (spec 07 V4 passes).
@@ -87,6 +89,8 @@ Maintenance rules:
 - `Makefile` release targets replaced by the pipeline they now front. `release-package`, `release-build` and the all-in-one `release` are gone, since packaging no longer happens on the developer's machine; what remains is triggering (`release-tag` pushes the tag that fires the workflow, `release-run` repackages an existing tag when the change was in the pipeline rather than in the product), observing (`release-watch`, `release-assets`) and approving (`release-publish`, which only lifts the draft). Publishing stays on the local side on purpose: the workflow deliberately stops at a draft, so the deliberate act of whoever reviewed the binaries is the one thing that should not be automated. `scripts/release.sh` keeps `version` and `tag`; its `package`, `build` and `publish` are now referenced by nothing.
 
 ### Fixed
+
+- `CadDocument.getEntitiesById` threw a contract error for an erased entity, because the facade sends a missing entity as `undefined`, not `null`.
 
 - ACI colour 7 drawn by the upstream layer (e.g. SOLID) came out black on the dark theme since MT-KV-13a; it is white again, and black on the light theme.
 

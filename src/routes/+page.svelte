@@ -890,6 +890,7 @@
 				onKernelScreenError={handleKernelScreenError}
 				commandDocument={() => kernelDocument}
 				onCommandEdit={afterCommandEdit}
+				onClearSelection={() => telaDoKernel?.esvaziarSelecao()}
 			/>
 		</section>
 

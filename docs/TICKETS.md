@@ -33,8 +33,8 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [>] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria) — falta
-  consultas no kernel, interação e destaque.
+- [ ] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
+      seleção no kernel; S6 com 100 mil selecionadas.
 - [ ] [MT-KV-14f](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14f-erase-e-a-tecla-delete) —
       ERASE e a tecla Delete.
 - [ ] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) —
@@ -58,6 +58,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria) —
+      seleção por clique, janela e cruzada, com destaque.
 - [x] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —
       `Ajuda > Comandos CAD` nos dois idiomas (C11).
 - [x] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —

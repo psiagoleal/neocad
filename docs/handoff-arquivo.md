@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-02: upstream sem comandos](#rodada-de-2026-11-02-upstream-sem-comandos) — MT-KV-13b, MT-UI-05
 - [Rodada de 2026-11-02: linha de comando visível](#rodada-de-2026-11-02-linha-de-comando-visível) — MT-KV-14b
 - [Rodada de 2026-11-02: motor de comandos e LINE](#rodada-de-2026-11-02-motor-de-comandos-e-line) — MT-KV-14a
 - [Rodada de 2026-11-02: resolvedor de comandos](#rodada-de-2026-11-02-resolvedor-de-comandos) — MT-UI-04
@@ -30,6 +31,19 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-02: upstream sem comandos
+
+Commit `8d868f6`.
+
+- **Decisões do mantenedor:** a recusa do V5b fica no histórico da linha de comando; o
+  modo de vírgula decimal vira o MT-UI-08 (commit `4946991`); o ADR 0011 substitui o item
+  1 do ADR 0001 (catálogo).
+- **MT-KV-13b + MT-UI-05:** o upstream não oferece mais comando algum (barra escondida,
+  `sendStringToExecute` inerte). O catálogo `Ajuda > Comandos CAD` vem da tabela da spec
+  08 e do registro `src/lib/command-line/comandos.ts`, bilíngue, com disponibilidade.
+- Corrigida uma regressão do MT-KV-13a vista nas capturas: a cor 7 do upstream saía
+  preta no tema escuro.
 
 ## Rodada de 2026-11-02: linha de comando visível
 

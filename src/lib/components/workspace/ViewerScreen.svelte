@@ -29,6 +29,7 @@
 		/** O documento que a linha de comando edita, ou `null`. */
 		commandDocument: () => DocumentoDosComandos | null;
 		onCommandEdit: () => void;
+		onClearSelection: () => void;
 	};
 
 	let {
@@ -51,7 +52,8 @@
 		onKernelScreenReady,
 		onKernelScreenError,
 		commandDocument,
-		onCommandEdit
+		onCommandEdit,
+		onClearSelection
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -98,5 +100,9 @@
 		{onKernelScreenError}
 	/>
 
-	<CommandLine documento={commandDocument} aposEditar={onCommandEdit} />
+	<CommandLine
+		documento={commandDocument}
+		aposEditar={onCommandEdit}
+		esvaziarSelecao={onClearSelection}
+	/>
 </section>

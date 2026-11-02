@@ -347,6 +347,37 @@ prova própria (kernel, tela e desempenho).
 - **Critério de aceite:** spec 10, S1–S6.
 - **Fora de escopo:** `ERASE` e edição; grips; seleção por cerca ou laço.
 - **Depende de:** MT-KV-14b.
+- **Resultado (2026-11-02):** o kernel ganhou, na tela, `pick` (traço a até r do ponto,
+  do mais perto ao mais longe), `select_area` (janela: todos os segmentos dentro;
+  cruzada: algum segmento toca a área, por Liang–Barsky) e `segments_of` (destaque), por
+  espaço e só em camada visível; na fachada, `screenPick`, `screenSelect` e
+  `screenSegmentsOf`; no serviço, `pickOnScreen`, `selectOnScreen` e
+  `getScreenSegmentsOf`. `src/lib/render/selecao.ts` guarda as regras (clique, `Shift`,
+  janela de dois cliques, direção define janela ou cruzada); a `TelaDoKernel` liga ao
+  mouse, desenha o destaque e o retângulo da janela por último e expõe `data-selecao`;
+  `Esc` fora de campo e na linha de comando sem comando esvazia. Achados: (1) o
+  `getEntitiesById` do serviço recusava a entidade inexistente, porque a fachada a manda
+  como `undefined`, e não `null` — corrigido, com teste que reproduz; (2) o índice
+  espacial era refeito inteiro na primeira consulta depois de cada edição, e o primeiro
+  clique depois de uma linha nova levava 197 ms: agora é feito ao preparar a tela, e as
+  entidades mexidas são conferidas à parte até 1 024 (`STALE_LIMIT`), quando o índice é
+  refeito. Medidas (RTX 3070, 100 mil): clique 3,9–10 ms, janela pequena 3,5–16 ms; N1
+  subiu para 3,05–3,10 s (o índice feito na abertura), N2 12 ms, N3 16,7 ms. Lacuna: a
+  janela em volta do desenho inteiro (~90 mil) leva ~290 ms, quase tudo em ids indo e
+  voltando entre kernel e tela; fica `test.fail()` e vira o MT-KV-14g. `.wasm` 503 179
+  bytes (+17 363). Os e2e da seleção foram vistos falhar com o clique desligado.
+
+### MT-KV-14g: Seleção mantida no kernel (S6 para seleção grande)
+
+- **Objetivo:** a seleção passa a morar no kernel; a tela recebe só a contagem e os
+  segmentos do destaque, e os ids só quando um comando os pede. Com isso, a janela em
+  volta do desenho inteiro com 100 mil entidades fica em até 100 ms.
+- **Arquivos no escopo:** `kernel/neocad-wasm/src/tela.rs` e `lib.rs`,
+  `src/lib/services/cad-document.ts`, `src/lib/render/selecao.ts`,
+  `src/lib/render/tela-do-kernel.ts`, `e2e/desempenho.e2e.ts` (sai o `test.fail()`).
+- **Critério de aceite:** spec 10, S6, incluindo a janela em volta do desenho inteiro.
+- **Fora de escopo:** novas formas de seleção.
+- **Depende de:** MT-KV-14c.
 
 ### MT-KV-14f: ERASE e a tecla Delete
 

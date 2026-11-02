@@ -17,9 +17,11 @@
 	type CommandLineProps = {
 		documento: () => DocumentoDosComandos | null;
 		aposEditar: () => void;
+		/** `Esc` sem comando em curso também esvazia a seleção (spec 08, C7). */
+		esvaziarSelecao: () => void;
 	};
 
-	let { documento, aposEditar }: CommandLineProps = $props();
+	let { documento, aposEditar, esvaziarSelecao }: CommandLineProps = $props();
 
 	/** Linhas guardadas no histórico; as mais antigas saem. */
 	const LIMITE_DO_HISTORICO = 200;
@@ -84,6 +86,7 @@
 			case 'Escape':
 				evento.preventDefault();
 				texto = '';
+				if (motor.emCurso == null) esvaziarSelecao();
 				motor.cancelar();
 				prompt = motor.prompt;
 				void rolarHistorico();

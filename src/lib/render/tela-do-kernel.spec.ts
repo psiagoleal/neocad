@@ -15,7 +15,11 @@ import type { CadDocument } from '$lib/services/cad-document';
 import type { CadUnsupportedCount } from '$lib/types/cad';
 import { TelaDoKernel } from './tela-do-kernel';
 
+/** Ouvintes registrados no último canvas falso, para o teste disparar eventos. */
+let ouvintes = new Map<string, (e: unknown) => void>();
+
 function canvasFalso(): HTMLCanvasElement {
+	ouvintes = new Map();
 	const ctx = {
 		setTransform: () => undefined,
 		fillRect: () => undefined,
@@ -32,8 +36,10 @@ function canvasFalso(): HTMLCanvasElement {
 		width: 0,
 		height: 0,
 		getContext: (tipo: string) => (tipo === '2d' ? ctx : null),
-		addEventListener: () => undefined,
+		addEventListener: (tipo: string, f: (e: unknown) => void) => ouvintes.set(tipo, f),
 		removeEventListener: () => undefined,
+		setPointerCapture: () => undefined,
+		releasePointerCapture: () => undefined,
 		getBoundingClientRect: () => ({ left: 0, top: 0 })
 	} as unknown as HTMLCanvasElement;
 }
@@ -51,6 +57,15 @@ function documentoFalso(recusadas: Record<string, CadUnsupportedCount[]>) {
 		getScreenEntityCount: () => 0,
 		getScreenBlock: () => new Float32Array(),
 		getScreenRefused: (espaco: string) => recusadas[espaco] ?? [],
+		pickOnScreen: vi.fn((_espaco: string, p: { x: number; y: number }, raio: number) =>
+			Math.abs(p.y) <= raio && p.x >= 0 && p.x <= 100 ? ['1'] : []
+		),
+		selectOnScreen: vi.fn(() => ['1', '2']),
+		getScreenSegmentsOf: vi.fn(() => new Float32Array([0, 0, 1, 1])),
+		existentes: new Set(['1', '2']),
+		getEntitiesById(ids: string[]) {
+			return ids.map((i) => (this.existentes.has(i) ? { id: i } : null));
+		},
 		updateScreen: () => [],
 		listLayers: () => []
 	};
@@ -111,5 +126,96 @@ describe('tela do kernel: aviso das entidades não exibidas (V6)', () => {
 		tela.mostrar(documentoFalso(recusadas) as unknown as CadDocument);
 		tela.mostrar(documentoFalso(recusadas) as unknown as CadDocument);
 		expect(avisos).toHaveLength(2);
+	});
+});
+
+describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
+	let quadros: Array<() => void> = [];
+	const quadro = () => {
+		const pendentes = quadros;
+		quadros = [];
+		pendentes.forEach((f) => f());
+	};
+	beforeEach(() => {
+		quadros = [];
+		vi.stubGlobal('requestAnimationFrame', (f: () => void) => {
+			quadros.push(f);
+			return quadros.length;
+		});
+		vi.stubGlobal('cancelAnimationFrame', () => undefined);
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	/** Clique esquerdo no pixel; sem caixa do desenho, o pixel (400, 300) é a origem, escala 1. */
+	const clicar = (x: number, y: number, shiftKey = false) =>
+		ouvintes.get('pointerdown')?.({
+			button: 0,
+			clientX: x,
+			clientY: y,
+			shiftKey,
+			pointerId: 1,
+			preventDefault: () => undefined
+		});
+
+	function montar() {
+		const canvas = canvasFalso();
+		const tela = new TelaDoKernel(canvas, { escuro: true });
+		const doc = documentoFalso({});
+		tela.mostrar(doc as unknown as CadDocument);
+		quadro();
+		return { tela, doc, dados: canvas.dataset };
+	}
+
+	it('clique no traço seleciona e pede o destaque ao kernel, com raio de 5 pixels (S1)', () => {
+		const { doc, dados } = montar();
+		expect(dados.selecao).toBe('0');
+		clicar(410, 302);
+		quadro();
+		expect(doc.pickOnScreen).toHaveBeenCalledWith('Model', { x: 10, y: -2 }, 5);
+		expect(dados.selecao).toBe('1');
+		expect(doc.getScreenSegmentsOf).toHaveBeenLastCalledWith('Model', ['1']);
+
+		clicar(410, 300, true);
+		quadro();
+		expect(dados.selecao).toBe('0');
+	});
+
+	it('clique no vazio abre a janela e o segundo clique fecha (S2)', () => {
+		const { doc, dados } = montar();
+		clicar(390, 250);
+		clicar(420, 320);
+		quadro();
+		expect(doc.selectOnScreen).toHaveBeenCalledWith(
+			'Model',
+			{ minX: -10, minY: -20, maxX: 20, maxY: 50 },
+			false
+		);
+		expect(dados.selecao).toBe('2');
+	});
+
+	it('trocar de espaço e esvaziarSelecao esvaziam (S3, S5)', () => {
+		const { tela, dados } = montar();
+		clicar(410, 300);
+		tela.mostrarEspaco('Prancha A1');
+		quadro();
+		expect(dados.selecao).toBe('0');
+
+		tela.mostrarEspaco('Model');
+		clicar(410, 300);
+		tela.esvaziarSelecao();
+		quadro();
+		expect(dados.selecao).toBe('0');
+	});
+
+	it('depois de uma edição, a apagada sai e o destaque é buscado de novo (S4)', () => {
+		const { tela, doc, dados } = montar();
+		clicar(390, 250);
+		clicar(420, 320);
+		doc.existentes.delete('2');
+		doc.getScreenSegmentsOf.mockClear();
+		tela.atualizar();
+		quadro();
+		expect(dados.selecao).toBe('1');
+		expect(doc.getScreenSegmentsOf).toHaveBeenCalledWith('Model', ['1']);
 	});
 });
