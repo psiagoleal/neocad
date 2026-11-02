@@ -33,7 +33,7 @@ function comandoDeEco(registro: string[]): FabricaDeComando {
 			prompt: () => `Pedido ${pedidos + 1}:`,
 			responder: (texto) => {
 				if (texto === 'ruim') return { tipo: 'invalida', mensagem: 'Esperava outra coisa.' };
-				if (texto === 'kernel') throw new CadKernelOperationError('reta de comprimento zero');
+				if (texto === 'kernel') throw new CadKernelOperationError('motivo simulado');
 				registro.push(texto);
 				contexto.aposEditar();
 				pedidos += 1;
@@ -152,7 +152,7 @@ describe('motor: com comando em curso', () => {
 		motor.confirmar('kernel');
 		expect(mensagens.at(-1)).toEqual({
 			tipo: 'erro',
-			texto: 'O kernel recusou: reta de comprimento zero.'
+			texto: 'O kernel recusou: motivo simulado.'
 		});
 		expect(motor.emCurso).toBe('LINE');
 	});

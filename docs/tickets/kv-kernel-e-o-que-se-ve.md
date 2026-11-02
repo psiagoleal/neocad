@@ -500,6 +500,16 @@ no histórico) já está no motor e vale para todas.
 - **Critério de aceite:** spec 10, F1–F4.
 - **Fora de escopo:** opções `Polilinha`, `Aparar`, `Múltiplo`, `Ângulo` e `mÉtodo`.
 - **Depende de:** MT-KV-14d4.
+- **Resultado (2026-11-02):** `concordar.ts`: `FILLET` e `CHAMFER` numa forma comum (dois
+  objetos pelo modo de escolha, opção `Raio` ou `Distância` com valores da sessão,
+  guardados pela fábrica de cada comando). Com eles, os dez comandos de edição do K3
+  estão na linha de comando, e o V5b ganhou prova de ponta a ponta: concordar duas
+  retas paralelas mostra "O kernel recusou:" no histórico e não muda a tela (visto
+  falhar com a mensagem desligada no motor). Achado: o documento falso do MT-KV-14a
+  recusava reta de comprimento zero, mas o kernel (como o AutoCAD) a aceita; a recusa
+  inventada saiu, e o teste do LINE passou a simular a recusa explicitamente. Provas:
+  `concordar.spec.ts` (7 casos, vistos falhar) e os e2e "FILLET e CHAMFER" e V5b.
+  Kernel inalterado.
 
 ### MT-KV-14h: Pontos pelo clique na tela
 

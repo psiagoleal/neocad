@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- FILLET and CHAMFER (MT-KV-14d5, spec 10 F1–F4) — `FILLET` / `CONCORD` / `F` and `CHAMFER` / `CHANFRO` / `CHA`: click the two objects; `Raio` and `Distância` set values that last for the session (start at 0). With them, all ten K3 editing commands run from the command line, and a kernel refusal (e.g. filleting parallel lines) shows its reason in the history without touching the drawing (spec 07 V5b).
+
 - TRIM and EXTEND (MT-KV-14d4, spec 10 T1–T4) — `TRIM` / `APARAR` / `TR` and `EXTEND` / `ESTENDER` / `EX`: edges from the selection (Enter with none takes everything in the shown space), then click each object; the click goes to the command with its point and does not change the selection; `Desfazer` and kernel refusals in the history.
 
 - OFFSET (MT-KV-14d3, spec 10 O1–O4) — `OFFSET` / `DESLOCAMENTO` / `O`: distance, then a click on the object (no Enter needed, as in AutoCAD), then the side point; repeats until `Sair`, with `Desfazer`; kernel refusals go to the command history.

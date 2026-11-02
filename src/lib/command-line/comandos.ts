@@ -13,6 +13,7 @@
 
 import { apagar } from './apagar';
 import { aparar, estender } from './aparar';
+import { criarChanfrar, criarConcordar } from './concordar';
 import { copiar } from './copiar';
 import { deslocar } from './deslocar';
 import { escalar } from './escalar';
@@ -24,9 +25,11 @@ import type { FabricaDeComando } from './motor';
 
 /** Comandos implementados, pelo nome em inglês da tabela da spec 08. */
 export const COMANDOS: Readonly<Record<string, FabricaDeComando>> = {
+	CHAMFER: criarChanfrar(),
 	COPY: copiar,
 	ERASE: apagar,
 	EXTEND: estender,
+	FILLET: criarConcordar(),
 	LINE: linha,
 	MIRROR: espelhar,
 	MOVE: mover,

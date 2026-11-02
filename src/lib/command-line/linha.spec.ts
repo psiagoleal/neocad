@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { CadKernelOperationError } from '$lib/services/cad-document';
 import { documentoFalso, selecaoFalsa } from './documento-falso';
 import { linha } from './linha';
 import { MotorDeComandos, type Mensagem } from './motor';
@@ -149,10 +150,15 @@ describe('LINE (spec 10)', () => {
 		expect(segmentos()).toHaveLength(2);
 	});
 
-	it('o kernel recusa reta de comprimento zero: a linha avisa e o ponto não avança', () => {
-		const { motor, digitar, segmentos, erros } = montar();
-		digitar('L', '1,1', '1,1');
-		expect(erros().at(-1)).toBe('O kernel recusou: reta de comprimento zero.');
+	it('se o kernel recusa a reta, a linha avisa e o ponto não avança', () => {
+		const { motor, digitar, segmentos, erros, falso } = montar();
+		const desenhar = falso.documento.drawLine;
+		falso.documento.drawLine = (camada, de, ate) => {
+			if (ate.x === 99) throw new CadKernelOperationError('motivo simulado');
+			return desenhar(camada, de, ate);
+		};
+		digitar('L', '1,1', '99,1');
+		expect(erros().at(-1)).toBe('O kernel recusou: motivo simulado.');
 		expect(motor.prompt).toBe('Especifique o próximo ponto ou [Desfazer]:');
 		digitar('2,1');
 		expect(segmentos()).toEqual([[1, 1, 2, 1]]);

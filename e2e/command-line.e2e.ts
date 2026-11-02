@@ -273,3 +273,44 @@ test('TRIM e EXTEND: arestas por todas, objeto pelo clique (T1, T2, T4)', async 
 	await clicarNoDesenho(page, 100, 50);
 	await expect(tela).toHaveAttribute('data-selecao', '1');
 });
+
+test('FILLET e CHAMFER: dois cliques ligam os objetos pelo kernel (F1–F3)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	// Duas retas perpendiculares que não se tocam, à direita da fixture.
+	await digitar(page, 'L', '150,0', '150,40', '', 'L', '160,50', '200,50', '');
+	await expect(tela).toHaveAttribute('data-entidades', '4');
+
+	await digitar(page, 'CONCORD', 'R', '5');
+	await expect(linha).toHaveAttribute('data-prompt', 'Selecione o primeiro objeto ou [Raio]:');
+	await clicarNoDesenho(page, 150, 20);
+	await expect(linha).toHaveAttribute('data-prompt', 'Selecione o segundo objeto:');
+	await clicarNoDesenho(page, 180, 50);
+	// Entra o arco de raio 5.
+	await expect(tela).toHaveAttribute('data-entidades', '5');
+	await expect(linha).toHaveAttribute('data-prompt', LIVRE);
+
+	await digitar(page, 'L', '250,0', '250,40', '', 'L', '260,50', '300,50', '');
+	await digitar(page, 'CHA', 'D', '5', '5');
+	await clicarNoDesenho(page, 250, 20);
+	await clicarNoDesenho(page, 280, 50);
+	// Entra o segmento do chanfro.
+	await expect(tela).toHaveAttribute('data-entidades', '8');
+	await expect(tela).toHaveAttribute('data-selecao', '0');
+});
+
+test('a recusa do kernel aparece no histórico e a tela não muda (V5b)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	// Duas retas paralelas: não há concordância possível.
+	await digitar(page, 'L', '150,0', '190,0', '', 'L', '150,20', '190,20', '');
+	await expect(tela).toHaveAttribute('data-entidades', '4');
+	await digitar(page, 'F');
+	await clicarNoDesenho(page, 170, 0);
+	await clicarNoDesenho(page, 170, 20);
+	await expect(page.getByRole('log', { name: 'Histórico de comandos' })).toContainText(
+		'O kernel recusou:'
+	);
+	await expect(tela).toHaveAttribute('data-entidades', '4');
+	await expect(linha).toHaveAttribute('data-prompt', 'Selecione o primeiro objeto ou [Raio]:');
+});

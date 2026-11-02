@@ -13,7 +13,7 @@ import type { DocumentoDosComandos } from './motor';
 
 export type RetaFalsa = { id: CadEntityId; camada: string; de: CadPoint; ate: CadPoint };
 
-/** Guarda as retas e uma pilha de desfazer; recusa reta de comprimento zero, como o kernel. */
+/** Guarda as retas e uma pilha de desfazer; as recusas do kernel são simuladas por teste. */
 export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 	let proximo = 1;
 	const retas: RetaFalsa[] = [];
@@ -29,13 +29,27 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 		pilha.push(() => retas.splice(0, retas.length, ...antes));
 	}
 
+	const chamadas: Array<{ nome: string; args: unknown[] }> = [];
+
+	/** Registra a ligação; recusa como o kernel quando `nao_cabe`; cria a reta de ligação. */
+	function ligar(nome: string, args: unknown[], naoCabe: boolean): CadEntityId | null {
+		if (naoCabe) throw new CadKernelOperationError('o raio ou a distância não cabe');
+		chamadas.push({ nome, args });
+		const nova = {
+			id: String(proximo++) as CadEntityId,
+			camada: '7',
+			de: { x: 0, y: 0 },
+			ate: { x: 1, y: 1 }
+		};
+		retas.push(nova);
+		pilha.push(() => retas.splice(retas.indexOf(nova), 1));
+		return nova.id;
+	}
+
 	const documento: DocumentoDosComandos = {
 		listLayers: () =>
 			camadas.map((c) => ({ ...c, isVisible: true, isOff: false, isFrozen: false })) as never,
 		drawLine: (camada, de, ate) => {
-			if (de.x === ate.x && de.y === ate.y) {
-				throw new CadKernelOperationError('reta de comprimento zero');
-			}
 			const reta: RetaFalsa = { id: String(proximo++) as CadEntityId, camada, de, ate };
 			retas.push(reta);
 			pilha.push(() => retas.splice(retas.indexOf(reta), 1));
@@ -170,6 +184,10 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 			r[ponta] = { x: alvo, y: r[ponta].y };
 			pilha.push(() => Object.assign(r, copia));
 		},
+		// Concordar e chanfrar nos testes: registram a chamada e criam uma reta de ligação.
+		filletEntities: (a, pa, b, pb, raio) => ligar('concordar', [a, pa, b, pb, raio], raio > 50),
+		chamferEntities: (a, pa, b, pb, d1, d2) =>
+			ligar('chanfrar', [a, pa, b, pb, d1, d2], d1 > 50 || d2 > 50),
 		eraseEntities: (ids) => {
 			if (ids.some((id) => !retas.some((r) => r.id === id))) {
 				throw new CadKernelOperationError('entidade inexistente');
@@ -202,7 +220,7 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 		})
 	};
 
-	return { documento, retas, pilha };
+	return { documento, retas, pilha, chamadas };
 }
 
 /** Seleção falsa, que os testes enchem à mão; `todas` é o que o espaço tem. */

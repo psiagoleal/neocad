@@ -37,8 +37,6 @@ UI começa pelo que não depende de KV.
       seleção no kernel; S6 com 100 mil selecionadas.
 - [ ] [MT-KV-14h](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14h-pontos-pelo-clique-na-tela) —
       pontos pelo clique na tela, com prendimento.
-- [>] [MT-KV-14d5](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d5-fillet-e-chamfer) — falta
-  os dois comandos e o raio e as distâncias da sessão.
 - [ ] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —
       V7.
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
@@ -58,6 +56,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-14d5](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d5-fillet-e-chamfer) —
+      FILLET e CHAMFER; V5b provado de ponta a ponta.
 - [x] [MT-KV-14d4](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d4-trim-e-extend) — TRIM e
       EXTEND, com o modo de escolha da tela.
 - [x] [MT-KV-14d3](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d3-offset) — OFFSET, com o

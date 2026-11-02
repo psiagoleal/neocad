@@ -57,6 +57,8 @@ export type DocumentoDosComandos = Pick<
 	| 'offsetEntity'
 	| 'trimEntity'
 	| 'extendEntity'
+	| 'filletEntities'
+	| 'chamferEntities'
 	| 'listLayers'
 	| 'getHistory'
 	| 'undo'
