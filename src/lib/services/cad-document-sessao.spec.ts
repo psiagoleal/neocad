@@ -61,6 +61,7 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		screenEntityTypes: () => [],
 		screenRefused: () => [],
 		removeEntities: () => undefined,
+		mirrorCopyEntities: () => [],
 		screenPick: () => [],
 		screenSelect: () => [],
 		screenSegmentsOf: () => new Float32Array(),
@@ -486,6 +487,13 @@ describe('CadDocument: o que mudou e consulta pelo id (MT-KV-06)', () => {
 		expect(achadas[0]?.id).toBe('1');
 		expect(achadas[0]?.geometry.kind).toBe('line');
 		expect(achadas[1]).toBeNull();
+	});
+
+	it('mirrorCopyEntities manda o eixo ao kernel e devolve as cópias', () => {
+		const sessao = sessaoFalsa({ mirrorCopyEntities: vi.fn(() => ['8']) });
+		const copias = documentoSobre(sessao).mirrorCopyEntities([id('1')], { x: 2, y: 3 }, 0.5);
+		expect(copias).toEqual(['8']);
+		expect(sessao.mirrorCopyEntities).toHaveBeenCalledWith(['1'], 2, 3, 0.5);
 	});
 
 	it('eraseEntities manda todas de uma vez ao kernel', () => {

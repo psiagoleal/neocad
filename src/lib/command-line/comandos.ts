@@ -13,6 +13,9 @@
 
 import { apagar } from './apagar';
 import { copiar } from './copiar';
+import { escalar } from './escalar';
+import { espelhar } from './espelhar';
+import { girar } from './girar';
 import { linha } from './linha';
 import { mover } from './mover';
 import type { FabricaDeComando } from './motor';
@@ -22,5 +25,8 @@ export const COMANDOS: Readonly<Record<string, FabricaDeComando>> = {
 	COPY: copiar,
 	ERASE: apagar,
 	LINE: linha,
-	MOVE: mover
+	MIRROR: espelhar,
+	MOVE: mover,
+	ROTATE: girar,
+	SCALE: escalar
 };

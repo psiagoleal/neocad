@@ -24,6 +24,8 @@ Maintenance rules:
 
 ### Added
 
+- ROTATE, MIRROR and SCALE (MT-KV-14d2, spec 10 R1–R4) — `ROTATE` / `ROTAC` / `RO` (degrees counter-clockwise, or a point giving the direction), `MIRROR` / `ESPELHAR` / `MI` (keeps the originals by default, like AutoCAD; "Sim" mirrors them in place) and `SCALE` / `ESCALA` / `SC`, each in one undo step; the facade gained `mirrorCopyEntities`.
+
 - MOVE and COPY (MT-KV-14d1, spec 10 M1–M4) — `MOVE` / `MOVER` / `M` and `COPY` / `COPIAR` / `CO` work on the selection (or ask for it), with base point and second point; `@` is relative to the base, an empty second point uses the base as displacement; COPY keeps going with `Sair`/`Desfazer`, one undo step per copy.
 
 - ERASE and the Delete key (MT-KV-14f, spec 10 E1–E3) — `ERASE` / `APAGAR` / `E` erases the selection in one undo step, or asks "Selecione objetos:" and erases what you select when you confirm; Delete outside a text field does the same.

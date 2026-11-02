@@ -56,6 +56,12 @@ export interface CadKernelSession {
 	addLine(layer: string, startX: number, startY: number, endX: number, endY: number): string;
 	removeEntity(entity: string): void;
 	removeEntities(entities: string[]): void;
+	mirrorCopyEntities(
+		entities: string[],
+		throughX: number,
+		throughY: number,
+		angle: number
+	): string[];
 	setLayerOff(layer: string, off: boolean): void;
 	load(document: unknown): unknown;
 	openDxf(bytes: Uint8Array): unknown;
@@ -946,6 +952,16 @@ export class CadDocument {
 	}
 
 	/** Escala as entidades em torno do pivô; fator `<= 0` é recusado pelo kernel. */
+	/** Cópias espelhadas, mantendo as originais, num só passo (spec 10, R2); devolve as cópias. */
+	mirrorCopyEntities(ids: CadEntityId[], through: CadPoint, angle: number): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(
+				this.session.mirrorCopyEntities([...ids], through.x, through.y, angle),
+				'cópias espelhadas'
+			)
+		);
+	}
+
 	scaleEntities(ids: CadEntityId[], pivot: CadPoint, factor: number): void {
 		this.call(() => this.session.scaleEntities(ids, pivot.x, pivot.y, factor));
 	}

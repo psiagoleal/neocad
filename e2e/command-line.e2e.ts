@@ -203,3 +203,23 @@ test('MOVE e COPY sobre a seleção, pelo kernel (M1, M3)', async ({ page }) => 
 	await page.getByRole('button', { name: /^Desfazer/ }).click();
 	await expect(tela).toHaveAttribute('data-entidades', '2');
 });
+
+test('ROTATE, MIRROR e SCALE sobre a seleção, pelo kernel (R1–R3)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const { tela } = await abrir(page);
+	// A fixture: LINE de (0,0) a (100,100) e CIRCLE de raio 40 em (50,50).
+	await clicarNoDesenho(page, 10, 10);
+	await digitar(page, 'RO', '0,0', '90');
+	// A reta vai para (0,0)–(-100,100).
+	await expect(tela).toHaveAttribute('data-caixa', '-100 0 90 100');
+
+	await clicarNoDesenho(page, 90, 50);
+	await digitar(page, 'espelhar', '0,0', '0,10', '');
+	// Fica o círculo original e entra a cópia em (-50,50).
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+
+	await clicarNoDesenho(page, -10, 10);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+	await digitar(page, 'SC', '0,0', '0.5');
+	await expect(tela).toHaveAttribute('data-caixa', '-90 0 90 90');
+});

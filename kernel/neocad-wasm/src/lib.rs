@@ -893,6 +893,24 @@ impl CadSession {
             .map_err(js_error)
     }
 
+    /// Cria cópias espelhadas das entidades, mantendo as originais, numa só ação
+    /// desfazível; devolve os ids das cópias (spec 10, R2).
+    ///
+    /// # Errors
+    ///
+    /// Falha se algum identificador for inválido; nada muda.
+    #[wasm_bindgen(js_name = mirrorCopyEntities)]
+    pub fn mirror_copy_entities(
+        &mut self,
+        entities: Vec<String>,
+        through_x: f64,
+        through_y: f64,
+        angle: f64,
+    ) -> Result<Vec<String>, JsError> {
+        self.try_mirror_copy(&entities, through_x, through_y, angle)
+            .map_err(js_error)
+    }
+
     /// Escala as entidades em torno do pivô.
     ///
     /// # Errors
@@ -1432,6 +1450,27 @@ impl CadSession {
             .edit(&mut self.document, "Espelhar", |editor| {
                 commands::mirror(editor, &ids, through, angle)
             })
+            .map_err(|error| error.to_string())
+    }
+
+    fn try_mirror_copy(
+        &mut self,
+        entities: &[String],
+        through_x: f64,
+        through_y: f64,
+        angle: f64,
+    ) -> Result<Vec<String>, String> {
+        let ids = decode_entities(entities)?;
+        let through = Point2::new(through_x, through_y);
+
+        // Copiar e espelhar a cópia na mesma edição: um só passo de desfazer.
+        self.stack
+            .edit(&mut self.document, "Espelhar", |editor| {
+                let copias = commands::copy(editor, &ids, 0.0, 0.0)?;
+                commands::mirror(editor, &copias, through, angle)?;
+                Ok::<_, neocad_model::DocumentError>(copias)
+            })
+            .map(encode_entities)
             .map_err(|error| error.to_string())
     }
 
@@ -2504,6 +2543,44 @@ mod tests {
         assert!(session.try_remove_entities(&com_apagada).is_err());
         assert_eq!(session.entity_count(), 2);
         assert!(session.try_remove_entities(&["x".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn espelhar_com_copia_mantem_a_original_num_so_passo() {
+        let mut session = CadSession::new();
+        let layer = encode_layer(session.document.layers().default_layer());
+        let original = session
+            .try_add_line(&layer, 1.0, 0.0, 1.0, 5.0)
+            .expect("camada existe");
+        let passos = session.stack.undo_depth();
+
+        // Eixo vertical por x = 0: a cópia vai para x = -1.
+        let copias = session
+            .try_mirror_copy(
+                std::slice::from_ref(&original),
+                0.0,
+                0.0,
+                std::f64::consts::FRAC_PI_2,
+            )
+            .expect("existe");
+        assert_eq!(copias.len(), 1);
+        assert_eq!(session.entity_count(), 2);
+        assert_eq!(session.stack.undo_depth(), passos + 1);
+        let vistas = session
+            .try_entities_by_id(&[original, copias[0].clone()])
+            .expect("ids válidos");
+        let x_de = |i: usize| match &vistas[i].as_ref().expect("existe").geometry {
+            GeometryView::Line { start, .. } => start.x,
+            outra => panic!("esperava reta, veio {outra:?}"),
+        };
+        assert!((x_de(0) - 1.0).abs() < 1e-9);
+        assert!((x_de(1) + 1.0).abs() < 1e-9);
+
+        session.try_undo().expect("desfaz");
+        assert_eq!(session.entity_count(), 1);
+        assert!(session
+            .try_mirror_copy(&["x".to_owned()], 0.0, 0.0, 0.0)
+            .is_err());
     }
 
     #[test]

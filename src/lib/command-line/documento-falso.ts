@@ -19,6 +19,16 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 	const retas: RetaFalsa[] = [];
 	const pilha: Array<() => void> = [];
 
+	/** Aplica a função aos pontos das retas dadas, num passo de desfazer. */
+	function transformar(ids: string[], f: (p: CadPoint) => CadPoint): void {
+		const antes = retas.map((r) => ({ ...r }));
+		for (const r of retas.filter((r) => ids.includes(r.id))) {
+			r.de = f(r.de);
+			r.ate = f(r.ate);
+		}
+		pilha.push(() => retas.splice(0, retas.length, ...antes));
+	}
+
 	const documento: DocumentoDosComandos = {
 		listLayers: () =>
 			camadas.map((c) => ({ ...c, isVisible: true, isOff: false, isFrozen: false })) as never,
@@ -51,6 +61,38 @@ export function documentoFalso(camadas = [{ id: '7', name: '0' }]) {
 			retas.push(...novas);
 			pilha.push(() => novas.forEach((n) => retas.splice(retas.indexOf(n), 1)));
 			return novas.map((n) => n.id);
+		},
+		rotateEntities: (ids, pivo, angulo) => {
+			transformar(ids, (p) => {
+				const [c, s] = [Math.cos(angulo), Math.sin(angulo)];
+				const [dx, dy] = [p.x - pivo.x, p.y - pivo.y];
+				return { x: pivo.x + dx * c - dy * s, y: pivo.y + dx * s + dy * c };
+			});
+		},
+		mirrorEntities: (ids, ponto, angulo) => {
+			transformar(ids, (p) => espelhar(p, ponto, angulo));
+		},
+		mirrorCopyEntities: (ids, ponto, angulo) => {
+			const novas = retas
+				.filter((r) => ids.includes(r.id))
+				.map((r) => ({
+					id: String(proximo++) as CadEntityId,
+					camada: r.camada,
+					de: espelhar(r.de, ponto, angulo),
+					ate: espelhar(r.ate, ponto, angulo)
+				}));
+			retas.push(...novas);
+			pilha.push(() => novas.forEach((n) => retas.splice(retas.indexOf(n), 1)));
+			return novas.map((n) => n.id);
+		},
+		scaleEntities: (ids, pivo, fator) => {
+			if (!(fator > 0) || !Number.isFinite(fator)) {
+				throw new CadKernelOperationError(`fator de escala inválido: ${fator}`);
+			}
+			transformar(ids, (p) => ({
+				x: pivo.x + (p.x - pivo.x) * fator,
+				y: pivo.y + (p.y - pivo.y) * fator
+			}));
 		},
 		eraseEntities: (ids) => {
 			if (ids.some((id) => !retas.some((r) => r.id === id))) {
@@ -99,4 +141,11 @@ export function selecaoFalsa(ids: string[] = []) {
 			}
 		}
 	};
+}
+
+/** Reflexão de p pela reta que passa por `ponto` com o ângulo dado. */
+function espelhar(p: CadPoint, ponto: CadPoint, angulo: number): CadPoint {
+	const [c, s] = [Math.cos(2 * angulo), Math.sin(2 * angulo)];
+	const [dx, dy] = [p.x - ponto.x, p.y - ponto.y];
+	return { x: ponto.x + dx * c + dy * s, y: ponto.y + dx * s - dy * c };
 }

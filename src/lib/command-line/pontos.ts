@@ -55,3 +55,8 @@ export function lerPonto(texto: string, anterior: CadPoint | null): LeituraDePon
 	if (anterior == null) return { tipo: 'sem-anterior' };
 	return { tipo: 'ponto', ponto: { x: anterior.x + dx, y: anterior.y + dy } };
 }
+
+/** Um número como o AutoCAD aceita (ponto decimal), ou `null`. */
+export function lerNumero(texto: string): number | null {
+	return numero(texto);
+}

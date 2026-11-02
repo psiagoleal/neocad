@@ -436,6 +436,15 @@ no histórico) já está no motor e vale para todas.
 - **Critério de aceite:** spec 10, R1–R4.
 - **Fora de escopo:** opções `Copiar` e `Referência`.
 - **Depende de:** MT-KV-14d1.
+- **Resultado (2026-11-02):** a fachada ganhou `mirrorCopyEntities` (copia e espelha a
+  cópia na mesma edição: as originais ficam e o `U` desfaz tudo), e o serviço
+  `mirrorCopyEntities`. `pontos.ts` ganhou `lerNumero`. `girar.ts` (graus anti-horários
+  ou um ponto, valendo a direção da base), `espelhar.ts` (`Não` por padrão, `Sim` espelha
+  as originais; pontos iguais recusados) e `escalar.ts` (fator maior que zero), todos
+  sobre a etapa de seleção comum e registrados. Provas: Rust
+  (`espelhar_com_copia_mantem_a_original_num_so_passo`), `transformar.spec.ts`,
+  `cad-document-sessao.spec.ts` e o e2e "ROTATE, MIRROR e SCALE", vistos falhar antes.
+  `.wasm` 505 711 bytes (+1 477).
 
 ### MT-KV-14d3: OFFSET
 
