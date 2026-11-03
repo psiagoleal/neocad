@@ -13,7 +13,7 @@
 - **Data:** 2026-11-03
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** ver `git log` (MT-KV-14g, parte 2); antes, `9dd4617` (parte 1)
+- **Commit:** `5fc46a6` (MT-KV-14g, parte 2); antes, `9dd4617` (parte 1)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
@@ -28,7 +28,7 @@
   deixou de ordenar achados grandes. **S6 com 90 001 selecionadas: ~350 → 69 ms**, sem
   `test.fail()`; clique 6–11 ms. Mudanças de comportamento: a seleção vive num espaço só
   e os ids vêm em ordem de id. Corrigido: trocar o tema apagava o destaque com a seleção
-  viva. `.wasm` 523 992 bytes (+11 368). Parte 1 em `9dd4617`; parte 2 no commit acima.
+  viva. `.wasm` 523 992 bytes (+11 368). Parte 1 em `9dd4617`; parte 2 em `5fc46a6`.
 - Crítica do GLM-5.2 ainda não rodou: o gateway não resolvia (fora da rede da empresa).
 - A rodada anterior (MT-KV-14c a 14e, 14h) está no
   [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-seleção-e-edição-na-tela).
