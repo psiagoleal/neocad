@@ -82,6 +82,10 @@ pub struct Screen {
     place: BTreeMap<EntityId, (usize, LayerId)>,
     /// Entidades que não viraram segmentos: espaço e camada (V6).
     refused: BTreeMap<EntityId, (usize, LayerId)>,
+    /// Seleção (spec 10, S1–S6): cada entidade com o espaço e a ordem em que entrou.
+    selection: BTreeMap<EntityId, (usize, u64)>,
+    /// Ordem da próxima que entrar na seleção.
+    next_order: u64,
 }
 
 /// Tipo DXF da geometria, como o aviso das não desenhadas o mostra.
@@ -203,6 +207,8 @@ impl Screen {
             spaces: Vec::new(),
             place: BTreeMap::new(),
             refused: BTreeMap::new(),
+            selection: BTreeMap::new(),
+            next_order: 0,
         };
         screen.fill(document);
 
@@ -459,6 +465,113 @@ impl Screen {
         )
     }
 
+    /// Põe na seleção (ou, com `remove`, tira dela) as entidades da área, como
+    /// `select_area` as escolhe (spec 10, S2); devolve quantas ficam selecionadas
+    /// no espaço. `None` se o espaço é desconhecido.
+    pub fn select_area_into(
+        &mut self,
+        document: &Document,
+        space: &str,
+        area: Aabb,
+        crossing: bool,
+        remove: bool,
+    ) -> Option<usize> {
+        let ids = self.select_area(document, space, area, crossing)?;
+        self.change_selection(space, &ids, remove)
+    }
+
+    /// Põe na seleção (ou tira dela) as entidades dadas, como o clique (spec 10,
+    /// S1); as que não estão desenhadas no espaço são ignoradas. Devolve quantas
+    /// ficam selecionadas no espaço; `None` se o espaço é desconhecido.
+    pub fn change_selection(
+        &mut self,
+        space: &str,
+        ids: &[EntityId],
+        remove: bool,
+    ) -> Option<usize> {
+        let found = self.space(space)?;
+        for id in ids {
+            if remove {
+                self.selection.remove(id);
+            } else if self.place.get(id).is_some_and(|(s, _)| *s == found) {
+                let order = &mut self.next_order;
+                self.selection.entry(*id).or_insert_with(|| {
+                    *order += 1;
+                    (found, *order)
+                });
+            }
+        }
+        self.selection_count(space)
+    }
+
+    /// Esvazia a seleção.
+    pub fn clear_selection(&mut self) {
+        self.selection.clear();
+    }
+
+    /// Selecionadas no espaço, na ordem em que entraram.
+    #[must_use]
+    pub fn selection(&self, space: &str) -> Option<Vec<EntityId>> {
+        let found = self.space(space)?;
+        let mut ids: Vec<(u64, EntityId)> = self
+            .selection
+            .iter()
+            .filter(|(_, (s, _))| *s == found)
+            .map(|(id, (_, order))| (*order, *id))
+            .collect();
+        ids.sort_unstable();
+        Some(ids.into_iter().map(|(_, id)| id).collect())
+    }
+
+    /// Quantas estão selecionadas no espaço.
+    #[must_use]
+    pub fn selection_count(&self, space: &str) -> Option<usize> {
+        let found = self.space(space)?;
+        Some(self.selection.values().filter(|(s, _)| *s == found).count())
+    }
+
+    /// Segmentos das selecionadas no espaço, relativos à origem dele, para o
+    /// destaque.
+    #[must_use]
+    pub fn selection_segments(&self, space: &str) -> Option<Vec<f32>> {
+        let found = self.space(space)?;
+        let target = &self.spaces[found];
+        let pieces: Vec<&[f32]> = self
+            .selection
+            .iter()
+            .filter(|(_, (s, _))| *s == found)
+            .filter_map(|(id, _)| {
+                let (_, layer) = self.place.get(id)?;
+                target.layers.get(layer)?.get(id).map(Vec::as_slice)
+            })
+            .collect();
+        // Do tamanho certo de uma vez: o destaque do desenho inteiro tem milhões.
+        let mut out = Vec::with_capacity(pieces.iter().map(|p| p.len()).sum());
+        for piece in pieces {
+            out.extend_from_slice(piece);
+        }
+        Some(out)
+    }
+
+    /// Tira da seleção o que deixou de estar desenhado no espaço em que entrou
+    /// (spec 10, S4); `ids` limita a conferência, `None` confere todas.
+    fn prune_selection(&mut self, ids: Option<&[EntityId]>) {
+        let place = &self.place;
+        let gone = |id: &EntityId, space: usize| place.get(id).is_none_or(|(s, _)| *s != space);
+        match ids {
+            Some(ids) => {
+                for id in ids {
+                    if let Some((space, _)) = self.selection.get(id) {
+                        if gone(id, *space) {
+                            self.selection.remove(id);
+                        }
+                    }
+                }
+            }
+            None => self.selection.retain(|id, (space, _)| !gone(id, *space)),
+        }
+    }
+
     /// O ponto notável mais prioritário ao alcance do cursor, entre as entidades
     /// desenhadas em camada visível no espaço (spec 10, P2): modo, ponto e a
     /// entidade que o produziu. `None` se o espaço é desconhecido; `Some(None)`
@@ -508,26 +621,6 @@ impl Screen {
         Some(
             snap(&curves, cursor, radius, modes, Tolerance::default())
                 .map(|found| (found.mode, found.point, ids[found.curve])),
-        )
-    }
-
-    /// Segmentos das entidades dadas no espaço, relativos à origem dele, para o
-    /// destaque da seleção; entidade que não está desenhada ali é ignorada.
-    #[must_use]
-    pub fn segments_of(&self, space: &str, ids: &[EntityId]) -> Option<Vec<f32>> {
-        let found = self.space(space)?;
-        let target = &self.spaces[found];
-
-        Some(
-            ids.iter()
-                .filter_map(|id| {
-                    let (place_space, layer) = self.place.get(id)?;
-                    (*place_space == found).then_some(())?;
-                    target.layers.get(layer)?.get(id)
-                })
-                .flatten()
-                .copied()
-                .collect(),
         )
     }
 
@@ -643,11 +736,19 @@ impl Screen {
                     }
                 }
             }
+            let mexidas: Vec<EntityId> = effect
+                .removed
+                .iter()
+                .chain(&effect.modified)
+                .copied()
+                .collect();
+            self.prune_selection(Some(&mexidas));
         } else {
             // Alguma operação passou sem ser vista: refaz tudo.
             dirty = self.all_blocks();
             self.fill(document);
             dirty.extend(self.all_blocks());
+            self.prune_selection(None);
         }
         self.revision = revision;
 
@@ -1088,13 +1189,78 @@ mod tests {
     }
 
     #[test]
-    fn os_segmentos_do_destaque_sao_os_da_entidade() {
-        let (doc, tela, [embaixo, _, _, escondida]) = desenho_para_selecao();
+    fn a_selecao_fica_no_kernel_na_ordem_em_que_entrou() {
+        let (doc, mut tela, [embaixo, em_cima, circulo, escondida]) = desenho_para_selecao();
+        let m = MODEL_LAYOUT_NAME;
+        let area = |(x0, y0): (f64, f64), (x1, y1): (f64, f64)| {
+            Aabb::new(Point2::new(x0, y0), Point2::new(x1, y1))
+        };
+
+        // O clique põe uma; a janela põe as que estão dentro, sem repetir.
+        assert_eq!(tela.change_selection(m, &[em_cima], false), Some(1));
+        let duas_retas = area((-1.0, -1.0), (11.0, 6.0));
+        assert_eq!(
+            tela.select_area_into(&doc, m, duas_retas, false, false),
+            Some(2)
+        );
+        assert_eq!(tela.selection(m), Some(vec![em_cima, embaixo]));
+        assert_eq!(tela.selection_count(m), Some(2));
+
+        // A cruzada põe o círculo; com `remove`, tira as duas retas.
+        let toca_o_circulo = area((34.0, -1.0), (40.0, 1.0));
+        assert_eq!(
+            tela.select_area_into(&doc, m, toca_o_circulo, true, false),
+            Some(3)
+        );
+        assert_eq!(
+            tela.select_area_into(&doc, m, duas_retas, true, true),
+            Some(1)
+        );
+        assert_eq!(tela.selection(m), Some(vec![circulo]));
+
+        // O clique com Shift tira; o que não está desenhado no espaço é ignorado.
+        assert_eq!(tela.change_selection(m, &[circulo], true), Some(0));
+        let do_papel = tela
+            .pick(&doc, "Prancha A1", Point2::new(5.0, 0.0), 0.5)
+            .expect("papel");
+        assert_eq!(tela.change_selection(m, &do_papel, false), Some(0));
+        assert_eq!(
+            tela.change_selection("Prancha A1", &do_papel, false),
+            Some(1)
+        );
+        assert_eq!(tela.selection_count(m), Some(0));
+        assert_eq!(tela.selection("Prancha A1"), Some(do_papel));
+
+        // A janela não pega a de camada desligada.
+        let tudo = area((-100.0, -100.0), (100.0, 100.0));
+        tela.select_area_into(&doc, m, tudo, false, false);
+        assert!(!tela.selection(m).expect("modelo").contains(&escondida));
+        assert_eq!(tela.selection_count(m), Some(3));
+
+        tela.clear_selection();
+        assert_eq!(tela.selection_count(m), Some(0));
+        assert_eq!(tela.selection_count("Prancha A1"), Some(0));
+        assert_eq!(
+            tela.change_selection("Inexistente", &[embaixo], false),
+            None
+        );
+        assert_eq!(
+            tela.select_area_into(&doc, "Inexistente", tudo, false, false),
+            None
+        );
+        assert_eq!(tela.selection("Inexistente"), None);
+    }
+
+    #[test]
+    fn o_destaque_sao_os_segmentos_das_selecionadas() {
+        let (doc, mut tela, [embaixo, _, _, _]) = desenho_para_selecao();
         let _ = doc;
         let m = MODEL_LAYOUT_NAME;
         let origem = tela.origin(m).expect("origem");
+        assert_eq!(tela.selection_segments(m), Some(vec![]));
 
-        let segmentos = tela.segments_of(m, &[embaixo]).expect("modelo");
+        tela.change_selection(m, &[embaixo], false);
+        let segmentos = tela.selection_segments(m).expect("modelo");
         assert_eq!(segmentos.len(), 4);
         let absolutos: Vec<f64> = segmentos
             .chunks(2)
@@ -1105,11 +1271,44 @@ mod tests {
             [0.0, 0.0, 10.0, 0.0],
             1e-4
         ));
-        // A escondida tem segmentos guardados, mas em camada desligada também se destaca
-        // só se estiver selecionada; aqui, ids fora do espaço são ignorados.
-        let _ = escondida;
-        assert_eq!(tela.segments_of("Prancha A1", &[embaixo]), Some(vec![]));
-        assert_eq!(tela.segments_of("Inexistente", &[embaixo]), None);
+        assert_eq!(tela.selection_segments("Prancha A1"), Some(vec![]));
+        assert_eq!(tela.selection_segments("Inexistente"), None);
+    }
+
+    #[test]
+    fn a_edicao_tira_da_selecao_a_apagada_e_o_destaque_segue_a_movida() {
+        let mut doc = Document::new();
+        let mut pilha = CommandStack::new();
+        let zero = doc.layers().default_layer();
+        let fica = insere(&mut doc, &mut pilha, zero, reta(0.0, 0.0, 10.0, 0.0));
+        let sai = insere(&mut doc, &mut pilha, zero, reta(0.0, 5.0, 10.0, 5.0));
+        let mut tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("tela");
+        let m = MODEL_LAYOUT_NAME;
+        tela.change_selection(m, &[sai, fica], false);
+
+        pilha
+            .edit(&mut doc, "Apagar", |editor| editor.remove_entity(sai))
+            .expect("apaga");
+        tela.update(&doc, pilha.revision(), pilha.last_effect());
+        assert_eq!(tela.selection(m), Some(vec![fica]));
+
+        pilha
+            .edit(&mut doc, "Mover", |editor| {
+                editor.replace_entity(fica, Entity::new(zero, reta(0.0, 20.0, 10.0, 20.0)))
+            })
+            .expect("move");
+        tela.update(&doc, pilha.revision(), pilha.last_effect());
+        assert_eq!(tela.selection(m), Some(vec![fica]));
+        let origem = tela.origin(m).expect("origem");
+        let segmentos = tela.selection_segments(m).expect("modelo");
+        assert_eq!(segmentos.len(), 4);
+        assert!((origem.y + f64::from(segmentos[1]) - 20.0).abs() < 1e-4);
+
+        // Desfazer a apagada a traz de volta à tela, mas não à seleção.
+        pilha.undo(&mut doc).expect("desfaz");
+        pilha.undo(&mut doc).expect("desfaz");
+        tela.update(&doc, pilha.revision(), pilha.last_effect());
+        assert_eq!(tela.selection(m), Some(vec![fica]));
     }
 
     #[test]

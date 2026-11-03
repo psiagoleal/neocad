@@ -66,11 +66,47 @@ function documentoFalso(recusadas: Record<string, CadUnsupportedCount[]>) {
 				? { mode: 'endpoint', point: { x: 20, y: 0 }, entity: '1' }
 				: null
 		),
-		getScreenSegmentsOf: vi.fn(() => new Float32Array([0, 0, 1, 1])),
+		// A seleção mora no kernel: o falso guarda os ids e devolve a contagem.
+		selecionadas: [] as string[],
 		existentes: new Set(['1', '2']),
-		getEntitiesById(ids: string[]) {
-			return ids.map((i) => (this.existentes.has(i) ? { id: i } : null));
+		mudar(ids: string[], tirar: boolean) {
+			this.selecionadas = tirar
+				? this.selecionadas.filter((i) => !ids.includes(i))
+				: [...this.selecionadas, ...ids.filter((i) => !this.selecionadas.includes(i))];
+			return this.selecionadas.length;
 		},
+		changeScreenSelection: vi.fn(function (
+			this: { mudar(ids: string[], tirar: boolean): number },
+			_espaco: string,
+			ids: string[],
+			tirar: boolean
+		) {
+			return this.mudar(ids, tirar);
+		}),
+		selectAreaOnScreen: vi.fn(function (
+			this: { mudar(ids: string[], tirar: boolean): number },
+			_espaco: string,
+			_area: unknown,
+			_cruzada: boolean,
+			tirar: boolean
+		) {
+			return this.mudar(['1', '2'], tirar);
+		}),
+		clearScreenSelection: vi.fn(function (this: { selecionadas: string[] }) {
+			this.selecionadas = [];
+		}),
+		getScreenSelection: vi.fn(function (this: { selecionadas: string[] }) {
+			return [...this.selecionadas];
+		}),
+		// Como o kernel, a contagem já não conta as apagadas.
+		getScreenSelectionCount: vi.fn(function (this: {
+			selecionadas: string[];
+			existentes: Set<string>;
+		}) {
+			this.selecionadas = this.selecionadas.filter((i) => this.existentes.has(i));
+			return this.selecionadas.length;
+		}),
+		getScreenSelectionSegments: vi.fn(() => new Float32Array([0, 0, 1, 1])),
 		updateScreen: () => [],
 		listLayers: () => []
 	};
@@ -177,11 +213,13 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		clicar(410, 302);
 		quadro();
 		expect(doc.pickOnScreen).toHaveBeenCalledWith('Model', { x: 10, y: -2 }, 5);
+		expect(doc.changeScreenSelection).toHaveBeenLastCalledWith('Model', ['1'], false);
 		expect(dados.selecao).toBe('1');
-		expect(doc.getScreenSegmentsOf).toHaveBeenLastCalledWith('Model', ['1']);
+		expect(doc.getScreenSelectionSegments).toHaveBeenLastCalledWith('Model');
 
 		clicar(410, 300, true);
 		quadro();
+		expect(doc.changeScreenSelection).toHaveBeenLastCalledWith('Model', ['1'], true);
 		expect(dados.selecao).toBe('0');
 	});
 
@@ -190,12 +228,24 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		clicar(390, 250);
 		clicar(420, 320);
 		quadro();
-		expect(doc.selectOnScreen).toHaveBeenCalledWith(
+		expect(doc.selectAreaOnScreen).toHaveBeenCalledWith(
 			'Model',
 			{ minX: -10, minY: -20, maxX: 20, maxY: 50 },
+			false,
 			false
 		);
 		expect(dados.selecao).toBe('2');
+		// Os ids não vêm à tela para selecionar (S6).
+		expect(doc.selectOnScreen).not.toHaveBeenCalled();
+		expect(doc.getScreenSelection).not.toHaveBeenCalled();
+	});
+
+	it('os ids da seleção vêm do kernel só quando pedidos', () => {
+		const { tela, doc } = montar();
+		clicar(390, 250);
+		clicar(420, 320);
+		expect(tela.selecionados).toEqual(['1', '2']);
+		expect(doc.getScreenSelection).toHaveBeenCalledWith('Model');
 	});
 
 	it('no modo de escolha, o clique vai ao comando e não seleciona (T4)', () => {
@@ -206,7 +256,8 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		quadro();
 		expect(escolha).toHaveBeenCalledWith({ ids: ['1'], ponto: { x: 10, y: -2 }, raio: 5 });
 		expect(dados.selecao).toBe('0');
-		expect(doc.selectOnScreen).not.toHaveBeenCalled();
+		expect(doc.selectAreaOnScreen).not.toHaveBeenCalled();
+		expect(doc.changeScreenSelection).not.toHaveBeenCalled();
 
 		tela.definirEscolha(null);
 		clicar(410, 300);
@@ -276,7 +327,7 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		expect(aviso).toHaveBeenCalledWith('TRACE');
 		clicar(420, 320);
 		quadro();
-		expect(doc.selectOnScreen).not.toHaveBeenCalled();
+		expect(doc.selectAreaOnScreen).not.toHaveBeenCalled();
 		expect(dados.selecao).toBe('0');
 
 		const escolha = vi.fn();
@@ -309,29 +360,33 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		expect(dados.clique).toBe('ponto');
 	});
 
-	it('trocar de espaço e esvaziarSelecao esvaziam (S3, S5)', () => {
-		const { tela, dados } = montar();
+	it('trocar de espaço e esvaziarSelecao esvaziam a seleção do kernel (S3, S5)', () => {
+		const { tela, doc, dados } = montar();
 		clicar(410, 300);
+		doc.clearScreenSelection.mockClear();
 		tela.mostrarEspaco('Prancha A1');
 		quadro();
+		expect(doc.clearScreenSelection).toHaveBeenCalled();
 		expect(dados.selecao).toBe('0');
 
 		tela.mostrarEspaco('Model');
 		clicar(410, 300);
+		doc.clearScreenSelection.mockClear();
 		tela.esvaziarSelecao();
 		quadro();
+		expect(doc.clearScreenSelection).toHaveBeenCalled();
 		expect(dados.selecao).toBe('0');
 	});
 
-	it('depois de uma edição, a apagada sai e o destaque é buscado de novo (S4)', () => {
+	it('depois de uma edição, a contagem e o destaque vêm de novo do kernel (S4)', () => {
 		const { tela, doc, dados } = montar();
 		clicar(390, 250);
 		clicar(420, 320);
 		doc.existentes.delete('2');
-		doc.getScreenSegmentsOf.mockClear();
+		doc.getScreenSelectionSegments.mockClear();
 		tela.atualizar();
 		quadro();
 		expect(dados.selecao).toBe('1');
-		expect(doc.getScreenSegmentsOf).toHaveBeenCalledWith('Model', ['1']);
+		expect(doc.getScreenSelectionSegments).toHaveBeenCalledWith('Model');
 	});
 });

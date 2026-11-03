@@ -1957,14 +1957,84 @@ impl CadSession {
         )
     }
 
-    /// Segmentos das entidades no espaço, para o destaque da seleção.
+    /// Põe na seleção da tela (ou, com `remove`, tira dela) as entidades dentro da
+    /// área (janela) ou que ela toca (cruzada); devolve quantas ficam selecionadas
+    /// no espaço (spec 10, S2, S6).
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenSelectionArea)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn screen_selection_area(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        crossing: bool,
+        remove: bool,
+    ) -> Result<usize, JsError> {
+        self.try_screen_selection_area(space, min_x, min_y, max_x, max_y, crossing, remove)
+            .map_err(js_error)
+    }
+
+    /// Põe na seleção da tela (ou tira dela) as entidades dadas; devolve quantas
+    /// ficam selecionadas no espaço (spec 10, S1).
     ///
     /// # Errors
     ///
     /// Falha se a tela não foi preparada, o espaço não existe ou um id é inválido.
-    #[wasm_bindgen(js_name = screenSegmentsOf)]
-    pub fn screen_segments_of(&self, space: &str, ids: Vec<String>) -> Result<Vec<f32>, JsError> {
-        self.try_screen_segments_of(space, &ids).map_err(js_error)
+    #[wasm_bindgen(js_name = screenSelectionChange)]
+    pub fn screen_selection_change(
+        &mut self,
+        space: &str,
+        ids: Vec<String>,
+        remove: bool,
+    ) -> Result<usize, JsError> {
+        self.try_screen_selection_change(space, &ids, remove)
+            .map_err(js_error)
+    }
+
+    /// Esvazia a seleção da tela.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada.
+    #[wasm_bindgen(js_name = screenSelectionClear)]
+    pub fn screen_selection_clear(&mut self) -> Result<(), JsError> {
+        self.try_screen_selection_clear().map_err(js_error)
+    }
+
+    /// Selecionadas no espaço, na ordem em que entraram.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenSelectionIds)]
+    pub fn screen_selection_ids(&self, space: &str) -> Result<Vec<String>, JsError> {
+        self.try_screen_selection_ids(space).map_err(js_error)
+    }
+
+    /// Quantas estão selecionadas no espaço.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenSelectionCount)]
+    pub fn screen_selection_count(&self, space: &str) -> Result<usize, JsError> {
+        self.try_screen_selection_count(space).map_err(js_error)
+    }
+
+    /// Segmentos das selecionadas no espaço, para o destaque.
+    ///
+    /// # Errors
+    ///
+    /// Falha se a tela não foi preparada ou o espaço não existe.
+    #[wasm_bindgen(js_name = screenSelectionSegments)]
+    pub fn screen_selection_segments(&self, space: &str) -> Result<Vec<f32>, JsError> {
+        self.try_screen_selection_segments(space).map_err(js_error)
     }
 
     /// Entidades do espaço, em camada visível, que a tela não desenha, por tipo
@@ -2170,11 +2240,68 @@ impl CadSession {
         }))
     }
 
-    fn try_screen_segments_of(&self, space: &str, ids: &[String]) -> Result<Vec<f32>, String> {
-        let screen = self.screen()?;
-        let ids = decode_entities(ids)?;
+    #[allow(clippy::too_many_arguments)]
+    fn try_screen_selection_area(
+        &mut self,
+        space: &str,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        crossing: bool,
+        remove: bool,
+    ) -> Result<usize, String> {
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        let area = Aabb::new(Point2::new(min_x, min_y), Point2::new(max_x, max_y));
         screen
-            .segments_of(space, &ids)
+            .select_area_into(&self.document, space, area, crossing, remove)
+            .ok_or_else(|| unknown_space(space))
+    }
+
+    fn try_screen_selection_change(
+        &mut self,
+        space: &str,
+        ids: &[String],
+        remove: bool,
+    ) -> Result<usize, String> {
+        let ids = decode_entities(ids)?;
+        let screen = self
+            .screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?;
+        screen
+            .change_selection(space, &ids, remove)
+            .ok_or_else(|| unknown_space(space))
+    }
+
+    fn try_screen_selection_clear(&mut self) -> Result<(), String> {
+        self.screen
+            .as_mut()
+            .ok_or_else(|| String::from("tela não preparada"))?
+            .clear_selection();
+        Ok(())
+    }
+
+    fn try_screen_selection_ids(&self, space: &str) -> Result<Vec<String>, String> {
+        let ids = self
+            .screen()?
+            .selection(space)
+            .ok_or_else(|| unknown_space(space))?;
+        Ok(ids.into_iter().map(encode_entity).collect())
+    }
+
+    fn try_screen_selection_count(&self, space: &str) -> Result<usize, String> {
+        self.screen()?
+            .selection_count(space)
+            .ok_or_else(|| unknown_space(space))
+    }
+
+    fn try_screen_selection_segments(&self, space: &str) -> Result<Vec<f32>, String> {
+        self.screen()?
+            .selection_segments(space)
             .ok_or_else(|| unknown_space(space))
     }
 
@@ -3359,7 +3486,13 @@ mod tests {
             s.try_screen_refused("Model").err(),
             s.try_screen_pick("Model", 0.0, 0.0, 1.0).err(),
             s.try_screen_select("Model", 0.0, 0.0, 1.0, 1.0, true).err(),
-            s.try_screen_segments_of("Model", &[]).err(),
+            s.try_screen_selection_area("Model", 0.0, 0.0, 1.0, 1.0, true, false)
+                .err(),
+            s.try_screen_selection_change("Model", &[], false).err(),
+            s.try_screen_selection_clear().err(),
+            s.try_screen_selection_ids("Model").err(),
+            s.try_screen_selection_count("Model").err(),
+            s.try_screen_selection_segments("Model").err(),
             s.try_screen_snap("Model", 0.0, 0.0, 1.0, &[]).err(),
         ];
 
@@ -3412,16 +3545,41 @@ mod tests {
             .expect("modelo");
         assert_eq!(tocadas, reta);
 
-        let segmentos = s.try_screen_segments_of("Model", &reta).expect("modelo");
-        assert_eq!(segmentos.len(), 4);
+        // A seleção mora no kernel: a tela recebe a contagem e o destaque.
+        assert_eq!(s.try_screen_selection_change("Model", &reta, false), Ok(1));
+        assert_eq!(
+            s.try_screen_selection_area("Model", -1.0, -1.0, 101.0, 101.0, false, false),
+            Ok(2)
+        );
+        assert_eq!(
+            s.try_screen_selection_ids("Model").expect("modelo")[0],
+            reta[0]
+        );
+        assert_eq!(
+            s.try_screen_selection_area("Model", 45.0, 45.0, 55.0, 55.0, true, true),
+            Ok(1)
+        );
+        assert_eq!(s.try_screen_selection_count("Model"), Ok(1));
+        assert!(
+            s.try_screen_selection_segments("Model")
+                .expect("modelo")
+                .len()
+                > 4
+        );
+        assert_eq!(s.try_screen_selection_clear(), Ok(()));
+        assert_eq!(s.try_screen_selection_count("Model"), Ok(0));
         assert_eq!(
             s.try_screen_pick("Inexistente", 0.0, 0.0, 1.0)
                 .err()
                 .as_deref(),
             Some("espaço desconhecido: Inexistente")
         );
+        assert_eq!(
+            s.try_screen_selection_count("Inexistente").err().as_deref(),
+            Some("espaço desconhecido: Inexistente")
+        );
         assert!(s
-            .try_screen_segments_of("Model", &["x".to_owned()])
+            .try_screen_selection_change("Model", &["x".to_owned()], false)
             .is_err());
     }
 

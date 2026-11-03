@@ -64,7 +64,12 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		mirrorCopyEntities: () => [],
 		screenPick: () => [],
 		screenSelect: () => [],
-		screenSegmentsOf: () => new Float32Array(),
+		screenSelectionArea: () => 0,
+		screenSelectionChange: () => 0,
+		screenSelectionClear: () => undefined,
+		screenSelectionIds: () => [],
+		screenSelectionCount: () => 0,
+		screenSelectionSegments: () => new Float32Array(),
 		screenSnap: () => null,
 		screenOrigin: () => new Float64Array([0, 0]),
 		screenExtents: () => new Float64Array(),
@@ -588,11 +593,10 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 		expect(() => doc.getScreenRefused('Model')).toThrow(CadKernelContractError);
 	});
 
-	it('a seleção da tela vem do kernel, por espaço (S1, S2)', () => {
+	it('o clique e a área da tela vêm do kernel, por espaço (S1, S2)', () => {
 		const sessao = sessaoFalsa({
 			screenPick: vi.fn(() => ['3', '1']),
-			screenSelect: vi.fn(() => ['2']),
-			screenSegmentsOf: vi.fn(() => new Float32Array([0, 0, 1, 1]))
+			screenSelect: vi.fn(() => ['2'])
 		});
 		const doc = documentoSobre(sessao);
 
@@ -601,8 +605,39 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 		const area = { minX: 0, minY: 1, maxX: 2, maxY: 3 };
 		expect(doc.selectOnScreen('Prancha A1', area, true)).toEqual(['2']);
 		expect(sessao.screenSelect).toHaveBeenCalledWith('Prancha A1', 0, 1, 2, 3, true);
-		expect(Array.from(doc.getScreenSegmentsOf('Model', ['2'] as never))).toEqual([0, 0, 1, 1]);
-		expect(sessao.screenSegmentsOf).toHaveBeenCalledWith('Model', ['2']);
+	});
+
+	it('a seleção mora no kernel: a tela recebe a contagem e o destaque (S6)', () => {
+		const sessao = sessaoFalsa({
+			screenSelectionArea: vi.fn(() => 90_000),
+			screenSelectionChange: vi.fn(() => 1),
+			screenSelectionClear: vi.fn(),
+			screenSelectionIds: vi.fn(() => ['2', '5']),
+			screenSelectionCount: vi.fn(() => 2),
+			screenSelectionSegments: vi.fn(() => new Float32Array([0, 0, 1, 1]))
+		});
+		const doc = documentoSobre(sessao);
+		const area = { minX: 0, minY: 1, maxX: 2, maxY: 3 };
+
+		expect(doc.selectAreaOnScreen('Model', area, false, true)).toBe(90_000);
+		expect(sessao.screenSelectionArea).toHaveBeenCalledWith('Model', 0, 1, 2, 3, false, true);
+		expect(doc.changeScreenSelection('Model', ['7'] as never, false)).toBe(1);
+		expect(sessao.screenSelectionChange).toHaveBeenCalledWith('Model', ['7'], false);
+		doc.clearScreenSelection();
+		expect(sessao.screenSelectionClear).toHaveBeenCalled();
+		expect(doc.getScreenSelection('Model')).toEqual(['2', '5']);
+		expect(doc.getScreenSelectionCount('Model')).toBe(2);
+		expect(Array.from(doc.getScreenSelectionSegments('Model'))).toEqual([0, 0, 1, 1]);
+		expect(sessao.screenSelectionSegments).toHaveBeenCalledWith('Model');
+	});
+
+	it('contagem da seleção que não é número é erro de contrato', () => {
+		const doc = documentoSobre(sessaoFalsa({ screenSelectionArea: vi.fn(() => '3') }));
+		const area = { minX: 0, minY: 0, maxX: 1, maxY: 1 };
+
+		expect(() => doc.selectAreaOnScreen('Model', area, true, false)).toThrow(
+			CadKernelContractError
+		);
 	});
 
 	it('o prendimento da tela vem do kernel, por espaço (P2)', () => {

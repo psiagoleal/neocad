@@ -2,98 +2,95 @@
 
 /**
  * \file src/lib/render/selecao.spec.ts
- * \brief Regras da seleção (spec 10, S1, S2, S4, S5), com consulta falsa.
+ * \brief Regras do clique e da janela (spec 10, S1, S2, S5), com consulta falsa.
  * \author Iago Leal
  * \date 2026-11-02
+ *
+ * O conjunto selecionado mora no kernel (MT-KV-14g); aqui a consulta falsa o
+ * guarda, e o teste confere o que a seleção manda pôr ou tirar.
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import type { CadEntityId } from '$lib/types/cad';
-import { Selecao, type ConsultaDaSelecao } from './selecao';
+import type { CadBounds, CadEntityId } from '$lib/types/cad';
+import { Selecao } from './selecao';
 
 const id = (n: number) => String(n) as CadEntityId;
 
-/** Consulta falsa: a reta 1 está em y = 0; a área devolve o que a função mandar. */
-function consulta(area: ConsultaDaSelecao['area'] = () => []) {
+/** Consulta falsa: a reta 1 está em y = 0; a área põe ou tira o que a lista mandar. */
+function consulta(daArea: CadEntityId[] = []) {
+	const selecionadas: CadEntityId[] = [];
+	const aplicar = (ids: CadEntityId[], tirar: boolean) => {
+		for (const i of ids) {
+			const onde = selecionadas.indexOf(i);
+			if (tirar && onde >= 0) selecionadas.splice(onde, 1);
+			if (!tirar && onde < 0) selecionadas.push(i);
+		}
+	};
 	return {
+		selecionadas,
 		clique: vi.fn((p: { x: number; y: number }, raio: number) =>
 			Math.abs(p.y) <= raio ? [id(1), id(2)] : []
 		),
-		area: vi.fn(area)
+		aplicar: vi.fn(aplicar),
+		area: vi.fn((_area: CadBounds, _cruzada: boolean, tirar: boolean) => aplicar(daArea, tirar))
 	};
 }
 
 describe('Selecao', () => {
-	it('clique no traço seleciona a mais perto; Shift tira (S1)', () => {
+	it('clique no traço põe a mais perto; Shift tira (S1)', () => {
 		const s = new Selecao();
 		const c = consulta();
 		s.clicar({ x: 5, y: 0.1 }, 0.5, false, c);
-		expect(s.ids).toEqual([id(1)]);
+		expect(c.aplicar).toHaveBeenLastCalledWith([id(1)], false);
+		expect(c.selecionadas).toEqual([id(1)]);
 		s.clicar({ x: 6, y: 0 }, 0.5, false, c);
-		expect(s.ids).toEqual([id(1)]);
+		expect(c.selecionadas).toEqual([id(1)]);
 		s.clicar({ x: 6, y: 0 }, 0.5, true, c);
-		expect(s.ids).toEqual([]);
+		expect(c.aplicar).toHaveBeenLastCalledWith([id(1)], true);
+		expect(c.selecionadas).toEqual([]);
 		expect(s.inicioDaJanela).toBeNull();
 	});
 
 	it('clique no vazio abre a janela; o segundo clique fecha (S2)', () => {
 		const s = new Selecao();
-		const c = consulta(() => [id(3), id(4)]);
+		const c = consulta([id(3), id(4)]);
 		s.clicar({ x: 0, y: 10 }, 0.5, false, c);
 		expect(s.inicioDaJanela).toEqual({ x: 0, y: 10 });
 		expect(c.area).not.toHaveBeenCalled();
 
 		s.clicar({ x: 20, y: 30 }, 0.5, false, c);
-		expect(c.area).toHaveBeenCalledWith({ minX: 0, minY: 10, maxX: 20, maxY: 30 }, false);
-		expect(s.ids).toEqual([id(3), id(4)]);
+		expect(c.area).toHaveBeenCalledWith({ minX: 0, minY: 10, maxX: 20, maxY: 30 }, false, false);
+		expect(c.selecionadas).toEqual([id(3), id(4)]);
 		expect(s.inicioDaJanela).toBeNull();
 	});
 
 	it('o segundo clique fecha a janela mesmo sobre um traço', () => {
 		const s = new Selecao();
-		const c = consulta(() => [id(9)]);
+		const c = consulta([id(9)]);
 		s.clicar({ x: 0, y: 10 }, 0.5, false, c);
 		s.clicar({ x: 20, y: 0 }, 0.5, false, c);
 		expect(c.area).toHaveBeenCalledTimes(1);
-		expect(s.ids).toEqual([id(9)]);
+		expect(c.aplicar).not.toHaveBeenCalled();
+		expect(c.selecionadas).toEqual([id(9)]);
 	});
 
 	it('da direita para a esquerda é cruzada; com Shift, tira (S2)', () => {
 		const s = new Selecao();
-		const c = consulta(() => [id(1), id(5)]);
+		const c = consulta([id(1), id(5)]);
 		s.clicar({ x: 5, y: 0.1 }, 0.5, false, c);
 		s.clicar({ x: 20, y: 10 }, 0.5, false, c);
 		s.clicar({ x: 0, y: -10 }, 0.5, true, c);
-		expect(c.area).toHaveBeenLastCalledWith({ minX: 0, minY: -10, maxX: 20, maxY: 10 }, true);
-		expect(s.ids).toEqual([]);
+		expect(c.area).toHaveBeenLastCalledWith({ minX: 0, minY: -10, maxX: 20, maxY: 10 }, true, true);
+		expect(c.selecionadas).toEqual([]);
 	});
 
-	it('a janela não repete quem já está selecionado', () => {
-		const s = new Selecao();
-		const c = consulta(() => [id(1), id(3)]);
-		s.clicar({ x: 5, y: 0 }, 0.5, false, c);
-		s.clicar({ x: 0, y: 10 }, 0.5, false, c);
-		s.clicar({ x: 20, y: 30 }, 0.5, false, c);
-		expect(s.ids).toEqual([id(1), id(3)]);
-	});
-
-	it('esvaziar fecha a janela e limpa (S5)', () => {
+	it('esvaziarJanela fecha a janela aberta (S5)', () => {
 		const s = new Selecao();
 		const c = consulta();
-		s.clicar({ x: 5, y: 0 }, 0.5, false, c);
 		s.clicar({ x: 0, y: 10 }, 0.5, false, c);
-		s.esvaziar();
-		expect(s.ids).toEqual([]);
+		s.esvaziarJanela();
 		expect(s.inicioDaJanela).toBeNull();
-	});
-
-	it('podar tira as que deixaram de existir e diz se mudou (S4)', () => {
-		const s = new Selecao();
-		const c = consulta(() => [id(1), id(2), id(3)]);
-		s.clicar({ x: 0, y: 10 }, 0.5, false, c);
 		s.clicar({ x: 20, y: 30 }, 0.5, false, c);
-		expect(s.podar((x) => x !== id(2))).toBe(true);
-		expect(s.ids).toEqual([id(1), id(3)]);
-		expect(s.podar(() => true)).toBe(false);
+		expect(c.area).not.toHaveBeenCalled();
 	});
 });

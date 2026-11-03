@@ -108,6 +108,8 @@ export class TelaDoKernel {
 	/** Último aviso de não exibidas dado por espaço, para não repetir. */
 	private readonly avisados = new Map<string, string>();
 	private readonly selecao = new Selecao();
+	/** Quantas o kernel tem selecionadas no espaço mostrado. */
+	private selecionadas = 0;
 	/** Com o modo de escolha ligado, o clique vai ao comando (spec 10, T4). */
 	private aoEscolher: ((escolha: Escolha) => void) | null = null;
 	/** Com o modo de ponto ligado, o clique entrega o ponto ao comando (spec 10, P1). */
@@ -183,7 +185,7 @@ export class TelaDoKernel {
 		if (documento == null || !this.espacos.includes(espaco)) return;
 
 		this.espaco = espaco;
-		this.selecao.esvaziar();
+		this.limparSelecao();
 		this.cursor = null;
 		this.limparBlocos();
 		this.origem = documento.getScreenOrigin(espaco);
@@ -227,13 +229,11 @@ export class TelaDoKernel {
 		this.entidades = documento.getScreenEntityCount(this.espaco);
 		this.caixa = this.caixaDoEspaco();
 		this.avisarNaoExibidas();
-		// A apagada sai da seleção; a movida leva o destaque junto (spec 10, S4).
-		const ids = this.selecao.ids;
-		if (ids.length > 0) {
-			const existentes = documento.getEntitiesById(ids);
-			this.selecao.podar((id) => existentes[ids.indexOf(id)] != null);
+		// O kernel tira da seleção a apagada; a movida leva o destaque junto (S4).
+		if (this.selecionadas > 0) {
+			this.selecionadas = documento.getScreenSelectionCount(this.espaco);
+			this.atualizarDestaque();
 		}
-		this.atualizarDestaque();
 		this.pedirQuadro();
 	}
 
@@ -317,16 +317,24 @@ export class TelaDoKernel {
 
 	/** Esvazia a seleção e fecha a janela aberta (spec 10, S5). */
 	esvaziarSelecao(): void {
-		this.selecao.esvaziar();
+		this.limparSelecao();
 		this.cursor = null;
 		this.atualizarDestaque();
 		this.atualizarJanela();
 		this.pedirQuadro();
 	}
 
-	/** Ids selecionados no espaço mostrado. */
+	/** Ids selecionados no espaço mostrado, vindos do kernel, na ordem em que entraram. */
 	get selecionados(): CadEntityId[] {
-		return this.selecao.ids;
+		if (this.documento == null || this.selecionadas === 0) return [];
+		return this.documento.getScreenSelection(this.espaco);
+	}
+
+	/** Esvazia a seleção do kernel e fecha a janela aberta. */
+	private limparSelecao(): void {
+		this.selecao.esvaziarJanela();
+		this.selecionadas = 0;
+		this.documento?.clearScreenSelection();
 	}
 
 	/** Troca o fundo; a cor 7 acompanha (branca no escuro, preta no claro). */
@@ -428,11 +436,10 @@ export class TelaDoKernel {
 	/** O destaque vem do kernel; é refeito por último, para ficar por cima. */
 	private atualizarDestaque(): void {
 		this.desenhista.removerBloco(BLOCO_DO_DESTAQUE);
-		const ids = this.selecao.ids;
-		if (this.documento == null || ids.length === 0) return;
+		if (this.documento == null || this.selecionadas === 0) return;
 		this.desenhista.definirBloco(
 			BLOCO_DO_DESTAQUE,
-			this.documento.getScreenSegmentsOf(this.espaco, ids),
+			this.documento.getScreenSelectionSegments(this.espaco),
 			COR_DO_DESTAQUE
 		);
 	}
@@ -533,7 +540,12 @@ export class TelaDoKernel {
 		}
 		this.selecao.clicar(ponto, raio, e.shiftKey, {
 			clique: (p, raio) => documento.pickOnScreen(espaco, p, raio),
-			area: (area, cruzada) => documento.selectOnScreen(espaco, area, cruzada)
+			aplicar: (ids, tirar) => {
+				this.selecionadas = documento.changeScreenSelection(espaco, ids, tirar);
+			},
+			area: (area, cruzada, tirar) => {
+				this.selecionadas = documento.selectAreaOnScreen(espaco, area, cruzada, tirar);
+			}
 		});
 		this.cursor = this.selecao.inicioDaJanela == null ? null : ponto;
 		this.atualizarDestaque();
@@ -571,7 +583,7 @@ export class TelaDoKernel {
 		dados.caixa = this.caixa;
 		dados.vista = `${x} ${y} ${escala}`;
 		dados.fundo = transparente ? 'transparente' : 'opaco';
-		dados.selecao = String(this.selecao.ids.length);
+		dados.selecao = String(this.selecionadas);
 		dados.clique =
 			this.aoApontar != null ? 'ponto' : this.aoEscolher != null ? 'escolha' : 'selecao';
 		const achado = this.prendimento;

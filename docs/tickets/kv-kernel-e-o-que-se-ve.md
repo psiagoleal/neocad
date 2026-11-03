@@ -378,6 +378,24 @@ prova própria (kernel, tela e desempenho).
 - **Critério de aceite:** spec 10, S6, incluindo a janela em volta do desenho inteiro.
 - **Fora de escopo:** novas formas de seleção.
 - **Depende de:** MT-KV-14c.
+- **Medida antes (2026-11-03, 90 001 selecionadas, ~350 ms):** a área no kernel com os
+  ids indo à tela, 146 ms; os ids no conjunto da tela, ~19 ms; o destaque com os ids
+  voltando ao kernel, 135 ms; o envio do destaque à placa, 46 ms. No nativo, o kernel
+  sozinho leva 29 ms na área e 38 ms no destaque (100 mil, com círculos).
+- **Desenho:** o kernel guarda o conjunto selecionado com a ordem de entrada, aplica o
+  clique e a janela (pondo ou tirando) e devolve só a contagem; monta o destaque; e, a
+  cada edição, tira o que deixou de estar desenhado (S4). A tela guarda só a janela
+  aberta e a contagem. Os ids vão à tela só quando um comando os pede (ERASE, MOVE…) e
+  na lista de todas (`todas()`), que segue pela consulta de área sem mexer na seleção.
+  Sai `screenSegmentsOf`, que só servia ao destaque.
+- **Andamento (2026-11-03):** a seleção já mora no kernel (`select_area_into`,
+  `change_selection`, `selection`, `selection_count`, `selection_segments`, poda no
+  `update`) e a tela só guarda a janela e a contagem: a janela total caiu de ~290 para
+  179 ms. Medida depois: área no kernel 99 ms; destaque 44 ms (6,5 milhões de números,
+  26 MB) mais 36 ms de envio à placa. Falta: (1) o destaque deixa de copiar segmentos e
+  passa a desenhar faixas dos blocos de camada que a placa já tem, como `first`/`count`
+  por camada; (2) a área mais rápida no kernel. O `.wasm` cresceu 18,7 KB e deve voltar
+  a encolher no passo (1).
 
 ### MT-KV-14f: ERASE e a tecla Delete
 

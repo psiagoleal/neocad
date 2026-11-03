@@ -130,7 +130,20 @@ export interface CadKernelSession {
 		maxY: number,
 		crossing: boolean
 	): unknown;
-	screenSegmentsOf(space: string, ids: string[]): Float32Array;
+	screenSelectionArea(
+		space: string,
+		minX: number,
+		minY: number,
+		maxX: number,
+		maxY: number,
+		crossing: boolean,
+		remove: boolean
+	): unknown;
+	screenSelectionChange(space: string, ids: string[], remove: boolean): unknown;
+	screenSelectionClear(): void;
+	screenSelectionIds(space: string): unknown;
+	screenSelectionCount(space: string): unknown;
+	screenSelectionSegments(space: string): Float32Array;
 	screenSnap(space: string, x: number, y: number, radius: number, modes: string[]): unknown;
 	updateScreen(): unknown;
 	screenQuery(space: string, minX: number, minY: number, maxX: number, maxY: number): string[];
@@ -1160,9 +1173,56 @@ export class CadDocument {
 		);
 	}
 
-	/** Segmentos das entidades no espaço, para o destaque da seleção. */
-	getScreenSegmentsOf(space: string, ids: CadEntityId[]): Float32Array {
-		return this.call(() => toScreenBlock(this.session.screenSegmentsOf(space, [...ids])));
+	// A seleção da tela mora no kernel (MT-KV-14g): a tela recebe a contagem e o
+	// destaque; os ids, só quando um comando os pede.
+
+	/** Põe na seleção (ou tira, com `remove`) as entidades da área; devolve a contagem (S2). */
+	selectAreaOnScreen(space: string, area: CadBounds, crossing: boolean, remove: boolean): number {
+		return this.call(() =>
+			asNumber(
+				this.session.screenSelectionArea(
+					space,
+					area.minX,
+					area.minY,
+					area.maxX,
+					area.maxY,
+					crossing,
+					remove
+				),
+				'contagem da seleção'
+			)
+		);
+	}
+
+	/** Põe na seleção (ou tira) as entidades dadas; devolve a contagem (S1). */
+	changeScreenSelection(space: string, ids: CadEntityId[], remove: boolean): number {
+		return this.call(() =>
+			asNumber(this.session.screenSelectionChange(space, [...ids], remove), 'contagem da seleção')
+		);
+	}
+
+	/** Esvazia a seleção da tela. */
+	clearScreenSelection(): void {
+		this.call(() => this.session.screenSelectionClear());
+	}
+
+	/** Selecionadas no espaço, na ordem em que entraram. */
+	getScreenSelection(space: string): CadEntityId[] {
+		return this.call(() =>
+			toCadEntityIds(this.session.screenSelectionIds(space), 'seleção da tela')
+		);
+	}
+
+	/** Quantas estão selecionadas no espaço. */
+	getScreenSelectionCount(space: string): number {
+		return this.call(() =>
+			asNumber(this.session.screenSelectionCount(space), 'contagem da seleção')
+		);
+	}
+
+	/** Segmentos das selecionadas no espaço, para o destaque. */
+	getScreenSelectionSegments(space: string): Float32Array {
+		return this.call(() => toScreenBlock(this.session.screenSelectionSegments(space)));
 	}
 
 	/** Blocos que mudaram desde a última chamada. */

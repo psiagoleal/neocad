@@ -6,22 +6,27 @@
  * \author Iago Leal
  * \date 2026-11-02
  *
- * Só o estado e as regras; quem decide o que está sob o cursor é o kernel
- * (ADR 0008), pela consulta que a tela passa.
+ * Só a janela e as regras do clique; quem decide o que está sob o cursor, e
+ * guarda o que está selecionado, é o kernel (ADR 0008; MT-KV-14g).
  */
 
 import type { CadBounds, CadEntityId, CadPoint } from '$lib/types/cad';
 
-/** O que a seleção pergunta ao kernel, no espaço mostrado. */
+/**
+ * O que a seleção pede ao kernel, no espaço mostrado. O conjunto selecionado
+ * mora lá (MT-KV-14g): aqui só se diz o que pôr ou tirar.
+ */
 export interface ConsultaDaSelecao {
 	/** Entidades a até `raio` do ponto, da mais perto à mais longe. */
 	clique(ponto: CadPoint, raio: number): CadEntityId[];
-	/** Dentro da área (janela) ou que ela toca (cruzada). */
-	area(area: CadBounds, cruzada: boolean): CadEntityId[];
+	/** Põe na seleção (ou tira) as dadas. */
+	aplicar(ids: CadEntityId[], tirar: boolean): void;
+	/** Põe na seleção (ou tira) as de dentro da área (janela) ou que ela toca (cruzada). */
+	area(area: CadBounds, cruzada: boolean, tirar: boolean): void;
 }
 
+/** O clique e a janela da seleção; quem guarda o selecionado é o kernel. */
 export class Selecao {
-	private readonly selecionados = new Set<CadEntityId>();
 	private inicio: CadPoint | null = null;
 
 	/**
@@ -39,7 +44,7 @@ export class Selecao {
 				maxY: Math.max(inicio.y, ponto.y)
 			};
 			// Da direita para a esquerda é cruzada, como no AutoCAD.
-			this.aplicar(consulta.area(area, ponto.x < inicio.x), shift);
+			consulta.area(area, ponto.x < inicio.x, shift);
 			return;
 		}
 
@@ -48,12 +53,7 @@ export class Selecao {
 			this.inicio = ponto;
 			return;
 		}
-		this.aplicar([maisPerto], shift);
-	}
-
-	/** Ids selecionados, na ordem em que entraram. */
-	get ids(): CadEntityId[] {
-		return [...this.selecionados];
+		consulta.aplicar([maisPerto], shift);
 	}
 
 	/** Onde a janela aberta começou, ou `null`. */
@@ -61,32 +61,8 @@ export class Selecao {
 		return this.inicio;
 	}
 
-	/** Fecha a janela aberta sem mexer na seleção. */
+	/** Fecha a janela aberta. */
 	esvaziarJanela(): void {
 		this.inicio = null;
-	}
-
-	esvaziar(): void {
-		this.selecionados.clear();
-		this.inicio = null;
-	}
-
-	/** Tira as que deixaram de existir; diz se mudou. */
-	podar(existe: (id: CadEntityId) => boolean): boolean {
-		let mudou = false;
-		for (const id of this.selecionados) {
-			if (!existe(id)) {
-				this.selecionados.delete(id);
-				mudou = true;
-			}
-		}
-		return mudou;
-	}
-
-	private aplicar(ids: CadEntityId[], tirar: boolean): void {
-		for (const id of ids) {
-			if (tirar) this.selecionados.delete(id);
-			else this.selecionados.add(id);
-		}
 	}
 }
