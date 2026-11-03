@@ -179,10 +179,8 @@ test.describe('desempenho no desenho sintético (spec 00, N1–N3)', () => {
 	});
 
 	test('S6: janela em volta do desenho inteiro em até 100 ms (spec 10)', async ({ page }) => {
-		// Lacuna conhecida (MT-KV-14g): com ~90 mil selecionadas, os ids vão e voltam
-		// entre o kernel e a tela, e a seleção leva ~300 ms. O `test.fail()` sai
-		// quando a seleção passar a morar no kernel.
-		test.fail();
+		// ~90 mil selecionadas: a seleção mora no kernel e o destaque são faixas dos
+		// blocos que a placa já tem, sem os ids nem os segmentos virem à tela (MT-KV-14g).
 		const { tela } = await abrirSintetico(page);
 		const { meio, w, h } = await prepararSelecao(page, tela, 0.49);
 

@@ -383,3 +383,63 @@ test('a apagada sai da seleção e a movida continua nela (S4)', async ({ page }
 	await expect(tela).toHaveAttribute('data-entidades', '2');
 	await expect(tela).toHaveAttribute('data-selecao', '0');
 });
+
+/**
+ * Se há, num quadrado de `raio` pixels em volta do ponto (x, y) do desenho, um pixel
+ * da cor do destaque da seleção. Lê o que a página mostra, por captura, para valer
+ * nos dois caminhos de desenho.
+ */
+async function temDestaque(page: Page, x: number, y: number, raio = 4): Promise<boolean> {
+	const p = await pixel(page, x, y);
+	const png = await page.screenshot({
+		clip: { x: p.x - raio, y: p.y - raio, width: 2 * raio + 1, height: 2 * raio + 1 }
+	});
+	return page.evaluate(async (dados) => {
+		const imagem = new Image();
+		imagem.src = `data:image/png;base64,${dados}`;
+		await imagem.decode();
+		const canvas = document.createElement('canvas');
+		canvas.width = imagem.width;
+		canvas.height = imagem.height;
+		const ctx = canvas.getContext('2d')!;
+		ctx.drawImage(imagem, 0, 0);
+		const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		// A cor do destaque (90, 170, 255): a linha fina sai mais fraca pela suavização,
+		// então vale a proporção entre os canais, não o valor.
+		for (let i = 0; i < data.length; i += 4) {
+			const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
+			if (b >= 120 && Math.abs(r / b - 90 / 255) < 0.06 && Math.abs(g / b - 170 / 255) < 0.06) {
+				return true;
+			}
+		}
+		return false;
+	}, png.toString('base64'));
+}
+
+test('o destaque aparece na cor da seleção e acompanha a movida (S1, S4)', async ({ page }) => {
+	test.setTimeout(60_000);
+	const tela = await abrirComSonda(page);
+	const id = await page.evaluate(() =>
+		(window as unknown as JanelaComSonda).__neocadSonda!.desenharLinha(0, 90, 30, 90)
+	);
+	await clicarNoDesenho(page, 15, 90);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+	await expect.poll(() => temDestaque(page, 15, 90)).toBe(true);
+	// A reta da fixture, não selecionada, não fica destacada.
+	expect(await temDestaque(page, 10, 10)).toBe(false);
+
+	await page.evaluate(
+		(linha) => (window as unknown as JanelaComSonda).__neocadSonda!.mover([linha], 0, 5),
+		id
+	);
+	await expect.poll(() => temDestaque(page, 15, 95)).toBe(true);
+	expect(await temDestaque(page, 15, 90, 1)).toBe(false);
+
+	// A janela em volta de tudo destaca também as da fixture.
+	await clicarNoDesenho(page, -3, -3);
+	await clicarNoDesenho(page, 103, 103);
+	await expect(tela).toHaveAttribute('data-selecao', '3');
+	await expect.poll(() => temDestaque(page, 10, 10)).toBe(true);
+	await page.keyboard.press('Escape');
+	await expect.poll(() => temDestaque(page, 10, 10)).toBe(false);
+});

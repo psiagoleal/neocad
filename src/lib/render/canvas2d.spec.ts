@@ -59,4 +59,41 @@ describe('desenhista de reserva em canvas 2D', () => {
 
 		expect(chamadas.some((c) => c.startsWith('m '))).toBe(false);
 	});
+
+	it('o destaque redesenha só as faixas dos blocos, na cor dele e por cima', () => {
+		const { ctx, chamadas } = contextoFalso();
+		const d = new DesenhistaCanvas2d(ctx);
+		// Três segmentos horizontais em y = 0, 0.5 e 1 (seis vértices).
+		d.definirBloco(
+			'Model|0',
+			new Float32Array([0, 0, 1, 0, 0, 0.5, 1, 0.5, 0, 1, 1, 1]),
+			[255, 0, 0]
+		);
+		// Faixa do vértice 2, com 4 vértices: o segundo e o terceiro segmentos.
+		d.definirDestaque(
+			'destaque',
+			new Map([
+				['Model|0', new Uint32Array([2, 4])],
+				['Model|sem-bloco', new Uint32Array([0, 2])]
+			]),
+			[0, 0, 255]
+		);
+
+		d.desenhar([1, 1, 0, 0], 200, 100, [0, 0, 0]);
+
+		const depois = chamadas.slice(chamadas.indexOf('traço rgb(255, 0, 0)') + 1);
+		expect(depois).toEqual([
+			'início',
+			'm 100 25',
+			'l 200 25',
+			'm 100 0',
+			'l 200 0',
+			'traço rgb(0, 0, 255)'
+		]);
+
+		d.removerBloco('destaque');
+		chamadas.length = 0;
+		d.desenhar([1, 1, 0, 0], 200, 100, [0, 0, 0]);
+		expect(chamadas).not.toContain('traço rgb(0, 0, 255)');
+	});
 });

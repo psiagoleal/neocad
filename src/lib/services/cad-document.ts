@@ -143,7 +143,7 @@ export interface CadKernelSession {
 	screenSelectionClear(): void;
 	screenSelectionIds(space: string): unknown;
 	screenSelectionCount(space: string): unknown;
-	screenSelectionSegments(space: string): Float32Array;
+	screenSelectionRanges(space: string, layer: string): unknown;
 	screenSnap(space: string, x: number, y: number, radius: number, modes: string[]): unknown;
 	updateScreen(): unknown;
 	screenQuery(space: string, minX: number, minY: number, maxX: number, maxY: number): string[];
@@ -541,6 +541,20 @@ function toScreenBlock(raw: unknown): Float32Array {
 	if (raw.length % 4 !== 0) {
 		throw new CadKernelContractError(
 			`bloco da tela deveria ter segmentos inteiros (4 números cada), tem ${raw.length}.`
+		);
+	}
+
+	return raw;
+}
+
+/** Confere as faixas do destaque: primeiros vértices e contagens, em igual número. */
+function toSelectionRanges(raw: unknown): Uint32Array {
+	if (!(raw instanceof Uint32Array)) {
+		throw new CadKernelContractError('faixas do destaque deveriam ser um Uint32Array.');
+	}
+	if (raw.length % 2 !== 0) {
+		throw new CadKernelContractError(
+			`faixas do destaque deveriam vir em pares (início e contagem), têm ${raw.length} números.`
 		);
 	}
 
@@ -1220,9 +1234,12 @@ export class CadDocument {
 		);
 	}
 
-	/** Segmentos das selecionadas no espaço, para o destaque. */
-	getScreenSelectionSegments(space: string): Float32Array {
-		return this.call(() => toScreenBlock(this.session.screenSelectionSegments(space)));
+	/**
+	 * O destaque da seleção na camada, como faixas do bloco dela: os primeiros
+	 * vértices e depois as contagens.
+	 */
+	getScreenSelectionRanges(space: string, layer: CadLayerId): Uint32Array {
+		return this.call(() => toSelectionRanges(this.session.screenSelectionRanges(space, layer)));
 	}
 
 	/** Blocos que mudaram desde a última chamada. */

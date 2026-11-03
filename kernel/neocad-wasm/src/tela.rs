@@ -55,6 +55,10 @@ struct SpaceScreen {
 /// Quantas entidades, as mais perto do cursor, entram no prendimento (spec 10, P4).
 const SNAP_LIMIT: usize = 32;
 
+/// Até quantas selecionadas o destaque procura as camadas delas, em vez de
+/// percorrer todas.
+const FEW_SELECTED: usize = 64;
+
 /// Mexidas além disto fazem o índice ser refeito na próxima consulta.
 const STALE_LIMIT: usize = 1024;
 
@@ -82,10 +86,11 @@ pub struct Screen {
     place: BTreeMap<EntityId, (usize, LayerId)>,
     /// Entidades que não viraram segmentos: espaço e camada (V6).
     refused: BTreeMap<EntityId, (usize, LayerId)>,
-    /// Seleção (spec 10, S1–S6): cada entidade com o espaço e a ordem em que entrou.
-    selection: BTreeMap<EntityId, (usize, u64)>,
-    /// Ordem da próxima que entrar na seleção.
-    next_order: u64,
+    /// Seleção (spec 10, S1–S6), em ordem de id. Vive num espaço só, como a da
+    /// tela, que se esvazia ao trocar de espaço (S3).
+    selection: BTreeSet<EntityId>,
+    /// Espaço da seleção.
+    selection_space: usize,
 }
 
 /// Tipo DXF da geometria, como o aviso das não desenhadas o mostra.
@@ -207,8 +212,8 @@ impl Screen {
             spaces: Vec::new(),
             place: BTreeMap::new(),
             refused: BTreeMap::new(),
-            selection: BTreeMap::new(),
-            next_order: 0,
+            selection: BTreeSet::new(),
+            selection_space: 0,
         };
         screen.fill(document);
 
@@ -452,6 +457,27 @@ impl Screen {
             candidates
                 .into_iter()
                 .filter(|id| {
+                    // A candidata já é do espaço; desenhada é a que não foi recusada.
+                    let Some(entity) = document.entity(*id) else {
+                        return false;
+                    };
+                    let visible = document
+                        .layers()
+                        .get(entity.layer)
+                        .is_some_and(LayerRecord::is_visible);
+                    if !visible || self.refused.contains_key(id) {
+                        return false;
+                    }
+                    // O traço de reta, círculo, arco e polilinha tem os vértices sobre a
+                    // curva, dentro da caixa dela: com a caixa dentro da área, entra sem
+                    // buscar nem percorrer os segmentos (S6). A caixa do texto é
+                    // estimada; ele segue conferido traço a traço.
+                    if !matches!(entity.geometry, Geometry::Text(_)) {
+                        let caixa = entity.bounding_box();
+                        if area.contains(caixa.min()) && area.contains(caixa.max()) {
+                            return true;
+                        }
+                    }
                     let Some(mut segments) = self.visible_segments(document, found, *id) else {
                         return false;
                     };
@@ -477,7 +503,8 @@ impl Screen {
         remove: bool,
     ) -> Option<usize> {
         let ids = self.select_area(document, space, area, crossing)?;
-        self.change_selection(space, &ids, remove)
+        // Já conferidas como desenhadas no espaço: entram sem buscar onde estão (S6).
+        self.apply_selection(space, ids.into_iter(), remove)
     }
 
     /// Põe na seleção (ou tira dela) as entidades dadas, como o clique (spec 10,
@@ -490,16 +517,34 @@ impl Screen {
         remove: bool,
     ) -> Option<usize> {
         let found = self.space(space)?;
-        for id in ids {
-            if remove {
-                self.selection.remove(id);
-            } else if self.place.get(id).is_some_and(|(s, _)| *s == found) {
-                let order = &mut self.next_order;
-                self.selection.entry(*id).or_insert_with(|| {
-                    *order += 1;
-                    (found, *order)
-                });
+        let place = &self.place;
+        let drawn: Vec<EntityId> = ids
+            .iter()
+            .copied()
+            .filter(|id| place.get(id).is_some_and(|(s, _)| *s == found))
+            .collect();
+        self.apply_selection(space, drawn.into_iter(), remove)
+    }
+
+    /// Põe (ou tira) as entidades, já conferidas, na seleção do espaço; pôr
+    /// noutro espaço esvazia a do anterior.
+    fn apply_selection(
+        &mut self,
+        space: &str,
+        ids: impl Iterator<Item = EntityId>,
+        remove: bool,
+    ) -> Option<usize> {
+        let found = self.space(space)?;
+        if remove {
+            for id in ids {
+                self.selection.remove(&id);
             }
+        } else {
+            if self.selection_space != found {
+                self.selection.clear();
+                self.selection_space = found;
+            }
+            self.selection.extend(ids);
         }
         self.selection_count(space)
     }
@@ -509,66 +554,97 @@ impl Screen {
         self.selection.clear();
     }
 
-    /// Selecionadas no espaço, na ordem em que entraram.
+    /// Selecionadas no espaço, em ordem de id.
     #[must_use]
     pub fn selection(&self, space: &str) -> Option<Vec<EntityId>> {
         let found = self.space(space)?;
-        let mut ids: Vec<(u64, EntityId)> = self
-            .selection
-            .iter()
-            .filter(|(_, (s, _))| *s == found)
-            .map(|(id, (_, order))| (*order, *id))
-            .collect();
-        ids.sort_unstable();
-        Some(ids.into_iter().map(|(_, id)| id).collect())
+        Some(if found == self.selection_space {
+            self.selection.iter().copied().collect()
+        } else {
+            Vec::new()
+        })
     }
 
     /// Quantas estão selecionadas no espaço.
     #[must_use]
     pub fn selection_count(&self, space: &str) -> Option<usize> {
         let found = self.space(space)?;
-        Some(self.selection.values().filter(|(s, _)| *s == found).count())
+        Some(if found == self.selection_space {
+            self.selection.len()
+        } else {
+            0
+        })
     }
 
-    /// Segmentos das selecionadas no espaço, relativos à origem dele, para o
-    /// destaque.
+    /// O destaque da seleção na camada do espaço, como faixas do bloco dela
+    /// (`block`): os primeiros vértices de cada trecho contíguo de selecionadas e
+    /// depois as contagens, para a placa redesenhar o que já tem. `None` se o
+    /// espaço é desconhecido.
     #[must_use]
-    pub fn selection_segments(&self, space: &str) -> Option<Vec<f32>> {
+    pub fn selection_ranges(&self, space: &str, layer: LayerId) -> Option<Vec<u32>> {
         let found = self.space(space)?;
-        let target = &self.spaces[found];
-        let pieces: Vec<&[f32]> = self
-            .selection
-            .iter()
-            .filter(|(_, (s, _))| *s == found)
-            .filter_map(|(id, _)| {
-                let (_, layer) = self.place.get(id)?;
-                target.layers.get(layer)?.get(id).map(Vec::as_slice)
-            })
-            .collect();
-        // Do tamanho certo de uma vez: o destaque do desenho inteiro tem milhões.
-        let mut out = Vec::with_capacity(pieces.iter().map(|p| p.len()).sum());
-        for piece in pieces {
-            out.extend_from_slice(piece);
+        let mut firsts: Vec<u32> = Vec::new();
+        let mut counts: Vec<u32> = Vec::new();
+        let Some(entities) = self.spaces[found].layers.get(&layer) else {
+            return Some(firsts);
+        };
+        // Com poucas selecionadas (o clique), só se percorre a camada que tem alguma,
+        // e só até a última dela.
+        let last = if self.selection.len() <= FEW_SELECTED {
+            let Some(last) = self
+                .selection
+                .iter()
+                .rev()
+                .find(|id| entities.contains_key(*id))
+            else {
+                return Some(firsts);
+            };
+            Some(*last)
+        } else {
+            None
+        };
+        // O bloco é a concatenação dos segmentos, na ordem dos ids (`block`).
+        let mut at: u32 = 0;
+        let mut open = false;
+        for (id, segments) in entities {
+            if last.is_some_and(|last| *id > last) {
+                break;
+            }
+            let vertices = u32::try_from(segments.len() / 2).unwrap_or(u32::MAX);
+            match (self.selection.contains(id), open, counts.last_mut()) {
+                (true, true, Some(count)) => *count += vertices,
+                (true, _, _) => {
+                    firsts.push(at);
+                    counts.push(vertices);
+                    open = true;
+                }
+                (false, _, _) => open = false,
+            }
+            at += vertices;
         }
-        Some(out)
+        firsts.append(&mut counts);
+        Some(firsts)
     }
 
-    /// Tira da seleção o que deixou de estar desenhado no espaço em que entrou
-    /// (spec 10, S4); `ids` limita a conferência, `None` confere todas.
+    /// Tira da seleção o que deixou de estar desenhado no espaço dela (spec 10,
+    /// S4); `ids` limita a conferência, `None` confere todas.
     fn prune_selection(&mut self, ids: Option<&[EntityId]>) {
         let place = &self.place;
-        let gone = |id: &EntityId, space: usize| place.get(id).is_none_or(|(s, _)| *s != space);
-        match ids {
-            Some(ids) => {
-                for id in ids {
-                    if let Some((space, _)) = self.selection.get(id) {
-                        if gone(id, *space) {
-                            self.selection.remove(id);
-                        }
-                    }
-                }
-            }
-            None => self.selection.retain(|id, (space, _)| !gone(id, *space)),
+        let space = self.selection_space;
+        let checked: Vec<EntityId> = match ids {
+            Some(ids) => ids
+                .iter()
+                .copied()
+                .filter(|id| self.selection.contains(id))
+                .collect(),
+            None => self.selection.iter().copied().collect(),
+        };
+        let gone: Vec<EntityId> = checked
+            .into_iter()
+            .filter(|id| place.get(id).is_none_or(|(s, _)| *s != space))
+            .collect();
+        for id in gone {
+            self.selection.remove(&id);
         }
     }
 
@@ -1189,7 +1265,7 @@ mod tests {
     }
 
     #[test]
-    fn a_selecao_fica_no_kernel_na_ordem_em_que_entrou() {
+    fn a_selecao_fica_no_kernel_num_espaco_so() {
         let (doc, mut tela, [embaixo, em_cima, circulo, escondida]) = desenho_para_selecao();
         let m = MODEL_LAYOUT_NAME;
         let area = |(x0, y0): (f64, f64), (x1, y1): (f64, f64)| {
@@ -1203,7 +1279,8 @@ mod tests {
             tela.select_area_into(&doc, m, duas_retas, false, false),
             Some(2)
         );
-        assert_eq!(tela.selection(m), Some(vec![em_cima, embaixo]));
+        // Em ordem de id, não de entrada.
+        assert_eq!(tela.selection(m), Some(vec![embaixo, em_cima]));
         assert_eq!(tela.selection_count(m), Some(2));
 
         // A cruzada põe o círculo; com `remove`, tira as duas retas.
@@ -1218,18 +1295,24 @@ mod tests {
         );
         assert_eq!(tela.selection(m), Some(vec![circulo]));
 
-        // O clique com Shift tira; o que não está desenhado no espaço é ignorado.
-        assert_eq!(tela.change_selection(m, &[circulo], true), Some(0));
+        // O que não está desenhado no espaço é ignorado.
         let do_papel = tela
             .pick(&doc, "Prancha A1", Point2::new(5.0, 0.0), 0.5)
             .expect("papel");
-        assert_eq!(tela.change_selection(m, &do_papel, false), Some(0));
+        assert_eq!(tela.change_selection(m, &do_papel, false), Some(1));
+        // A seleção vive num espaço só: selecionar noutro esvazia a do anterior.
         assert_eq!(
             tela.change_selection("Prancha A1", &do_papel, false),
             Some(1)
         );
         assert_eq!(tela.selection_count(m), Some(0));
-        assert_eq!(tela.selection("Prancha A1"), Some(do_papel));
+        assert_eq!(tela.selection(m), Some(vec![]));
+        assert_eq!(tela.selection("Prancha A1"), Some(do_papel.clone()));
+        // O clique com Shift tira.
+        assert_eq!(
+            tela.change_selection("Prancha A1", &do_papel, true),
+            Some(0)
+        );
 
         // A janela não pega a de camada desligada.
         let tudo = area((-100.0, -100.0), (100.0, 100.0));
@@ -1252,27 +1335,67 @@ mod tests {
     }
 
     #[test]
-    fn o_destaque_sao_os_segmentos_das_selecionadas() {
-        let (doc, mut tela, [embaixo, _, _, _]) = desenho_para_selecao();
-        let _ = doc;
+    fn o_destaque_sao_faixas_do_bloco_da_camada() {
+        let (doc, mut tela, [embaixo, em_cima, circulo, _]) = desenho_para_selecao();
         let m = MODEL_LAYOUT_NAME;
-        let origem = tela.origin(m).expect("origem");
-        assert_eq!(tela.selection_segments(m), Some(vec![]));
+        let zero = doc.layers().default_layer();
+        // O bloco da camada 0: embaixo (2 vértices), em cima (2) e o círculo.
+        let vertices = u32::try_from(tela.block(m, zero).expect("bloco").len() / 2).expect("cabe");
+        let do_circulo = vertices - 4;
+        assert_eq!(tela.selection_ranges(m, zero), Some(vec![]));
 
+        // Primeiros vértices e depois as contagens, uma faixa por trecho contíguo.
+        tela.change_selection(m, &[em_cima], false);
+        assert_eq!(tela.selection_ranges(m, zero), Some(vec![2, 2]));
         tela.change_selection(m, &[embaixo], false);
-        let segmentos = tela.selection_segments(m).expect("modelo");
-        assert_eq!(segmentos.len(), 4);
-        let absolutos: Vec<f64> = segmentos
-            .chunks(2)
-            .flat_map(|p| [origem.x + f64::from(p[0]), origem.y + f64::from(p[1])])
+        assert_eq!(tela.selection_ranges(m, zero), Some(vec![0, 4]));
+        tela.change_selection(m, &[em_cima], true);
+        tela.change_selection(m, &[circulo], false);
+        assert_eq!(
+            tela.selection_ranges(m, zero),
+            Some(vec![0, 4, 2, do_circulo])
+        );
+        tela.change_selection(m, &[em_cima], false);
+        assert_eq!(tela.selection_ranges(m, zero), Some(vec![0, vertices]));
+
+        assert_eq!(tela.selection_ranges("Prancha A1", zero), Some(vec![]));
+        assert_eq!(tela.selection_ranges("Inexistente", zero), None);
+    }
+
+    #[test]
+    fn com_muitas_selecionadas_as_faixas_saem_do_bloco_inteiro() {
+        let mut doc = Document::new();
+        let mut pilha = CommandStack::new();
+        let zero = doc.layers().default_layer();
+        let outra = doc.create_layer("Outra").expect("camada");
+        let retas: Vec<EntityId> = (0..100)
+            .map(|i| {
+                let y = f64::from(i);
+                insere(&mut doc, &mut pilha, zero, reta(0.0, y, 1.0, y))
+            })
             .collect();
-        assert!(perto(
-            [absolutos[0], absolutos[1], absolutos[2], absolutos[3]],
-            [0.0, 0.0, 10.0, 0.0],
-            1e-4
-        ));
-        assert_eq!(tela.selection_segments("Prancha A1"), Some(vec![]));
-        assert_eq!(tela.selection_segments("Inexistente"), None);
+        insere(&mut doc, &mut pilha, outra, reta(5.0, 0.0, 6.0, 0.0));
+        let mut tela = Screen::prepare(&doc, pilha.revision(), ERRO).expect("tela");
+        let m = MODEL_LAYOUT_NAME;
+        // Fora a cada dez, a partir da quarta: faixas de 2 vértices por reta.
+        let escolhidas: Vec<EntityId> = retas
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| i % 10 != 3)
+            .map(|(_, id)| *id)
+            .collect();
+        assert!(escolhidas.len() > FEW_SELECTED);
+        tela.change_selection(m, &escolhidas, false);
+
+        let mut inicios = vec![0];
+        let mut contagens = vec![6];
+        for dezena in 0..10 {
+            inicios.push(2 * (dezena * 10 + 4));
+            contagens.push(if dezena == 9 { 12 } else { 18 });
+        }
+        inicios.extend(contagens);
+        assert_eq!(tela.selection_ranges(m, zero), Some(inicios));
+        assert_eq!(tela.selection_ranges(m, outra), Some(vec![]));
     }
 
     #[test]
@@ -1299,10 +1422,13 @@ mod tests {
             .expect("move");
         tela.update(&doc, pilha.revision(), pilha.last_effect());
         assert_eq!(tela.selection(m), Some(vec![fica]));
+        // A faixa aponta para onde a movida está agora no bloco.
         let origem = tela.origin(m).expect("origem");
-        let segmentos = tela.selection_segments(m).expect("modelo");
-        assert_eq!(segmentos.len(), 4);
-        assert!((origem.y + f64::from(segmentos[1]) - 20.0).abs() < 1e-4);
+        let faixa = tela.selection_ranges(m, zero).expect("modelo");
+        assert_eq!(faixa.len(), 2);
+        let bloco = tela.block(m, zero).expect("bloco");
+        let y = bloco[faixa[0] as usize * 2 + 1];
+        assert!((origem.y + f64::from(y) - 20.0).abs() < 1e-4);
 
         // Desfazer a apagada a traz de volta à tela, mas não à seleção.
         pilha.undo(&mut doc).expect("desfaz");

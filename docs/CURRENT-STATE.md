@@ -10,46 +10,28 @@
 
 ## Último turno
 
-- **Data:** 2026-11-02
+- **Data:** 2026-11-03
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `39e225d` (MT-KV-14e); antes, `d81f5a5` (MT-KV-14h)
+- **Commit:** ver `git log` (MT-KV-14g, parte 2); antes, `9dd4617` (parte 1)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
 
 ## Metas cumpridas neste turno
 
-- **MT-KV-14c fatiado** (commit `75a9f37`): 14c é a seleção; o `ERASE` foi para o 14f.
-  Critérios S1–S6 e E1–E3 na spec 10.
-- **MT-KV-14c:** clique, janela e cruzada na tela própria, com destaque, consultando o
-  kernel por espaço (`pickOnScreen`, `selectOnScreen`, `getScreenSegmentsOf`).
-  `data-selecao` exposto. O índice espacial passou a ser feito ao preparar a tela e
-  atualizado aos poucos depois das edições (clique: 197 → 4–10 ms com 100 mil).
-- Corrigido: `getEntitiesById` recusava entidade apagada (`undefined` da fachada).
-- Lacuna registrada: janela em volta do desenho inteiro (~90 mil) leva ~290 ms; fica
-  `test.fail()` até o MT-KV-14g (seleção mantida no kernel).
-- **MT-KV-14f:** `ERASE` / `APAGAR` / `E` apaga a seleção num só passo de desfazer, com
-  prompt "Selecione objetos:" quando não há seleção; `Delete` fora de campo faz o mesmo.
-  A fachada ganhou `removeEntities` (tudo ou nada).
-- **MT-KV-14d fatiado** em 14d1–14d5 (commit `b431fc8`); **MT-KV-14d1:** `MOVE` e
-  `COPY` sobre a seleção, com a etapa "Selecione objetos:" comum aos comandos de edição.
-- **MT-KV-14d2:** `ROTATE`, `MIRROR` (mantém as originais por padrão, num só passo, pelo
-  novo `mirrorCopyEntities`) e `SCALE` pela linha.
-- **MT-KV-14d3:** `OFFSET` pela linha, com o objeto escolhido pelo clique; o motor passou
-  a receber da tela o aviso de seleção. Aberto o MT-KV-14h (pontos pelo clique na tela).
-- **MT-KV-14d4:** `TRIM` e `EXTEND`; a tela ganhou o modo de escolha (o clique vai ao
-  comando com o ponto e não seleciona), que também passou a servir ao `OFFSET`.
-- **MT-KV-14d5:** `FILLET` e `CHAMFER`. Os dez comandos de edição do K3 estão na linha
-  de comando; V5b provado de ponta a ponta.
-- **MT-KV-14h:** pontos pelo clique, com prendimento pelo kernel (por espaço, só o que
-  está perto) e marcador; o `LINE` se desenha clicando. P4: pior movimento 13,4 ms com
-  100 mil (margem pequena até 16 ms).
-- **MT-KV-14e (V7):** clicar em entidade que só o upstream desenha responde "entidade
-  ainda não editável" com o tipo. Os testes de clique passaram a esperar a carga do
-  upstream (uma intermitência antiga de layout).
-- A rodada anterior (MT-KV-13b e MT-UI-05) está no
-  [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-upstream-sem-comandos).
+- **MT-KV-14g:** a seleção mora no kernel (`select_area_into`, `change_selection`,
+  `selection`, `selection_count`, poda a cada edição); a tela guarda só a janela aberta e
+  a contagem. O destaque não copia segmentos: o kernel dá as faixas (primeiro vértice e
+  contagem) dos blocos que a placa já tem, redesenhadas com `WEBGL_multi_draw` (ou na CPU,
+  no canvas 2D). A área aceita direto a entidade com caixa dentro, e o índice espacial
+  deixou de ordenar achados grandes. **S6 com 90 001 selecionadas: ~350 → 69 ms**, sem
+  `test.fail()`; clique 6–11 ms. Mudanças de comportamento: a seleção vive num espaço só
+  e os ids vêm em ordem de id. Corrigido: trocar o tema apagava o destaque com a seleção
+  viva. `.wasm` 523 992 bytes (+11 368). Parte 1 em `9dd4617`; parte 2 no commit acima.
+- Crítica do GLM-5.2 ainda não rodou: o gateway não resolvia (fora da rede da empresa).
+- A rodada anterior (MT-KV-14c a 14e, 14h) está no
+  [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-seleção-e-edição-na-tela).
 
 ## O que mudou de rumo
 
@@ -66,10 +48,10 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-14g (seleção no kernel, S6 com seleção grande). Aparência a planejar na fase
-   de UI: marcador por modo de prendimento e linha elástica até o cursor.
-   Depois 14e (V7) e 14g (seleção no kernel).
-2. MT-UI-08 (vírgula decimal) quando couber.
+1. Rodar a crítica do GLM-5.2 sobre o MT-KV-14g quando o gateway responder (pedido: diff
+   de `660223b` até o commit da parte 2).
+2. MT-UI-08 (vírgula decimal) ou MT-KV-15; depois a fase de UI (aparência do marcador
+   por modo de prendimento e linha elástica até o cursor).
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos

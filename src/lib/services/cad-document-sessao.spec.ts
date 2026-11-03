@@ -69,7 +69,7 @@ function sessaoFalsa(troca: Record<string, unknown> = {}): SessaoFalsa {
 		screenSelectionClear: () => undefined,
 		screenSelectionIds: () => [],
 		screenSelectionCount: () => 0,
-		screenSelectionSegments: () => new Float32Array(),
+		screenSelectionRanges: () => new Uint32Array(),
 		screenSnap: () => null,
 		screenOrigin: () => new Float64Array([0, 0]),
 		screenExtents: () => new Float64Array(),
@@ -614,7 +614,7 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 			screenSelectionClear: vi.fn(),
 			screenSelectionIds: vi.fn(() => ['2', '5']),
 			screenSelectionCount: vi.fn(() => 2),
-			screenSelectionSegments: vi.fn(() => new Float32Array([0, 0, 1, 1]))
+			screenSelectionRanges: vi.fn(() => new Uint32Array([0, 6, 4, 2]))
 		});
 		const doc = documentoSobre(sessao);
 		const area = { minX: 0, minY: 1, maxX: 2, maxY: 3 };
@@ -627,8 +627,21 @@ describe('CadDocument: geometria da tela (MT-KV-08)', () => {
 		expect(sessao.screenSelectionClear).toHaveBeenCalled();
 		expect(doc.getScreenSelection('Model')).toEqual(['2', '5']);
 		expect(doc.getScreenSelectionCount('Model')).toBe(2);
-		expect(Array.from(doc.getScreenSelectionSegments('Model'))).toEqual([0, 0, 1, 1]);
-		expect(sessao.screenSelectionSegments).toHaveBeenCalledWith('Model');
+		expect(Array.from(doc.getScreenSelectionRanges('Model', '3' as never))).toEqual([0, 6, 4, 2]);
+		expect(sessao.screenSelectionRanges).toHaveBeenCalledWith('Model', '3');
+	});
+
+	it('faixas do destaque fora do formato são erro de contrato', () => {
+		const lista = documentoSobre(sessaoFalsa({ screenSelectionRanges: vi.fn(() => [0, 2]) }));
+		expect(() => lista.getScreenSelectionRanges('Model', '3' as never)).toThrow(
+			CadKernelContractError
+		);
+		const impar = documentoSobre(
+			sessaoFalsa({ screenSelectionRanges: vi.fn(() => new Uint32Array([0, 2, 4])) })
+		);
+		expect(() => impar.getScreenSelectionRanges('Model', '3' as never)).toThrow(
+			CadKernelContractError
+		);
 	});
 
 	it('contagem da seleção que não é número é erro de contrato', () => {

@@ -382,20 +382,36 @@ prova própria (kernel, tela e desempenho).
   ids indo à tela, 146 ms; os ids no conjunto da tela, ~19 ms; o destaque com os ids
   voltando ao kernel, 135 ms; o envio do destaque à placa, 46 ms. No nativo, o kernel
   sozinho leva 29 ms na área e 38 ms no destaque (100 mil, com círculos).
-- **Desenho:** o kernel guarda o conjunto selecionado com a ordem de entrada, aplica o
+- **Desenho:** o kernel guarda o conjunto selecionado (de início, com a ordem de
+  entrada; ver o resultado), aplica o
   clique e a janela (pondo ou tirando) e devolve só a contagem; monta o destaque; e, a
   cada edição, tira o que deixou de estar desenhado (S4). A tela guarda só a janela
   aberta e a contagem. Os ids vão à tela só quando um comando os pede (ERASE, MOVE…) e
   na lista de todas (`todas()`), que segue pela consulta de área sem mexer na seleção.
   Sai `screenSegmentsOf`, que só servia ao destaque.
-- **Andamento (2026-11-03):** a seleção já mora no kernel (`select_area_into`,
-  `change_selection`, `selection`, `selection_count`, `selection_segments`, poda no
-  `update`) e a tela só guarda a janela e a contagem: a janela total caiu de ~290 para
-  179 ms. Medida depois: área no kernel 99 ms; destaque 44 ms (6,5 milhões de números,
-  26 MB) mais 36 ms de envio à placa. Falta: (1) o destaque deixa de copiar segmentos e
-  passa a desenhar faixas dos blocos de camada que a placa já tem, como `first`/`count`
-  por camada; (2) a área mais rápida no kernel. O `.wasm` cresceu 18,7 KB e deve voltar
-  a encolher no passo (1).
+- **Resultado (2026-11-03):** janela em volta do desenho inteiro (90 001 selecionadas)
+  em ~70 ms, contra ~350 ms antes; o S6 grande perdeu o `test.fail()`. Em três passos:
+  (1) a seleção mora no kernel (`select_area_into`, `change_selection`, `selection`,
+  `selection_count`, poda no `update`) e a tela guarda só a janela e a contagem;
+  (2) o destaque não copia segmentos: o kernel dá, por camada, as faixas (primeiro
+  vértice e contagem) do bloco que a placa já tem (`selection_ranges`), e o WebGL2 as
+  redesenha com `WEBGL_multi_draw` (uma chamada por faixa sem a extensão); o Canvas2D
+  faz o mesmo na CPU; (3) a área ficou mais barata: a entidade cuja caixa está dentro
+  da área entra sem buscar nem percorrer segmentos (o texto, de caixa estimada, segue
+  conferido traço a traço), e o índice espacial, com muitos achados, marca as posições
+  em vez de ordenar. Decisões no caminho: a seleção vive num espaço só (pôr noutro
+  esvazia a do anterior, como já fazia a tela) e os ids vêm em ordem de id, não de
+  entrada, o que nenhum comando usa; isso devolveu ~9 KB do `.wasm`. Defeito achado e
+  corrigido: trocar o fundo apagava o destaque com a seleção ainda viva. Provas, vistas
+  falhar antes por asserção: `tela.rs` (seleção num espaço só, faixas do bloco, poda na
+  edição), `lib.rs` (fachada), `cad-document-sessao.spec.ts`, `canvas2d.spec.ts`,
+  `tela-do-kernel.spec.ts` e `selecao.spec.ts`; e2e novo "o destaque aparece na cor da
+  seleção e acompanha a movida", que lê os pixels e falha com o destaque desligado; e
+  "com muitas selecionadas as faixas saem do bloco inteiro", que falha com as faixas
+  quebradas. Com poucas selecionadas (`FEW_SELECTED`, 64), as faixas pulam a camada sem
+  nenhuma delas e param na última, o que devolveu o clique a 6–11 ms (tinha ido a
+  12–26 ms percorrendo a camada inteira). O `.wasm` foi a 523 992 bytes (+11 368).
+  Crítica do GLM-5.2 não rodou: o gateway estava fora da rede (impedimento aberto).
 
 ### MT-KV-14f: ERASE e a tecla Delete
 

@@ -2027,14 +2027,16 @@ impl CadSession {
         self.try_screen_selection_count(space).map_err(js_error)
     }
 
-    /// Segmentos das selecionadas no espaço, para o destaque.
+    /// O destaque da seleção na camada do espaço, como faixas do bloco dela: os
+    /// primeiros vértices e depois as contagens.
     ///
     /// # Errors
     ///
-    /// Falha se a tela não foi preparada ou o espaço não existe.
-    #[wasm_bindgen(js_name = screenSelectionSegments)]
-    pub fn screen_selection_segments(&self, space: &str) -> Result<Vec<f32>, JsError> {
-        self.try_screen_selection_segments(space).map_err(js_error)
+    /// Falha se a tela não foi preparada, o espaço não existe ou a camada é inválida.
+    #[wasm_bindgen(js_name = screenSelectionRanges)]
+    pub fn screen_selection_ranges(&self, space: &str, layer: &str) -> Result<Vec<u32>, JsError> {
+        self.try_screen_selection_ranges(space, layer)
+            .map_err(js_error)
     }
 
     /// Entidades do espaço, em camada visível, que a tela não desenha, por tipo
@@ -2299,9 +2301,11 @@ impl CadSession {
             .ok_or_else(|| unknown_space(space))
     }
 
-    fn try_screen_selection_segments(&self, space: &str) -> Result<Vec<f32>, String> {
-        self.screen()?
-            .selection_segments(space)
+    fn try_screen_selection_ranges(&self, space: &str, layer: &str) -> Result<Vec<u32>, String> {
+        let screen = self.screen()?;
+        let layer = decode_layer(layer)?;
+        screen
+            .selection_ranges(space, layer)
             .ok_or_else(|| unknown_space(space))
     }
 
@@ -3492,7 +3496,7 @@ mod tests {
             s.try_screen_selection_clear().err(),
             s.try_screen_selection_ids("Model").err(),
             s.try_screen_selection_count("Model").err(),
-            s.try_screen_selection_segments("Model").err(),
+            s.try_screen_selection_ranges("Model", &zero).err(),
             s.try_screen_snap("Model", 0.0, 0.0, 1.0, &[]).err(),
         ];
 
@@ -3560,12 +3564,14 @@ mod tests {
             Ok(1)
         );
         assert_eq!(s.try_screen_selection_count("Model"), Ok(1));
-        assert!(
-            s.try_screen_selection_segments("Model")
-                .expect("modelo")
-                .len()
-                > 4
-        );
+        // Sobra o círculo, numa faixa só do bloco da camada dele.
+        let camada = s.try_screen_layers("Model").expect("modelo")[0].clone();
+        let faixa = s
+            .try_screen_selection_ranges("Model", &camada)
+            .expect("modelo");
+        assert_eq!(faixa.len(), 2);
+        assert!(faixa[1] > 2);
+        assert!(s.try_screen_selection_ranges("Model", "x").is_err());
         assert_eq!(s.try_screen_selection_clear(), Ok(()));
         assert_eq!(s.try_screen_selection_count("Model"), Ok(0));
         assert_eq!(

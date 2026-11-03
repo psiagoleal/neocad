@@ -52,7 +52,7 @@ function documentoFalso(recusadas: Record<string, CadUnsupportedCount[]>) {
 		getBounds: () => null,
 		getScreenSpaces: () => ['Model', 'Prancha A1'],
 		getScreenOrigin: () => ({ x: 0, y: 0 }),
-		getScreenLayers: () => [],
+		getScreenLayers: () => ['0'],
 		getScreenExtents: () => null,
 		getScreenEntityCount: () => 0,
 		getScreenBlock: () => new Float32Array(),
@@ -106,7 +106,7 @@ function documentoFalso(recusadas: Record<string, CadUnsupportedCount[]>) {
 			this.selecionadas = this.selecionadas.filter((i) => this.existentes.has(i));
 			return this.selecionadas.length;
 		}),
-		getScreenSelectionSegments: vi.fn(() => new Float32Array([0, 0, 1, 1])),
+		getScreenSelectionRanges: vi.fn(() => new Uint32Array([0, 2])),
 		updateScreen: () => [],
 		listLayers: () => []
 	};
@@ -215,7 +215,7 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		expect(doc.pickOnScreen).toHaveBeenCalledWith('Model', { x: 10, y: -2 }, 5);
 		expect(doc.changeScreenSelection).toHaveBeenLastCalledWith('Model', ['1'], false);
 		expect(dados.selecao).toBe('1');
-		expect(doc.getScreenSelectionSegments).toHaveBeenLastCalledWith('Model');
+		expect(doc.getScreenSelectionRanges).toHaveBeenLastCalledWith('Model', '0');
 
 		clicar(410, 300, true);
 		quadro();
@@ -378,15 +378,25 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		expect(dados.selecao).toBe('0');
 	});
 
+	it('trocar o fundo refaz o destaque da seleção, que continua', () => {
+		const { tela, doc, dados } = montar();
+		clicar(410, 302);
+		doc.getScreenSelectionRanges.mockClear();
+		tela.definirFundo(false);
+		quadro();
+		expect(dados.selecao).toBe('1');
+		expect(doc.getScreenSelectionRanges).toHaveBeenCalledWith('Model', '0');
+	});
+
 	it('depois de uma edição, a contagem e o destaque vêm de novo do kernel (S4)', () => {
 		const { tela, doc, dados } = montar();
 		clicar(390, 250);
 		clicar(420, 320);
 		doc.existentes.delete('2');
-		doc.getScreenSelectionSegments.mockClear();
+		doc.getScreenSelectionRanges.mockClear();
 		tela.atualizar();
 		quadro();
 		expect(dados.selecao).toBe('1');
-		expect(doc.getScreenSelectionSegments).toHaveBeenCalledWith('Model');
+		expect(doc.getScreenSelectionRanges).toHaveBeenCalledWith('Model', '0');
 	});
 });

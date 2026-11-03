@@ -344,6 +344,9 @@ export class TelaDoKernel {
 		if (this.documento != null) {
 			this.limparBlocos();
 			this.carregarCamadas(this.documento.getScreenLayers(this.espaco));
+			// Os blocos voltam; a seleção e a janela aberta continuam, por cima deles.
+			this.atualizarDestaque();
+			this.atualizarJanela();
 		}
 		this.pedirQuadro();
 	}
@@ -433,15 +436,20 @@ export class TelaDoKernel {
 
 	// -- seleção ---------------------------------------------------------------
 
-	/** O destaque vem do kernel; é refeito por último, para ficar por cima. */
+	/**
+	 * O destaque vem do kernel como faixas dos blocos de camada que a placa já
+	 * tem, sem copiar segmentos (S6); é refeito por último, para ficar por cima.
+	 */
 	private atualizarDestaque(): void {
 		this.desenhista.removerBloco(BLOCO_DO_DESTAQUE);
-		if (this.documento == null || this.selecionadas === 0) return;
-		this.desenhista.definirBloco(
-			BLOCO_DO_DESTAQUE,
-			this.documento.getScreenSelectionSegments(this.espaco),
-			COR_DO_DESTAQUE
-		);
+		const documento = this.documento;
+		if (documento == null || this.selecionadas === 0) return;
+		const faixas = new Map<string, Uint32Array>();
+		for (const camada of documento.getScreenLayers(this.espaco)) {
+			const daCamada = documento.getScreenSelectionRanges(this.espaco, camada);
+			if (daCamada.length > 0) faixas.set(this.chave(camada), daCamada);
+		}
+		this.desenhista.definirDestaque(BLOCO_DO_DESTAQUE, faixas, COR_DO_DESTAQUE);
 	}
 
 	/** O retângulo da janela aberta, do início ao cursor, relativo à origem. */

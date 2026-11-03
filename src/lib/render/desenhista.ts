@@ -17,6 +17,13 @@ export interface Desenhista {
 	readonly caminho: Caminho;
 	/** Guarda (ou troca) o bloco de segmentos `x1, y1, x2, y2` da chave. */
 	definirBloco(chave: string, segmentos: Float32Array, cor: Rgb): void;
+	/**
+	 * Guarda (ou troca), na chave, o redesenho de trechos de outros blocos na cor
+	 * dada: para cada bloco, os primeiros vértices e depois as contagens. Bloco
+	 * que não existe é ignorado. Desenha-se na ordem, como os blocos.
+	 */
+	definirDestaque(chave: string, faixas: Map<string, Uint32Array>, cor: Rgb): void;
+	/** Tira o bloco ou o destaque da chave. */
 	removerBloco(chave: string): void;
 	/**
 	 * Desenha todos os blocos; largura e altura em pixels do dispositivo. Fundo

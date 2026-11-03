@@ -14,7 +14,9 @@ import type { Rgb } from './cor';
 import type { Desenhista } from './desenhista';
 import type { Transformacao } from './vista';
 
-type Bloco = { segmentos: Float32Array; cor: string };
+type Bloco =
+	| { segmentos: Float32Array; cor: string }
+	| { faixas: Map<string, Uint32Array>; cor: string };
 
 export class DesenhistaCanvas2d implements Desenhista {
 	readonly caminho = 'canvas2d' as const;
@@ -24,6 +26,10 @@ export class DesenhistaCanvas2d implements Desenhista {
 
 	definirBloco(chave: string, segmentos: Float32Array, cor: Rgb): void {
 		this.blocos.set(chave, { segmentos, cor: `rgb(${cor[0]}, ${cor[1]}, ${cor[2]})` });
+	}
+
+	definirDestaque(chave: string, faixas: Map<string, Uint32Array>, cor: Rgb): void {
+		this.blocos.set(chave, { faixas, cor: `rgb(${cor[0]}, ${cor[1]}, ${cor[2]})` });
 	}
 
 	removerBloco(chave: string): void {
@@ -47,12 +53,29 @@ export class DesenhistaCanvas2d implements Desenhista {
 		const ay = (-t[1] * altura) / 2;
 		const by = ((1 - t[3]) * altura) / 2;
 
-		for (const { segmentos, cor } of this.blocos.values()) {
-			ctx.strokeStyle = cor;
-			ctx.beginPath();
-			for (let i = 0; i + 3 < segmentos.length; i += 4) {
+		const tracar = (segmentos: Float32Array, de: number, ate: number) => {
+			for (let i = de; i + 3 < ate; i += 4) {
 				ctx.moveTo(segmentos[i] * ax + bx, segmentos[i + 1] * ay + by);
 				ctx.lineTo(segmentos[i + 2] * ax + bx, segmentos[i + 3] * ay + by);
+			}
+		};
+
+		for (const bloco of this.blocos.values()) {
+			ctx.strokeStyle = bloco.cor;
+			ctx.beginPath();
+			if ('segmentos' in bloco) {
+				tracar(bloco.segmentos, 0, bloco.segmentos.length);
+			} else {
+				// Cada faixa conta vértices; cada vértice tem dois números.
+				for (const [chave, faixas] of bloco.faixas) {
+					const alvo = this.blocos.get(chave);
+					if (alvo == null || !('segmentos' in alvo)) continue;
+					const n = faixas.length / 2;
+					for (let i = 0; i < n; i++) {
+						const de = faixas[i] * 2;
+						tracar(alvo.segmentos, de, de + faixas[n + i] * 2);
+					}
+				}
 			}
 			ctx.stroke();
 		}

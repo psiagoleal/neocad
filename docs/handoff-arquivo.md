@@ -8,6 +8,7 @@
 
 ## Índice
 
+- [Rodada de 2026-11-02: seleção e edição na tela](#rodada-de-2026-11-02-seleção-e-edição-na-tela) — MT-KV-14c, 14d1–14d5, 14f, 14h, 14e
 - [Rodada de 2026-11-02: upstream sem comandos](#rodada-de-2026-11-02-upstream-sem-comandos) — MT-KV-13b, MT-UI-05
 - [Rodada de 2026-11-02: linha de comando visível](#rodada-de-2026-11-02-linha-de-comando-visível) — MT-KV-14b
 - [Rodada de 2026-11-02: motor de comandos e LINE](#rodada-de-2026-11-02-motor-de-comandos-e-line) — MT-KV-14a
@@ -31,6 +32,39 @@
   review, ADR 0007, specs, plano, higiene HG-01..06 e MT-K3-13.
 - [Rodadas até 2026-09-25](#rodadas-até-2026-09-25) — fases K1, K2, KL e o início de K3,
   movidas como estavam em 2026-10-29 (MT-HG-02).
+
+## Rodada de 2026-11-02: seleção e edição na tela
+
+Commit `39e225d`.
+
+- **MT-KV-14c fatiado** (commit `75a9f37`): 14c é a seleção; o `ERASE` foi para o 14f.
+  Critérios S1–S6 e E1–E3 na spec 10.
+- **MT-KV-14c:** clique, janela e cruzada na tela própria, com destaque, consultando o
+  kernel por espaço (`pickOnScreen`, `selectOnScreen`, `getScreenSegmentsOf`).
+  `data-selecao` exposto. O índice espacial passou a ser feito ao preparar a tela e
+  atualizado aos poucos depois das edições (clique: 197 → 4–10 ms com 100 mil).
+- Corrigido: `getEntitiesById` recusava entidade apagada (`undefined` da fachada).
+- Lacuna registrada: janela em volta do desenho inteiro (~90 mil) leva ~290 ms; fica
+  `test.fail()` até o MT-KV-14g (seleção mantida no kernel).
+- **MT-KV-14f:** `ERASE` / `APAGAR` / `E` apaga a seleção num só passo de desfazer, com
+  prompt "Selecione objetos:" quando não há seleção; `Delete` fora de campo faz o mesmo.
+  A fachada ganhou `removeEntities` (tudo ou nada).
+- **MT-KV-14d fatiado** em 14d1–14d5 (commit `b431fc8`); **MT-KV-14d1:** `MOVE` e
+  `COPY` sobre a seleção, com a etapa "Selecione objetos:" comum aos comandos de edição.
+- **MT-KV-14d2:** `ROTATE`, `MIRROR` (mantém as originais por padrão, num só passo, pelo
+  novo `mirrorCopyEntities`) e `SCALE` pela linha.
+- **MT-KV-14d3:** `OFFSET` pela linha, com o objeto escolhido pelo clique; o motor passou
+  a receber da tela o aviso de seleção. Aberto o MT-KV-14h (pontos pelo clique na tela).
+- **MT-KV-14d4:** `TRIM` e `EXTEND`; a tela ganhou o modo de escolha (o clique vai ao
+  comando com o ponto e não seleciona), que também passou a servir ao `OFFSET`.
+- **MT-KV-14d5:** `FILLET` e `CHAMFER`. Os dez comandos de edição do K3 estão na linha
+  de comando; V5b provado de ponta a ponta.
+- **MT-KV-14h:** pontos pelo clique, com prendimento pelo kernel (por espaço, só o que
+  está perto) e marcador; o `LINE` se desenha clicando. P4: pior movimento 13,4 ms com
+  100 mil (margem pequena até 16 ms).
+- **MT-KV-14e (V7):** clicar em entidade que só o upstream desenha responde "entidade
+  ainda não editável" com o tipo. Os testes de clique passaram a esperar a carga do
+  upstream (uma intermitência antiga de layout).
 
 ## Rodada de 2026-11-02: upstream sem comandos
 

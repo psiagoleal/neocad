@@ -116,6 +116,16 @@ impl<T: Copy> SpatialIndex<T> {
             self.visit(root, area, &mut found);
         }
 
+        // Com muitos achados, marcar pela posição de entrada e percorrer em ordem
+        // sai mais barato que ordenar (a janela em volta do desenho inteiro).
+        if found.len() * 8 > self.items.len() {
+            let mut by_origin: Vec<Option<T>> = vec![None; self.items.len()];
+            for index in found {
+                by_origin[self.origin[index]] = Some(self.items[index].1);
+            }
+            return by_origin.into_iter().flatten().collect();
+        }
+
         found.sort_unstable_by_key(|index| self.origin[*index]);
         found.into_iter().map(|index| self.items[index].1).collect()
     }
