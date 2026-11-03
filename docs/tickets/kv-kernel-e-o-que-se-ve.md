@@ -542,12 +542,16 @@ no histórico) já está no motor e vale para todas.
 
 ### MT-KV-14e: Edição sobre entidade não modelada (V7)
 
-- **Objetivo:** pedir edição sobre entidade que só o upstream desenha responde "entidade
-  ainda não editável" com o tipo dela, sem mudar o documento.
-- **Arquivos no escopo:** a definir no detalhe, ao abrir.
-- **Critério de aceite:** spec 07, V7.
-- **Fora de escopo:** editar essas entidades.
-- **Depende de:** MT-KV-14c.
+- **Objetivo:** o clique em entidade que só o upstream desenha responde, no histórico da
+  linha de comando, "<tipo>: entidade ainda não editável.", sem mudar a seleção nem o
+  documento, tanto no modo de seleção quanto num pedido de objeto.
+- **Arquivos no escopo:** `src/lib/viewer/neocad-viewer.ts` (o tipo sob o ponto),
+  `src/lib/render/tela-do-kernel.ts`, `src/lib/command-line/motor.ts`,
+  `CommandLine.svelte`, `ViewerScreen.svelte`, `+page.svelte`, os testes e
+  `e2e/command-line.e2e.ts`.
+- **Critério de aceite:** spec 07, V7, com o detalhe escrito lá.
+- **Fora de escopo:** editar essas entidades; avisar na janela.
+- **Depende de:** MT-KV-14h.
 
 ### MT-KV-15: Verificação na NVIDIA
 

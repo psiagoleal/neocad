@@ -49,7 +49,7 @@ modela: continuam exibidas pelo upstream na leitura e reportadas como perda (T4)
 | V5  | Todo comando que edite o desenho DEVE fazê-lo pelo kernel; comando de edição que não passe pelo kernel NÃO DEVE aparecer no catálogo de comandos.                                                   | `pnpm test -- cad-command-catalog`                                                                                               |
 | V5b | SE o kernel recusa uma edição pedida por comando, ENTÃO a tela NÃO DEVE mudar e uma mensagem em português, com o motivo da recusa, DEVE aparecer no histórico da linha de comando, como no AutoCAD. | `pnpm test command-line` (`motor.spec.ts`, recusa simulada); `pnpm test:e2e command-line` (reta de comprimento zero)             |
 | V6  | SE o caminho de exibição recusa uma entidade do kernel, ENTÃO a área de mensagens DEVE informar o tipo e a quantidade das entidades não exibidas; V1 vale para todas as demais.                     | `pnpm test -- tela-do-kernel` (recusa simulada, mensagem emitida) e `pnpm test:e2e -- kernel-view` com `with-viewport.dxf`       |
-| V7  | QUANDO o usuário pede uma edição sobre entidade que o kernel não modela, a edição DEVE ser recusada com a mensagem "entidade ainda não editável" e o tipo dela, sem alterar o documento.            | `pnpm test:e2e -- kernel-view` com fixture `with-unsupported.dxf` (a criar)                                                      |
+| V7  | QUANDO o usuário pede uma edição sobre entidade que o kernel não modela, a edição DEVE ser recusada com a mensagem "entidade ainda não editável" e o tipo dela, sem alterar o documento.            | `pnpm test:e2e command-line` com fixture `with-unsupported.dxf`; testes de unidade do adaptador, da tela e do motor              |
 
 ## O que os testes observam na tela
 
@@ -86,6 +86,13 @@ no build feito com `VITE_NEOCAD_SONDA=1`, a página expõe `window.__neocadSonda
 primeira, se não houver `0`) e devolve o id; `mover(ids, dx, dy)`; e `apagar(id)`. Cada
 uma é uma ação desfazível, como as do menu. O build dos testes de ponta a ponta sempre
 a traz; sem essa variável, a sonda não existe.
+
+Para o V7, o clique é o pedido: quando o clique na tela própria não pega entidade do
+kernel, mas há sob ele uma entidade que só o upstream desenha, o histórico da linha de
+comando DEVE dizer "<tipo>: entidade ainda não editável." e nada muda — no modo de
+seleção, a janela não se abre; num pedido de objeto, o comando não recebe o clique. O
+tipo é o que o upstream dá (`dxfTypeName`): a SOLID, por exemplo, aparece como `TRACE`.
+A janela que pega entidades só do upstream as deixa de fora em silêncio.
 
 ## Requisitos não-funcionais
 

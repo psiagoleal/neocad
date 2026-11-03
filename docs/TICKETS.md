@@ -35,8 +35,8 @@ UI começa pelo que não depende de KV.
       interseção, paralela e transformação.
 - [ ] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
       seleção no kernel; S6 com 100 mil selecionadas.
-- [ ] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —
-      V7.
+- [>] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) — falta
+  o tipo sob o ponto no adaptador e o aviso na tela e no motor.
 - [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
       N5 na NVIDIA; AMD e Intel presumidas.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
