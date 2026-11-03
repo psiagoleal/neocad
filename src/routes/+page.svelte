@@ -66,6 +66,8 @@
 
 	/** Tela desenhada pelo kernel (ADR 0008); criada pelo componente da área de desenho. */
 	let telaDoKernel: TelaDoKernel | null = null;
+	/** O aviso de entidade não editável, que a linha de comando entrega (V7). */
+	let uneditableNotice: ((type: string) => void) | null = null;
 	/** Verdadeiro quando o desenho aberto foi lido pelo kernel e está na tela própria. */
 	let isKernelScreenVisible = $state(false);
 
@@ -509,6 +511,11 @@
 		telaDoKernel = tela;
 		// Spec 07, V6: o que a tela não exibe vai para a área de mensagens.
 		tela.avisarCom((mensagem) => pushNotification('warning', mensagem));
+		// Spec 07, V7: o upstream diz o que ele desenha sob o clique.
+		tela.consultarNaoModelado(
+			(ponto, raioPx) => viewerController?.tipoNaoModeladoSob(ponto, raioPx) ?? null
+		);
+		tela.aoNaoEditavel(uneditableNotice);
 	}
 
 	/** Depois de cada edição pela linha de comando: o menu e a tela releem o kernel. */
@@ -895,6 +902,10 @@
 				allEntities={() => telaDoKernel?.todas() ?? []}
 				setChoiceMode={(onChoose) => telaDoKernel?.definirEscolha(onChoose)}
 				setPointMode={(onPoint) => telaDoKernel?.definirPonto(onPoint)}
+				setUneditableNotice={(notice) => {
+					uneditableNotice = notice;
+					telaDoKernel?.aoNaoEditavel(notice);
+				}}
 			/>
 		</section>
 

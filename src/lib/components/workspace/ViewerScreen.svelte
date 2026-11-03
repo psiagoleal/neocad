@@ -35,6 +35,7 @@
 		allEntities: () => CadEntityId[];
 		setChoiceMode: (onChoose: ((choice: Escolha) => void) | null) => void;
 		setPointMode: (onPoint: ((point: CadPoint) => void) | null) => void;
+		setUneditableNotice: (notice: (type: string) => void) => void;
 	};
 
 	let {
@@ -62,7 +63,8 @@
 		selectedEntities,
 		allEntities,
 		setChoiceMode,
-		setPointMode
+		setPointMode,
+		setUneditableNotice
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -117,5 +119,6 @@
 		todas={allEntities}
 		definirEscolha={setChoiceMode}
 		definirPonto={setPointMode}
+		definirAvisoNaoEditavel={setUneditableNotice}
 	/>
 </section>

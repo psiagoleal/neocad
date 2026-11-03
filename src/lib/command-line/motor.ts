@@ -75,7 +75,18 @@ export interface SelecaoDosComandos {
 }
 
 /** Um clique de escolha: o que está sob ele (do mais perto), o ponto e o raio do clique. */
-export type Escolha = { ids: CadEntityId[]; ponto: CadPoint; raio: number };
+export type Escolha = {
+	ids: CadEntityId[];
+	ponto: CadPoint;
+	raio: number;
+	/** Sem entidade do kernel sob o clique: o tipo da entidade só do upstream, se houver (V7). */
+	naoEditavel?: string;
+};
+
+/** A resposta ao pedido de edição sobre entidade que o kernel não modela (spec 07, V7). */
+export function mensagemNaoEditavel(tipo: string): string {
+	return `${tipo}: entidade ainda não editável.`;
+}
 
 export type ContextoDeComando = {
 	documento: DocumentoDosComandos;
@@ -161,6 +172,10 @@ export class MotorDeComandos {
 		const atual = this.emCursoAgora;
 		const aoEscolher = atual?.comando.aoEscolher;
 		if (atual == null || aoEscolher == null || !this.querEscolha) return;
+		if (escolha.ids.length === 0 && escolha.naoEditavel != null) {
+			this.opcoes.mensagem({ tipo: 'erro', texto: mensagemNaoEditavel(escolha.naoEditavel) });
+			return;
+		}
 		this.executar(atual, () => aoEscolher.call(atual.comando, escolha));
 	}
 

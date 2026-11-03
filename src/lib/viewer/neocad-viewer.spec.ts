@@ -16,6 +16,7 @@ import {
 	aplicarFundoDoUpstream,
 	buildLayoutList,
 	desligarComandosDoUpstream,
+	tipoSob,
 	type CadLayoutSource
 } from './neocad-viewer';
 
@@ -215,5 +216,23 @@ describe('aplicarFundoDoUpstream', () => {
 		aplicarFundoDoUpstream(vista, true);
 		expect(estado).toEqual({ limpeza: 0, frenteExistente: 0xffffff });
 		expect(frenteNova()).toBe(0xffffff);
+	});
+});
+
+describe('tipoSob (V7)', () => {
+	const busca = {
+		pick: vi.fn((p: { x: number; y: number }) => (p.x > 5 ? [{ id: 'h1' }] : [])),
+		getEntityById: vi.fn((id: string) => (id === 'h1' ? { dxfTypeName: 'TRACE' } : undefined))
+	};
+
+	it('o tipo da entidade do upstream mais perto do ponto', () => {
+		expect(tipoSob(busca, { x: 10, y: 0 }, 5)).toBe('TRACE');
+		expect(busca.pick).toHaveBeenLastCalledWith({ x: 10, y: 0 }, 5, true);
+	});
+
+	it('nada sob o ponto, ou sem tipo legível, é null', () => {
+		expect(tipoSob(busca, { x: 0, y: 0 }, 5)).toBeNull();
+		const semTipo = { pick: () => [{ id: 'x' }], getEntityById: () => ({}) };
+		expect(tipoSob(semTipo, { x: 0, y: 0 }, 5)).toBeNull();
 	});
 });

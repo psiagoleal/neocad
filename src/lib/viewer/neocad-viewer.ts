@@ -16,6 +16,7 @@ import type {
 	CadDocumentSnapshot,
 	CadLayout,
 	CadOpenMode,
+	CadPoint,
 	CadViewerDocumentState,
 	CadViewerProgressState
 } from '$lib/types/cad';
@@ -198,6 +199,19 @@ export function desligarComandosDoUpstream(
 ): void {
 	configuracao.isShowCommandLine = false;
 	docManager.sendStringToExecute = () => undefined;
+}
+
+/** O que o adaptador usa do upstream para saber o tipo sob um ponto. */
+export type BuscaDoUpstream = {
+	pick(ponto: { x: number; y: number }, raioPx: number, soUm: boolean): Array<{ id: string }>;
+	getEntityById(id: string): { dxfTypeName?: unknown } | undefined;
+};
+
+/** O tipo da entidade do upstream sob o ponto (spec 07, V7), ou `null`. */
+export function tipoSob(busca: BuscaDoUpstream, ponto: CadPoint, raioPx: number): string | null {
+	const [maisPerto] = busca.pick(ponto, raioPx, true);
+	const tipo = maisPerto == null ? undefined : busca.getEntityById(maisPerto.id)?.dxfTypeName;
+	return typeof tipo === 'string' && tipo !== '' ? tipo : null;
 }
 
 /** Vista do upstream, só no que o fundo precisa. */
@@ -405,6 +419,23 @@ export class NeoCadViewer {
 			vista.addEntity = original;
 			if (this.host != null) this.host.dataset.entidades = String(entregues);
 		}
+	}
+
+	/** O tipo da entidade que o upstream desenha sob o ponto, ou `null` (spec 07, V7). */
+	tipoNaoModeladoSob(ponto: CadPoint, raioPx: number): string | null {
+		const docManager = this.docManager;
+		const banco = docManager?.curDocument?.database;
+		if (docManager == null || banco == null) return null;
+		const vista = docManager.curView as unknown as Pick<BuscaDoUpstream, 'pick'>;
+		const tabela = banco.tables.blockTable as unknown as Pick<BuscaDoUpstream, 'getEntityById'>;
+		return tipoSob(
+			{
+				pick: (p, r, um) => vista.pick(p, r, um),
+				getEntityById: (id) => tabela.getEntityById(id)
+			},
+			ponto,
+			raioPx
+		);
 	}
 
 	/**

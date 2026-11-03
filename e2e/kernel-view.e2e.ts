@@ -319,6 +319,10 @@ async function pixel(page: Page, x: number, y: number): Promise<{ x: number; y: 
 
 /** Clique esquerdo no ponto (x, y) do desenho. */
 async function clicarNoDesenho(page: Page, x: number, y: number, shift = false): Promise<void> {
+	// Só depois da carga do upstream a tela para de mudar de tamanho; antes disso, um
+	// clique calculado em pixels pode errar o alvo.
+	await expect(page.getByText('Desenho carregado com sucesso')).toBeVisible({ timeout: 30_000 });
+	await expect(page.locator('.viewer-status-row')).toHaveCount(0);
 	const p = await pixel(page, x, y);
 	if (shift) await page.keyboard.down('Shift');
 	await page.mouse.click(p.x, p.y);

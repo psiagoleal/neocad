@@ -13,7 +13,7 @@
 - **Data:** 2026-11-02
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `d81f5a5` (MT-KV-14h); antes, `f1357da` (MT-KV-14d5)
+- **Commit:** ver `git log` (MT-KV-14e); antes, `d81f5a5` (MT-KV-14h)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
@@ -45,6 +45,9 @@
 - **MT-KV-14h:** pontos pelo clique, com prendimento pelo kernel (por espaço, só o que
   está perto) e marcador; o `LINE` se desenha clicando. P4: pior movimento 13,4 ms com
   100 mil (margem pequena até 16 ms).
+- **MT-KV-14e (V7):** clicar em entidade que só o upstream desenha responde "entidade
+  ainda não editável" com o tipo. Os testes de clique passaram a esperar a carga do
+  upstream (uma intermitência antiga de layout).
 - A rodada anterior (MT-KV-13b e MT-UI-05) está no
   [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-upstream-sem-comandos).
 
@@ -63,9 +66,8 @@
 
 ## Próximo passo sugerido
 
-1. MT-KV-14e (V7: edição sobre entidade só do upstream) e 14g (seleção no kernel, S6
-   com seleção grande). Aparência a planejar na fase de UI: marcador por modo de
-   prendimento e linha elástica até o cursor.
+1. MT-KV-14g (seleção no kernel, S6 com seleção grande). Aparência a planejar na fase
+   de UI: marcador por modo de prendimento e linha elástica até o cursor.
    Depois 14e (V7) e 14g (seleção no kernel).
 2. MT-UI-08 (vírgula decimal) quando couber.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.

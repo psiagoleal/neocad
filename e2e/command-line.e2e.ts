@@ -24,6 +24,11 @@ async function abrir(page: Page) {
 	await (await chooser).setFiles(FIXTURE);
 	const tela = page.locator('canvas[data-tela="kernel"]');
 	await expect(tela).toHaveAttribute('data-entidades', '2', { timeout: 30_000 });
+	// Só depois da carga do upstream a tela para de mudar de tamanho (a barra de
+	// progresso some): antes disso, um clique calculado em pixels pode errar o alvo.
+	await expect(page.getByText('Desenho carregado com sucesso')).toBeVisible({ timeout: 30_000 });
+	await expect(tela).toHaveAttribute('data-fundo', 'transparente');
+	await expect(page.locator('.viewer-status-row')).toHaveCount(0);
 	return { tela, linha: page.getByRole('textbox', { name: 'Linha de comando' }) };
 }
 
@@ -342,4 +347,33 @@ test('LINE pelos cliques, prendendo nos pontos notáveis (P1, P2)', async ({ pag
 	await expect(tela).toHaveAttribute('data-entidades', '3');
 	await expect(tela).toHaveAttribute('data-selecao', '0');
 	await expect(tela).toHaveAttribute('data-clique', 'selecao');
+});
+
+test('clique em entidade só do upstream: "entidade ainda não editável" (V7)', async ({ page }) => {
+	test.setTimeout(60_000);
+	await page.goto('/');
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await (await chooser).setFiles(path.join(process.cwd(), 'e2e/fixtures/with-unsupported.dxf'));
+	const tela = page.locator('canvas[data-tela="kernel"]');
+	// A LINE é do kernel; a SOLID, de (10,10) a (40,40), só o upstream desenha.
+	await expect(tela).toHaveAttribute('data-fundo', 'transparente', { timeout: 30_000 });
+	await expect(page.getByText('Desenho carregado com sucesso')).toBeVisible({ timeout: 30_000 });
+	const historico = page.getByRole('log', { name: 'Histórico de comandos' });
+	const linha = page.getByRole('textbox', { name: 'Linha de comando' });
+
+	// Sem comando: avisa e não abre janela (o segundo clique não seleciona nada).
+	await clicarNoDesenho(page, 35, 15);
+	await expect(historico).toContainText(/\w+: entidade ainda não editável\./);
+	console.log('V7-tipo:', await historico.innerText());
+	await clicarNoDesenho(page, 90, 90);
+	await expect(tela).toHaveAttribute('data-selecao', '1');
+
+	// Num pedido de objeto, o comando não recebe o clique.
+	await page.keyboard.press('Escape');
+	await digitar(page, 'TR', '');
+	await clicarNoDesenho(page, 35, 15);
+	await expect(historico.locator('li').last()).toContainText('entidade ainda não editável.');
+	await expect(linha).toHaveAttribute('data-prompt', 'Selecione o objeto a aparar ou [Desfazer]:');
+	await expect(tela).toHaveAttribute('data-entidades', '1');
 });

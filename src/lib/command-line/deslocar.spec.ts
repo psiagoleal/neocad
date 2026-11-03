@@ -117,6 +117,14 @@ describe('OFFSET (spec 10)', () => {
 		expect(falso.pilha).toHaveLength(passos);
 	});
 
+	it('clique em entidade só do upstream: a linha diz que não é editável e o comando não a recebe (V7)', () => {
+		const { motor, digitar, erro } = montar();
+		digitar('O', '1');
+		motor.escolher({ ids: [], ponto: { x: 0, y: 9 }, raio: 0.5, naoEditavel: 'TRACE' });
+		expect(erro()).toBe('TRACE: entidade ainda não editável.');
+		expect(motor.prompt).toBe(OBJETO);
+	});
+
 	it('clique no vazio, no pedido de objeto, não escolhe nada', () => {
 		const { motor, digitar } = montar();
 		digitar('O', '1');

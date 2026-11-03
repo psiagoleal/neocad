@@ -5,11 +5,12 @@
 	 * sugestões e as teclas Enter, Espaço, Esc e setas. A lógica mora no motor
 	 * (`$lib/command-line/motor`); aqui ficam só a tela e o teclado.
 	 */
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { CATALOGO_DA_SPEC } from '$lib/command-line/catalogo';
 	import { COMANDOS } from '$lib/command-line/comandos';
 	import {
 		MotorDeComandos,
+		mensagemNaoEditavel,
 		type DocumentoDosComandos,
 		type Escolha,
 		type Mensagem
@@ -30,6 +31,8 @@
 		definirEscolha: (aoEscolher: ((escolha: Escolha) => void) | null) => void;
 		/** Liga (com quem recebe o ponto) ou desliga o modo de ponto da tela. */
 		definirPonto: (aoApontar: ((ponto: CadPoint) => void) | null) => void;
+		/** Recebe quem escreve no histórico o aviso de entidade não editável (spec 07, V7). */
+		definirAvisoNaoEditavel: (aviso: (tipo: string) => void) => void;
 	};
 
 	let {
@@ -39,7 +42,8 @@
 		selecionados,
 		todas,
 		definirEscolha,
-		definirPonto
+		definirPonto,
+		definirAvisoNaoEditavel
 	}: CommandLineProps = $props();
 
 	/** Linhas guardadas no histórico; as mais antigas saem. */
@@ -88,6 +92,16 @@
 		}
 		void rolarHistorico();
 	}
+
+	// O clique em entidade só do upstream, fora de comando, responde no histórico (V7).
+	onMount(() =>
+		definirAvisoNaoEditavel((tipo) => {
+			historico = [...historico, { tipo: 'erro' as const, texto: mensagemNaoEditavel(tipo) }].slice(
+				-LIMITE_DO_HISTORICO
+			);
+			void rolarHistorico();
+		})
+	);
 
 	const sugestoes = $derived.by(() => {
 		void prompt;

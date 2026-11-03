@@ -262,6 +262,42 @@ describe('tela do kernel: seleção (spec 10, S1–S5)', () => {
 		expect(dados.prendimento).toBe('');
 	});
 
+	it('clique em entidade só do upstream avisa e não abre janela; na escolha, vai com o tipo (V7)', () => {
+		const { tela, doc, dados } = montar();
+		const aviso = vi.fn();
+		const consulta = vi.fn((p: { x: number }) => (p.x < 0 ? 'TRACE' : null));
+		// O upstream está por baixo, no espaço-modelo.
+		tela.sobrepor(vi.fn());
+		tela.consultarNaoModelado(consulta);
+		tela.aoNaoEditavel(aviso);
+
+		clicar(380, 300);
+		expect(consulta).toHaveBeenCalledWith({ x: -20, y: 0 }, 5);
+		expect(aviso).toHaveBeenCalledWith('TRACE');
+		clicar(420, 320);
+		quadro();
+		expect(doc.selectOnScreen).not.toHaveBeenCalled();
+		expect(dados.selecao).toBe('0');
+
+		const escolha = vi.fn();
+		tela.definirEscolha(escolha);
+		clicar(380, 300);
+		expect(escolha).toHaveBeenCalledWith({
+			ids: [],
+			ponto: { x: -20, y: 0 },
+			raio: 5,
+			naoEditavel: 'TRACE'
+		});
+	});
+
+	it('sem o upstream por baixo, ninguém é consultado (V7)', () => {
+		const { tela } = montar();
+		const consulta = vi.fn(() => 'TRACE');
+		tela.consultarNaoModelado(consulta);
+		clicar(380, 300);
+		expect(consulta).not.toHaveBeenCalled();
+	});
+
 	it('o modo de escolha e o de ponto se excluem', () => {
 		const { tela, dados } = montar();
 		tela.definirPonto(vi.fn());

@@ -112,6 +112,8 @@ export class TelaDoKernel {
 	private aoEscolher: ((escolha: Escolha) => void) | null = null;
 	/** Com o modo de ponto ligado, o clique entrega o ponto ao comando (spec 10, P1). */
 	private aoApontar: ((ponto: CadPoint) => void) | null = null;
+	private consultaNaoModelado: ((ponto: CadPoint, raioPx: number) => string | null) | null = null;
+	private avisoNaoEditavel: ((tipo: string) => void) | null = null;
 	/** O ponto notável sob o cursor, no modo de ponto. */
 	private prendimento: CadSnap | null = null;
 	/** Onde está o cursor, em coordenadas do desenho, enquanto a janela está aberta. */
@@ -283,6 +285,21 @@ export class TelaDoKernel {
 		this.prendimento = null;
 		this.atualizarMarcador();
 		this.pedirQuadro();
+	}
+
+	/**
+	 * Quem diz o tipo da entidade que só o upstream desenha sob um ponto (spec 07,
+	 * V7); o raio vai em pixels.
+	 */
+	consultarNaoModelado(
+		consulta: ((ponto: CadPoint, raioPx: number) => string | null) | null
+	): void {
+		this.consultaNaoModelado = consulta;
+	}
+
+	/** Para onde vai o aviso do clique em entidade não editável, no modo de seleção (V7). */
+	aoNaoEditavel(aviso: ((tipo: string) => void) | null): void {
+		this.avisoNaoEditavel = aviso;
 	}
 
 	/** Todas as entidades desenhadas no espaço mostrado. */
@@ -496,8 +513,22 @@ export class TelaDoKernel {
 			this.aoApontar(this.prender(ponto)?.point ?? ponto);
 			return;
 		}
+		const ids = documento.pickOnScreen(espaco, ponto, raio);
+		// Nada do kernel sob o clique: talvez uma entidade que só o upstream desenha (V7).
+		// Só vale com o upstream por baixo, no espaço-modelo; num layout ele não está ali.
+		const sobreposta = this.aoMudarVista != null && this.espaco === this.espacos[0];
+		const naoEditavel =
+			ids.length === 0 && sobreposta
+				? (this.consultaNaoModelado?.(ponto, RAIO_DO_CLIQUE_PX) ?? null)
+				: null;
 		if (this.aoEscolher != null) {
-			this.aoEscolher({ ids: documento.pickOnScreen(espaco, ponto, raio), ponto, raio });
+			this.aoEscolher(
+				naoEditavel == null ? { ids, ponto, raio } : { ids, ponto, raio, naoEditavel }
+			);
+			return;
+		}
+		if (naoEditavel != null && this.selecao.inicioDaJanela == null) {
+			this.avisoNaoEditavel?.(naoEditavel);
 			return;
 		}
 		this.selecao.clicar(ponto, raio, e.shiftKey, {

@@ -552,6 +552,19 @@ no histórico) já está no motor e vale para todas.
 - **Critério de aceite:** spec 07, V7, com o detalhe escrito lá.
 - **Fora de escopo:** editar essas entidades; avisar na janela.
 - **Depende de:** MT-KV-14h.
+- **Resultado (2026-11-02):** o adaptador ganhou `tipoSob` / `tipoNaoModeladoSob` (o
+  `pick` da vista do upstream e o `dxfTypeName` pelo `blockTable.getEntityById`); a
+  tela, `consultarNaoModelado` e `aoNaoEditavel`: quando o clique não pega entidade do
+  kernel e o upstream está por baixo (espaço-modelo), ela pergunta o tipo; no modo de
+  seleção avisa e não abre janela, e no de escolha manda o tipo junto (`naoEditavel`),
+  que o motor responde sem chamar o comando. A mensagem vai ao histórico da linha de
+  comando. Provas: `neocad-viewer.spec.ts`, `tela-do-kernel.spec.ts`,
+  `deslocar.spec.ts` e o e2e V7 com `with-unsupported.dxf` (visto falhar com a consulta
+  desligada); a SOLID aparece como `TRACE`, como previsto. A suíte completa mostrou uma
+  intermitência antiga nos testes de clique: o canvas muda de tamanho quando a barra de
+  progresso do upstream some, e um clique calculado antes errava o alvo; os auxiliares
+  `abrir` e `clicarNoDesenho` passaram a esperar a carga, e três rodadas seguidas
+  passaram.
 
 ### MT-KV-15: Verificação na NVIDIA
 
