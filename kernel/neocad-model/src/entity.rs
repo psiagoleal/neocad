@@ -4,9 +4,9 @@
 //! \author Iago Leal
 //! \date 2026-08-07
 
-use core::f64::consts::{FRAC_PI_2, TAU};
-
-use neocad_geometry::{point_on_circle, Aabb, Point2};
+use neocad_geometry::{
+    Aabb, Arc, Circle, Curve, Line, Point2, Polyline, PolylineVertex, Transform,
+};
 
 use crate::layer::{Color, LayerId};
 use crate::viewport::Viewport;
@@ -17,56 +17,6 @@ use crate::viewport::Viewport;
 /// mais alto para **superestimar** a caixa: uma caixa maior que a real faz o
 /// ajuste de vista sobrar, enquanto uma menor cortaria o texto da tela.
 const TEXT_ADVANCE_RATIO: f64 = 0.8;
-
-/// Segmento de reta entre dois pontos.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Line {
-    /// Ponto inicial.
-    pub start: Point2,
-    /// Ponto final.
-    pub end: Point2,
-}
-
-/// Circunferência completa.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Circle {
-    /// Centro.
-    pub center: Point2,
-    /// Raio.
-    pub radius: f64,
-}
-
-/// Arco de circunferência.
-///
-/// Os ângulos são medidos em radianos, no sentido anti-horário a partir do eixo
-/// X positivo, e o arco vai de `start_angle` até `end_angle` **nesse sentido** —
-/// a convenção do DXF. Um arco com `start_angle == end_angle` é degenerado e
-/// reduz-se a um ponto; circunferências completas são representadas por
-/// [`Circle`].
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Arc {
-    /// Centro.
-    pub center: Point2,
-    /// Raio.
-    pub radius: f64,
-    /// Ângulo inicial, em radianos.
-    pub start_angle: f64,
-    /// Ângulo final, em radianos.
-    pub end_angle: f64,
-}
-
-/// Sequência de vértices ligados por segmentos de reta.
-///
-/// Não modela abaulamento (`bulge`) de segmento, que o DXF usa para representar
-/// trechos em arco dentro de uma polilinha. Entra em K3, junto com as operações
-/// que dependem dele.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Polyline {
-    /// Vértices, em ordem de percurso.
-    pub vertices: Vec<Point2>,
-    /// Se verdadeiro, há um segmento ligando o último vértice ao primeiro.
-    pub closed: bool,
-}
 
 /// Texto de uma linha.
 #[derive(Debug, Clone, PartialEq)]
@@ -157,6 +107,18 @@ impl Entity {
         }
     }
 
+    /// A mesma entidade, com a forma levada pela transformação.
+    ///
+    /// Camada e cor não são geometria e atravessam intactas.
+    #[must_use]
+    pub fn transformed(&self, transform: &Transform) -> Self {
+        Self {
+            layer: self.layer,
+            color: self.color,
+            geometry: self.geometry.transformed(transform),
+        }
+    }
+
     /// Caixa envolvente da entidade.
     ///
     /// Uma polilinha sem vértices produz caixa degenerada na origem, por não
@@ -168,55 +130,83 @@ impl Entity {
 }
 
 impl Geometry {
+    /// A mesma forma, levada pela transformação.
+    ///
+    /// A semelhança preserva o tipo — circunferência continua circunferência,
+    /// arco continua arco —, que é a razão de o kernel só admitir semelhanças
+    /// (ver `Transform`).
+    ///
+    /// Duas consequências da reflexão merecem atenção, porque errá-las produz um
+    /// desenho parecido com o certo e diferente dele. **O arco troca de pontas:**
+    /// ele é sempre anti-horário, e o que era percorrido num sentido passa a ser
+    /// percorrido no outro, de modo que o ângulo final vira inicial. **O
+    /// abaulamento troca de sinal**, pela mesma razão.
+    ///
+    /// O texto é levado de posição e de altura, mas as letras **não** são
+    /// espelhadas: é a convenção do AutoCAD com `MIRRTEXT` desligado, e existe
+    /// porque carimbo espelhado é ilegível, não é desenho.
+    #[must_use]
+    pub fn transformed(&self, transform: &Transform) -> Self {
+        match self {
+            Self::Line(line) => Self::Line(Line {
+                start: transform.apply(line.start),
+                end: transform.apply(line.end),
+            }),
+            Self::Circle(circle) => Self::Circle(Circle {
+                center: transform.apply(circle.center),
+                radius: circle.radius * transform.scale(),
+            }),
+            Self::Arc(arc) => {
+                let (start, end) = if transform.is_reflected() {
+                    (arc.end_angle, arc.start_angle)
+                } else {
+                    (arc.start_angle, arc.end_angle)
+                };
+
+                Self::Arc(Arc {
+                    center: transform.apply(arc.center),
+                    radius: arc.radius * transform.scale(),
+                    start_angle: transform.apply_angle(start),
+                    end_angle: transform.apply_angle(end),
+                })
+            }
+            Self::Polyline(polyline) => Self::Polyline(Polyline {
+                vertices: polyline
+                    .vertices
+                    .iter()
+                    .map(|vertex| PolylineVertex {
+                        point: transform.apply(vertex.point),
+                        bulge: if transform.is_reflected() {
+                            -vertex.bulge
+                        } else {
+                            vertex.bulge
+                        },
+                    })
+                    .collect(),
+                closed: polyline.closed,
+            }),
+            Self::Text(text) => Self::Text(Text {
+                position: transform.apply(text.position),
+                content: text.content.clone(),
+                height: text.height * transform.scale(),
+                rotation: transform.apply_angle(text.rotation),
+            }),
+            Self::Viewport(viewport) => Self::Viewport(viewport.transformed(transform)),
+        }
+    }
+
     /// Caixa envolvente da forma.
     #[must_use]
     pub fn bounding_box(&self) -> Aabb {
         match self {
-            Self::Line(line) => Aabb::new(line.start, line.end),
-            Self::Circle(circle) => circle_bounding_box(circle.center, circle.radius),
-            Self::Arc(arc) => arc_bounding_box(arc),
-            Self::Polyline(polyline) => Aabb::from_points(polyline.vertices.iter().copied())
-                .unwrap_or_else(|| Aabb::from_point(Point2::ORIGIN)),
+            Self::Line(line) => line.bounding_box(),
+            Self::Circle(circle) => circle.bounding_box(),
+            Self::Arc(arc) => arc.bounding_box(),
+            Self::Polyline(polyline) => polyline.bounding_box(),
             Self::Text(text) => text_bounding_box(text),
             Self::Viewport(viewport) => viewport.bounding_box(),
         }
     }
-}
-
-/// Caixa envolvente de uma circunferência completa.
-fn circle_bounding_box(center: Point2, radius: f64) -> Aabb {
-    let radius = radius.abs();
-
-    Aabb::new(
-        Point2::new(center.x - radius, center.y - radius),
-        Point2::new(center.x + radius, center.y + radius),
-    )
-}
-
-/// Caixa envolvente de um arco.
-///
-/// A caixa dos dois extremos **não basta**: um arco que cruza um dos eixos
-/// cardeais atinge, nesse cruzamento, um valor extremo que nenhum dos extremos
-/// alcança. Um arco de 315° a 45°, por exemplo, tem os dois extremos em
-/// `x = r·cos(45°) ≈ 0,707·r`, mas passa por `x = r` ao cruzar 0°. Por isso cada
-/// ângulo cardeal contido na varredura entra na caixa.
-fn arc_bounding_box(arc: &Arc) -> Aabb {
-    let radius = arc.radius.abs();
-    let start = point_on_circle(arc.center, radius, arc.start_angle);
-    let end = point_on_circle(arc.center, radius, arc.end_angle);
-
-    let sweep = normalize_angle(arc.end_angle - arc.start_angle);
-    let mut bounds = Aabb::new(start, end);
-
-    for quarter in 0..4 {
-        let angle = FRAC_PI_2 * f64::from(quarter);
-
-        if normalize_angle(angle - arc.start_angle) <= sweep {
-            bounds = bounds.expanded_to_include(point_on_circle(arc.center, radius, angle));
-        }
-    }
-
-    bounds
 }
 
 /// Caixa envolvente aproximada de um texto.
@@ -246,35 +236,23 @@ fn text_bounding_box(text: &Text) -> Aabb {
     Aabb::from_points(rotated).unwrap_or_else(|| Aabb::from_point(text.position))
 }
 
-/// Normaliza um ângulo para o intervalo `[0, 2π)`.
-fn normalize_angle(angle: f64) -> f64 {
-    let remainder = angle % TAU;
-
-    if remainder < 0.0 {
-        remainder + TAU
-    } else {
-        remainder
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::layer::LayerTable;
-    use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
-
-    const TOLERANCE: f64 = 1e-9;
+    use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
+    use neocad_geometry::{PolylineVertex, Tolerance, Transform};
 
     fn layer() -> LayerId {
         LayerTable::new().default_layer()
     }
 
     fn assert_bounds(actual: Aabb, min: Point2, max: Point2) {
+        let tolerancia = Tolerance::default();
+
         assert!(
-            (actual.min().x - min.x).abs() < TOLERANCE
-                && (actual.min().y - min.y).abs() < TOLERANCE
-                && (actual.max().x - max.x).abs() < TOLERANCE
-                && (actual.max().y - max.y).abs() < TOLERANCE,
+            tolerancia.points_equal(actual.min(), min)
+                && tolerancia.points_equal(actual.max(), max),
             "esperado min {min:?} max {max:?}, obtido min {:?} max {:?}",
             actual.min(),
             actual.max()
@@ -288,6 +266,142 @@ mod tests {
             start_angle,
             end_angle,
         }
+    }
+
+    #[test]
+    fn a_reflexao_troca_as_pontas_do_arco() {
+        // Arco do primeiro quadrante, espelhado pelo eixo X. O resultado ocupa o
+        // quarto quadrante, e o que era ângulo final vira inicial — porque o
+        // arco é sempre anti-horário e o percurso inverteu.
+        let arco = Geometry::Arc(Arc {
+            center: Point2::ORIGIN,
+            radius: 2.0,
+            start_angle: 0.0,
+            end_angle: FRAC_PI_2,
+        });
+        let espelho = Transform::mirror(Point2::ORIGIN, 0.0);
+
+        let Geometry::Arc(refletido) = arco.transformed(&espelho) else {
+            panic!("continua sendo um arco");
+        };
+        let tolerancia = Tolerance::default();
+
+        assert!(tolerancia.angles_equal(refletido.start_angle, -FRAC_PI_2));
+        assert!(tolerancia.angles_equal(refletido.end_angle, 0.0));
+
+        // E o desenho é o mesmo conjunto de pontos: espelhar duas vezes volta.
+        let de_volta = arco.transformed(&espelho).transformed(&espelho);
+
+        assert_eq!(de_volta, arco);
+    }
+
+    #[test]
+    fn a_reflexao_troca_o_sinal_do_abaulamento() {
+        let polilinha = Geometry::Polyline(Polyline {
+            vertices: vec![
+                PolylineVertex::new(Point2::ORIGIN, 0.6),
+                PolylineVertex::straight(Point2::new(4.0, 0.0)),
+            ],
+            closed: false,
+        });
+        let espelho = Transform::mirror(Point2::ORIGIN, 0.0);
+
+        let Geometry::Polyline(refletida) = polilinha.transformed(&espelho) else {
+            panic!("continua sendo uma polilinha");
+        };
+
+        assert!(Tolerance::default().lengths_equal(refletida.vertices[0].bulge, -0.6));
+        assert_eq!(
+            polilinha.transformed(&espelho).transformed(&espelho),
+            polilinha
+        );
+    }
+
+    #[test]
+    fn o_giro_nao_mexe_no_sinal_do_abaulamento() {
+        let polilinha = Geometry::Polyline(Polyline {
+            vertices: vec![
+                PolylineVertex::new(Point2::ORIGIN, 0.6),
+                PolylineVertex::straight(Point2::new(4.0, 0.0)),
+            ],
+            closed: false,
+        });
+        let giro = Transform::rotation_around(Point2::new(2.0, 2.0), FRAC_PI_4);
+
+        let Geometry::Polyline(girada) = polilinha.transformed(&giro) else {
+            panic!("continua sendo uma polilinha");
+        };
+
+        assert!(Tolerance::default().lengths_equal(girada.vertices[0].bulge, 0.6));
+    }
+
+    #[test]
+    fn a_escala_multiplica_o_raio_e_a_altura_do_texto() {
+        let tolerancia = Tolerance::default();
+        let escala = Transform::scaling_around(Point2::ORIGIN, 3.0);
+
+        let Geometry::Circle(circulo) = Geometry::Circle(Circle {
+            center: Point2::new(1.0, 0.0),
+            radius: 2.0,
+        })
+        .transformed(&escala) else {
+            panic!("continua sendo uma circunferência");
+        };
+
+        assert!(tolerancia.lengths_equal(circulo.radius, 6.0));
+        assert!(tolerancia.points_equal(circulo.center, Point2::new(3.0, 0.0)));
+
+        let Geometry::Text(texto) = Geometry::Text(Text {
+            position: Point2::ORIGIN,
+            content: "COTA".to_owned(),
+            height: 2.5,
+            rotation: 0.0,
+        })
+        .transformed(&escala) else {
+            panic!("continua sendo um texto");
+        };
+
+        assert!(tolerancia.lengths_equal(texto.height, 7.5));
+    }
+
+    #[test]
+    fn o_texto_espelhado_continua_legivel() {
+        // Convenção do AutoCAD com `MIRRTEXT` desligado: a posição é espelhada,
+        // as letras não. Carimbo espelhado é ilegível, não é desenho.
+        let texto = Geometry::Text(Text {
+            position: Point2::new(3.0, 4.0),
+            content: "PLANTA".to_owned(),
+            height: 2.0,
+            rotation: 0.0,
+        });
+        let espelho = Transform::mirror(Point2::ORIGIN, 0.0);
+
+        let Geometry::Text(refletido) = texto.transformed(&espelho) else {
+            panic!("continua sendo um texto");
+        };
+        let tolerancia = Tolerance::default();
+
+        assert!(tolerancia.points_equal(refletido.position, Point2::new(3.0, -4.0)));
+        assert!(tolerancia.angles_equal(refletido.rotation, 0.0));
+        assert_eq!(refletido.content, "PLANTA");
+    }
+
+    #[test]
+    fn camada_e_cor_atravessam_a_transformacao() {
+        let camada = layer();
+        let mut entidade = Entity::new(
+            camada,
+            Geometry::Line(Line {
+                start: Point2::ORIGIN,
+                end: Point2::new(1.0, 1.0),
+            }),
+        );
+        entidade.color = EntityColor::ByBlock;
+
+        let movida = entidade.transformed(&Transform::translation(5.0, 5.0));
+
+        assert_eq!(movida.layer, camada);
+        assert_eq!(movida.color, EntityColor::ByBlock);
     }
 
     #[test]
@@ -393,7 +507,7 @@ mod tests {
             Point2::new(1.0, FRAC_PI_4.sin()),
         );
         assert!(
-            (caixa.max().x - 1.0).abs() < TOLERANCE,
+            Tolerance::default().lengths_equal(caixa.max().x, 1.0),
             "o cruzamento de 0° tem de entrar na caixa"
         );
     }
@@ -403,7 +517,7 @@ mod tests {
         // De 45° a 135°: atinge y = 1 ao cruzar 90°.
         let caixa = Geometry::Arc(arc(FRAC_PI_4, 3.0 * FRAC_PI_4)).bounding_box();
 
-        assert!((caixa.max().y - 1.0).abs() < TOLERANCE);
+        assert!(Tolerance::default().lengths_equal(caixa.max().y, 1.0));
         assert_bounds(
             caixa,
             Point2::new(-FRAC_PI_4.cos(), FRAC_PI_4.sin()),
@@ -416,7 +530,7 @@ mod tests {
         // De 135° a 225°: atinge x = -1 ao cruzar 180°.
         let caixa = Geometry::Arc(arc(3.0 * FRAC_PI_4, 5.0 * FRAC_PI_4)).bounding_box();
 
-        assert!((caixa.min().x + 1.0).abs() < TOLERANCE);
+        assert!(Tolerance::default().lengths_equal(caixa.min().x, -1.0));
     }
 
     #[test]
@@ -424,7 +538,7 @@ mod tests {
         // De 225° a 315°: atinge y = -1 ao cruzar 270°.
         let caixa = Geometry::Arc(arc(5.0 * FRAC_PI_4, 7.0 * FRAC_PI_4)).bounding_box();
 
-        assert!((caixa.min().y + 1.0).abs() < TOLERANCE);
+        assert!(Tolerance::default().lengths_equal(caixa.min().y, -1.0));
     }
 
     #[test]
@@ -468,14 +582,14 @@ mod tests {
 
     #[test]
     fn caixa_da_polilinha_envolve_os_vertices() {
-        let geometria = Geometry::Polyline(Polyline {
-            vertices: vec![
+        let geometria = Geometry::Polyline(Polyline::from_points(
+            [
                 Point2::new(0.0, 0.0),
                 Point2::new(5.0, 2.0),
                 Point2::new(-1.0, 8.0),
             ],
-            closed: false,
-        });
+            false,
+        ));
 
         assert_bounds(
             geometria.bounding_box(),
@@ -485,26 +599,38 @@ mod tests {
     }
 
     #[test]
-    fn fechar_a_polilinha_nao_muda_a_caixa() {
-        let vertices = vec![Point2::ORIGIN, Point2::new(4.0, 0.0), Point2::new(4.0, 3.0)];
-        let aberta = Geometry::Polyline(Polyline {
-            vertices: vertices.clone(),
+    fn a_caixa_da_polilinha_acompanha_o_trecho_em_arco() {
+        // Meia-volta de (0,0) a (2,0), que desce até y = −1, e depois um trecho
+        // reto para cima. Uma caixa tirada só dos vértices pararia em y = 0 e
+        // cortaria o arco no ajuste de vista.
+        let geometria = Geometry::Polyline(Polyline {
+            vertices: vec![
+                PolylineVertex::new(Point2::ORIGIN, 1.0),
+                PolylineVertex::straight(Point2::new(2.0, 0.0)),
+                PolylineVertex::straight(Point2::new(2.0, 5.0)),
+            ],
             closed: false,
         });
-        let fechada = Geometry::Polyline(Polyline {
-            vertices,
-            closed: true,
-        });
+
+        assert_bounds(
+            geometria.bounding_box(),
+            Point2::new(0.0, -1.0),
+            Point2::new(2.0, 5.0),
+        );
+    }
+
+    #[test]
+    fn fechar_a_polilinha_nao_muda_a_caixa() {
+        let vertices = [Point2::ORIGIN, Point2::new(4.0, 0.0), Point2::new(4.0, 3.0)];
+        let aberta = Geometry::Polyline(Polyline::from_points(vertices, false));
+        let fechada = Geometry::Polyline(Polyline::from_points(vertices, true));
 
         assert_eq!(aberta.bounding_box(), fechada.bounding_box());
     }
 
     #[test]
     fn polilinha_sem_vertices_produz_caixa_degenerada_na_origem() {
-        let geometria = Geometry::Polyline(Polyline {
-            vertices: Vec::new(),
-            closed: false,
-        });
+        let geometria = Geometry::Polyline(Polyline::from_points([], false));
 
         assert!(geometria.bounding_box().is_degenerate());
         assert_eq!(geometria.bounding_box().min(), Point2::ORIGIN);

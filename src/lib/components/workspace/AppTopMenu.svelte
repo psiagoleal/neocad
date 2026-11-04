@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/AppTopMenu.svelte -->
 <script lang="ts">
 	import type { CadHistoryState, CadRecentDocument } from '$lib/types/cad';
 	import type { WorkspaceView } from '$lib/components/workspace/types';
@@ -18,6 +19,7 @@
 		onGoHome: () => void;
 		onGoViewer: () => void;
 		onGoAbout: () => void;
+		onNewDrawing: () => void | Promise<void>;
 		onOpenDrawing: () => void | Promise<void>;
 		onSaveDrawing: () => void | Promise<void>;
 		onSaveDrawingAs: () => void | Promise<void>;
@@ -27,6 +29,9 @@
 		onClearRecents: () => void | Promise<void>;
 		onFitView: () => void;
 		onToggleBackground: () => void;
+		/** Modo de vírgula decimal ligado (spec 10, D10). */
+		decimalVirgula: boolean;
+		onToggleDecimal: () => void;
 		onToggleMessages: () => void;
 		onShowCommands: () => void;
 	};
@@ -45,6 +50,7 @@
 		onGoHome,
 		onGoViewer,
 		onGoAbout,
+		onNewDrawing,
 		onOpenDrawing,
 		onSaveDrawing,
 		onSaveDrawingAs,
@@ -54,6 +60,8 @@
 		onClearRecents,
 		onFitView,
 		onToggleBackground,
+		decimalVirgula,
+		onToggleDecimal,
 		onToggleMessages,
 		onShowCommands
 	}: AppTopMenuProps = $props();
@@ -125,6 +133,9 @@
 
 				{#if openMenu === 'file'}
 					<div class="menu-dropdown">
+						<button class="menu-item" type="button" onclick={() => runAction(onNewDrawing)}>
+							Novo
+						</button>
 						<button class="menu-item" type="button" onclick={() => runAction(onOpenDrawing)}>
 							{isOpening ? 'Abrindo desenho...' : 'Abrir desenho CAD'}
 						</button>
@@ -233,6 +244,15 @@
 						</button>
 						<button class="menu-item" type="button" onclick={() => runAction(onToggleBackground)}>
 							Alternar fundo do canvas
+						</button>
+						<button
+							class="menu-item"
+							type="button"
+							role="menuitemcheckbox"
+							aria-checked={decimalVirgula}
+							onclick={() => runAction(onToggleDecimal)}
+						>
+							Vírgula decimal
 						</button>
 						<button class="menu-item" type="button" onclick={() => runAction(onToggleMessages)}>
 							Mostrar ou ocultar mensagens

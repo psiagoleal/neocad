@@ -7,7 +7,7 @@
 	"packageManager": "pnpm@11.12.0",
 	"scripts": {
 		"dev": "pnpm workers:sync && pnpm kernel:build:dev && vite dev",
-		"build": "pnpm workers:sync && pnpm kernel:build && vite build",
+		"build": "pnpm workers:sync && pnpm kernel:build && vite build && pnpm size:check",
 		"preview": "vite preview",
 		"tauri": "tauri",
 		"prepare": "svelte-kit sync || echo ''",
@@ -24,7 +24,8 @@
 		"licenses:list": "node scripts/check-licenses.mjs --list",
 		"kernel:build": "node scripts/build-kernel.mjs",
 		"kernel:build:dev": "node scripts/build-kernel.mjs --dev",
-		"kernel:check": "node scripts/build-kernel.mjs --check"
+		"kernel:check": "node scripts/build-kernel.mjs --check",
+		"size:check": "node scripts/size-budget.mjs"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.4",

@@ -1,0 +1,8 @@
+{
+	"kernelWasmLimit": 600000,
+	"buildTotal": {
+		"record": 12921011,
+		"slack": 262144,
+		"measuredOn": "2026-10-31"
+	}
+}

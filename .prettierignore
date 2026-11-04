@@ -14,3 +14,13 @@ thread_implementation.md
 
 # Preferências locais do Claude Code: por máquina, não por repositório.
 .claude/settings.local.json
+
+# Conteúdo gerenciado pelo framework de regramento de agentes (ai-coding-agent-profiles).
+# O instalador detecta edição local por hash do esqueleto e desvia para `.new` quando o
+# arquivo diverge; formatá-lo aqui desligaria a atualização automática dele.
+AGENTS.md
+skills/
+.agents/
+.agent-profile/
+.claude/settings.json
+.agentry/agentry.settings.json

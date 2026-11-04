@@ -2,6 +2,11 @@
 
 # Roadmap de painéis, comandos CAD e simulação numérica
 
+> **A ordem das fases foi revista pelo [ADR 0007](./adr/0007-fase-de-prancha-de-engenharia.md)
+> em 2026-10-29.** O que este documento diz sobre comandos dá lugar à
+> [spec 08](./specs/08-linha-de-comando.md); a trilha de simulação continua valendo como
+> horizonte, depois de KP.
+
 > **Realinhado ao [ADR 0003](./adr/0003-kernel-cad-proprio.md) em 2026-08-06.**
 > A versão anterior deste documento pressupunha a arquitetura de wrapper, em que o
 > teto funcional era o do `@mlightcad/cad-simple-viewer` e a diretriz central era

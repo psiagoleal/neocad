@@ -11,8 +11,14 @@
  * o módulo só importa o upstream como tipo, nunca em tempo de execução.
  */
 
-import { describe, expect, it } from 'vitest';
-import { buildLayoutList, type CadLayoutSource } from './neocad-viewer';
+import { describe, expect, it, vi } from 'vitest';
+import {
+	aplicarFundoDoUpstream,
+	buildLayoutList,
+	desligarComandosDoUpstream,
+	tipoSob,
+	type CadLayoutSource
+} from './neocad-viewer';
 
 /** Objeto no formato de um `AcDbLayout`. */
 function layout(
@@ -139,5 +145,94 @@ describe('lista de layouts', () => {
 
 		expect(lista).toHaveLength(1);
 		expect(lista[0].isModelSpace).toBe(true);
+	});
+});
+
+describe('desligarComandosDoUpstream (MT-KV-13b)', () => {
+	it('esconde a barra do upstream e nenhum texto chega à pilha de comandos dele', () => {
+		const executar = vi.fn();
+		const docManager = { sendStringToExecute: executar };
+		const configuracao = { isShowCommandLine: true };
+
+		desligarComandosDoUpstream(docManager, configuracao);
+		docManager.sendStringToExecute('erase');
+
+		expect(configuracao.isShowCommandLine).toBe(false);
+		expect(executar).not.toHaveBeenCalled();
+	});
+});
+
+describe('aplicarFundoDoUpstream', () => {
+	/**
+	 * Vista falsa com as regras do upstream: o fundo também vira o
+	 * \`currentBackgroundColor\` do renderizador, e a cor 7 de uma entidade nova é
+	 * branca só se ele for exatamente preto; \`changeForeground\` recolore as já
+	 * desenhadas.
+	 */
+	function vistaFalsa(comRenderer = true) {
+		const estado = { limpeza: -1, frenteExistente: -1 };
+		const renderer = comRenderer
+			? {
+					currentBackgroundColor: -1,
+					changeForeground: (cor: number) => (estado.frenteExistente = cor)
+				}
+			: {};
+		const vista = {
+			renderer,
+			set backgroundColor(cor: number) {
+				estado.limpeza = cor;
+				if ('currentBackgroundColor' in renderer) renderer.currentBackgroundColor = cor;
+				estado.frenteExistente = cor === 0 ? 0xffffff : 0;
+			}
+		};
+		/** Cor 7 de uma entidade desenhada depois. */
+		const frenteNova = () =>
+			'currentBackgroundColor' in renderer
+				? renderer.currentBackgroundColor === 0
+					? 0xffffff
+					: 0
+				: estado.limpeza === 0
+					? 0xffffff
+					: 0;
+		return { vista, estado, frenteNova };
+	}
+
+	it('no escuro, o fundo é o do tema e a cor 7 é branca, já desenhada ou nova', () => {
+		const { vista, estado, frenteNova } = vistaFalsa();
+		aplicarFundoDoUpstream(vista, true);
+		expect(estado).toEqual({ limpeza: 0x081121, frenteExistente: 0xffffff });
+		expect(frenteNova()).toBe(0xffffff);
+	});
+
+	it('no claro, o fundo é o do tema e a cor 7 é preta', () => {
+		const { vista, estado, frenteNova } = vistaFalsa();
+		aplicarFundoDoUpstream(vista, false);
+		expect(estado).toEqual({ limpeza: 0xf6f8fb, frenteExistente: 0 });
+		expect(frenteNova()).toBe(0);
+	});
+
+	it('sem o renderizador esperado, o escuro cai no preto puro', () => {
+		const { vista, estado, frenteNova } = vistaFalsa(false);
+		aplicarFundoDoUpstream(vista, true);
+		expect(estado).toEqual({ limpeza: 0, frenteExistente: 0xffffff });
+		expect(frenteNova()).toBe(0xffffff);
+	});
+});
+
+describe('tipoSob (V7)', () => {
+	const busca = {
+		pick: vi.fn((p: { x: number; y: number }) => (p.x > 5 ? [{ id: 'h1' }] : [])),
+		getEntityById: vi.fn((id: string) => (id === 'h1' ? { dxfTypeName: 'TRACE' } : undefined))
+	};
+
+	it('o tipo da entidade do upstream mais perto do ponto', () => {
+		expect(tipoSob(busca, { x: 10, y: 0 }, 5)).toBe('TRACE');
+		expect(busca.pick).toHaveBeenLastCalledWith({ x: 10, y: 0 }, 5, true);
+	});
+
+	it('nada sob o ponto, ou sem tipo legível, é null', () => {
+		expect(tipoSob(busca, { x: 0, y: 0 }, 5)).toBeNull();
+		const semTipo = { pick: () => [{ id: 'x' }], getEntityById: () => ({}) };
+		expect(tipoSob(semTipo, { x: 0, y: 0 }, 5)).toBeNull();
 	});
 });

@@ -6,7 +6,9 @@
 
 use core::fmt;
 
-use neocad_model::{Change, ChangeError, Document};
+use neocad_model::{Change, ChangeError, Document, DocumentError};
+
+use crate::commands::CommandError;
 
 /// Falha ao aplicar uma transação.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,7 +21,13 @@ pub enum TransactionError {
         source: ChangeError,
     },
     /// A edição foi recusada pelo documento.
-    Edit(neocad_model::DocumentError),
+    Edit(DocumentError),
+    /// A edição foi recusada pela geometria.
+    ///
+    /// É o caso da paralela cuja distância anularia um raio: o desenho está
+    /// íntegro e o documento não tem objeção alguma — o que não fecha é a
+    /// construção pedida.
+    Command(CommandError),
     /// Uma mudança falhou e a reversão das anteriores também falhou.
     ///
     /// Indica quebra de invariante do kernel: as inversas são construídas a
@@ -40,6 +48,7 @@ impl fmt::Display for TransactionError {
                 write!(formatter, "mudança {index} da transação falhou: {source}")
             }
             Self::Edit(error) => write!(formatter, "a edição foi recusada: {error}"),
+            Self::Command(error) => write!(formatter, "a operação não pôde ser feita: {error}"),
             Self::RollbackFailed { index, source } => write!(
                 formatter,
                 "mudança {index} falhou ({source}) e a reversão não pôde ser concluída"
@@ -49,6 +58,24 @@ impl fmt::Display for TransactionError {
 }
 
 impl core::error::Error for TransactionError {}
+
+impl From<DocumentError> for TransactionError {
+    fn from(error: DocumentError) -> Self {
+        Self::Edit(error)
+    }
+}
+
+impl From<CommandError> for TransactionError {
+    /// Uma falha de documento vinda de dentro de um comando continua sendo uma
+    /// falha de documento: repetir a distinção aqui daria dois nomes ao mesmo
+    /// acontecimento.
+    fn from(error: CommandError) -> Self {
+        match error {
+            CommandError::Document(inner) => Self::Edit(inner),
+            other => Self::Command(other),
+        }
+    }
+}
 
 /// Conjunto nomeado de mudanças aplicado como uma unidade.
 ///

@@ -8,6 +8,11 @@
 *.key
 secrets.json
 
+# --- Padrões específicos do projeto ---
+# USER:BEGIN id=projeto-ignore
+# (adicione aqui ignores próprios do projeto; preservado em atualizações)
+# USER:END
+
 # --- Volumosos / gerados ---
 .venv/
 node_modules/

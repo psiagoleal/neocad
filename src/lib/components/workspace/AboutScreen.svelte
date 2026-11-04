@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/AboutScreen.svelte -->
 <script lang="ts">
 	type AboutScreenProps = {
 		appName: string;

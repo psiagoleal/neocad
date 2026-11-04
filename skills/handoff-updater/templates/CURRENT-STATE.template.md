@@ -45,3 +45,5 @@
   Só impedimentos AINDA abertos. Um impedimento resolvido sai daqui: sua resolução fica
   registrada na rodada que o resolveu, no arquivo de histórico.
 -->
+
+> Painel de tickets (o que existe e o que falta): [`docs/TICKETS.md`](TICKETS.md).

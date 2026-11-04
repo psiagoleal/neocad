@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/ViewerToolbar.svelte -->
 <script lang="ts">
 	type ViewerToolbarProps = {
 		hasDocument: boolean;

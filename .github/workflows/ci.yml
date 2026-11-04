@@ -202,8 +202,8 @@ jobs:
       - name: Instalar navegadores do Playwright
         run: pnpm exec playwright install --with-deps chromium
 
-      # O spec dwg-open.e2e.ts faz skip quando o DWG de referência (132 MB, fora
-      # do repositório) não está presente. Os demais rodam sobre e2e/fixtures.
+      # O spec dwg-open.e2e.ts faz skip sem NEOCAD_REFERENCE_DWG (desenho local,
+      # fora do repositório). Os demais rodam sobre e2e/fixtures.
       - name: Rodar E2E
         run: pnpm test:e2e
 

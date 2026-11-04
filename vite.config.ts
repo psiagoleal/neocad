@@ -1,3 +1,5 @@
+// Caminho relativo: vite.config.ts
+
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 
@@ -11,7 +13,7 @@ export default defineConfig({
 				test: {
 					name: 'server',
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
+					include: ['src/**/*.{test,spec}.{js,ts}', 'scripts/**/*.spec.mjs'],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
 				}
 			}

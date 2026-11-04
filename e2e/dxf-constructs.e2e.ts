@@ -29,7 +29,8 @@ async function abrir(page: Page, fixture: string): Promise<boolean> {
 	await page.goto('/');
 
 	const fileChooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await fileChooser).setFiles(path.join(FIXTURES, fixture));
 
 	const sucesso = page.getByText('Desenho carregado com sucesso');
@@ -91,7 +92,8 @@ test('bloco com entidades dentro é lido pelo kernel, ainda que o upstream falhe
 	await page.goto('/');
 
 	const fileChooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await fileChooser).setFiles(path.join(FIXTURES, 'block-with-entities.dxf'));
 
 	// Duas entidades no espaço-modelo e um bloco — o que a fixture contém.

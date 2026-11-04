@@ -38,6 +38,24 @@ export default defineConfig(
 		}
 	},
 	{
+		// ADR 0001 e spec 06 (W1b): só o serviço `cad-document` fala com o kernel.
+		files: ['src/**/*.ts', 'src/**/*.js', 'src/**/*.svelte'],
+		ignores: ['src/lib/services/cad-document.ts', 'src/lib/services/cad-document*.spec.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['$lib/kernel', '$lib/kernel/**', '**/kernel/pkg', '**/kernel/pkg/**'],
+							message: 'Use $lib/services/cad-document: é a única porta para o kernel (ADR 0001).'
+						}
+					]
+				}
+			]
+		}
+	},
+	{
 		// Override or add rule settings here, such as:
 		// 'svelte/button-has-type': 'error'
 		rules: {}

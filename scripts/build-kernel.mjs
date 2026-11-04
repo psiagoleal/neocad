@@ -21,6 +21,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkKernelWasm, readBudget } from './size-budget.mjs';
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CRATE_DIR = resolve(ROOT_DIR, 'kernel/neocad-wasm');
@@ -103,6 +104,16 @@ function isUpToDate() {
 	return statSync(WASM_FILE).mtimeMs >= newestSourceTime(KERNEL_DIR);
 }
 
+/** Encerra com erro se o `.wasm` de release passou do teto (spec 06, W5; ADR 0009). */
+function enforceSizeLimit() {
+	const error = checkKernelWasm(statSync(WASM_FILE).size, readBudget());
+
+	if (error) {
+		console.error(`\nerro: ${error}`);
+		process.exit(1);
+	}
+}
+
 function formatSize(bytes) {
 	return `${(bytes / 1024).toFixed(1)} KB`;
 }
@@ -134,6 +145,10 @@ function main() {
 	if (result.status !== 0) {
 		console.error('\nerro: a compilação do kernel WebAssembly falhou.');
 		process.exit(result.status ?? 1);
+	}
+
+	if (profile === '--release') {
+		enforceSizeLimit();
 	}
 
 	// O tamanho entra no bundle distribuído; convém acompanhá-lo desde o início.

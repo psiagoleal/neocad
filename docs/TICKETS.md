@@ -1,0 +1,189 @@
+<!-- Caminho relativo: docs/TICKETS.md -->
+
+# Tickets
+
+> Visão geral rápida do que foi feito e do que falta. **Uma linha por ticket**: identificador
+> com link para o detalhe, e uma frase curta. O detalhe mora no destino do link, não aqui.
+> Atualizado **sempre** que um ticket é criado, concluído ou abandonado — skill
+> `micro-ticket-planner`.
+
+As fases seguem os ADRs [0003](adr/0003-kernel-cad-proprio.md) e
+[0007](adr/0007-fase-de-prancha-de-engenharia.md); o aceite de cada ticket é a
+[spec](specs/README.md) correspondente. K1, K2 e KL estão fechadas e são listadas por fase;
+as demais vão ticket a ticket. Ordem: HG e QP em paralelo ao fechamento de K3; depois KV;
+UI começa pelo que não depende de KV.
+
+## Em aberto
+
+- [ ] [MT-HG-07](tickets/hg-higiene.md#mt-hg-07-varredura-de-segredos-local-antes-do-commit) —
+      hook `gitleaks` — bloqueado por `gitleaks` não instalado na máquina.
+- [ ] [MT-QP-01](tickets/qp-provas-das-specs.md#mt-qp-01-ida-e-volta-dxf-por-variante-de-geometria-t5) —
+      variante nova sem leitura e gravação não compila.
+- [ ] [MT-QP-02](tickets/qp-provas-das-specs.md#mt-qp-02-guarda-de-tolerância-e-de-licenças-do-kernel-t6-t7) —
+      script em `make kernel-check` e na CI.
+- [ ] [MT-QP-03](tickets/qp-provas-das-specs.md#mt-qp-03-origem-das-fixtures-t10) —
+      `ORIGEM.md` e teste que exige a linha.
+- [ ] [MT-QP-04](tickets/qp-provas-das-specs.md#mt-qp-04-e2e-do-aviso-de-perda-ao-salvar-t4) —
+      diálogo com tipos e quantidades; cancelar não grava.
+- [ ] [MT-QP-05](tickets/qp-provas-das-specs.md#mt-qp-05-teste-direto-da-ordem-das-abas-03-l1) —
+      `in_tab_order` com empate desfeito pelo nome.
+- [ ] [MT-QP-06](tickets/qp-provas-das-specs.md#mt-qp-06-gravar-dxf-ac1032-02-x7) —
+      versão gravada passa a 2018.
+- [ ] [MT-QP-07](tickets/qp-provas-das-specs.md#mt-qp-07-corpus-dxf-de-origem-pública-por-versão-02-x8-review-g4) —
+      R12 a AC1032 lidos em teste.
+- [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
+      interseção, paralela e transformação.
+- [ ] [MT-KV-17](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-17-abertura-do-desenho-grande-no-app-empacotado-n1-no-webkitgtk) —
+      N1 no app empacotado: 100 mil abrem em ~7 s no WebKitGTK.
+- [ ] [MT-KV-15b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15b-verificação-na-nvidia-windows) —
+      verificação na NVIDIA, Windows — bloqueado por máquina Windows com NVIDIA.
+- [ ] [MT-UI-15](tickets/ui-interface.md#mt-ui-15-casca-compacta-a-área-de-desenho-ocupa-a-janela) —
+      casca compacta: a área de desenho ocupa a janela.
+- [ ] [MT-UI-16](tickets/ui-interface.md#mt-ui-16-linha-de-comando-flutuante-com-histórico-sob-demanda) —
+      linha de comando flutuante, histórico sob demanda.
+- [ ] [MT-UI-17](tickets/ui-interface.md#mt-ui-17-digitar-em-qualquer-lugar-vai-para-a-linha-de-comando) —
+      digitar em qualquer lugar vai para a linha de comando.
+- [ ] [MT-UI-10](tickets/ui-interface.md#mt-ui-10-barra-de-menus-clássica) —
+      barra de menus clássica do AutoCAD.
+- [ ] [MT-UI-11](tickets/ui-interface.md#mt-ui-11-tema-escuro-por-padrão) —
+      tema escuro por padrão.
+- [ ] [MT-UI-12](tickets/ui-interface.md#mt-ui-12-barra-de-status-com-coordenadas) —
+      barra de status com coordenadas.
+- [ ] [MT-UI-13](tickets/ui-interface.md#mt-ui-13-barra-de-ferramentas-desenhar-e-modificar) —
+      barra de ferramentas Desenhar e Modificar.
+- [ ] [MT-UI-14](tickets/ui-interface.md#mt-ui-14-faixa-de-opções-e-alternância-com-os-menus) —
+      faixa de opções e alternância com os menus.
+- [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
+      spec 09, S1, S2, S5.
+- [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —
+      spec 09, S3, S3b, S6.
+- [ ] [MT-UI-03](tickets/ui-interface.md#mt-ui-03-conferir-a-csp-no-app-empacotado) —
+      spec 09, S4, em Linux e Windows.
+- [ ] [MT-UI-06](tickets/ui-interface.md#mt-ui-06-vitrine-do-neocad-no-repositório-e-no-github-pages) —
+      README e GitHub Pages com capturas e vídeos — depois de a interface amadurecer.
+- [ ] [MT-UI-07](tickets/ui-interface.md#mt-ui-07-fontes-próprias-e-pacotes-de-insumos-para-baixar) —
+      fontes próprias e pacotes para baixar — bloqueado por fase KP e ADR novo.
+
+## Concluídos
+
+- [x] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
+      NVIDIA no Linux: webgl2, pan, zoom, edição e seleção sem problema.
+- [x] [MT-UI-09](tickets/ui-interface.md#mt-ui-09-abrir-no-desenho1-com-a-aba-início) —
+      abre no Desenho1; aba Início; Novo com confirmação.
+- [x] [MT-UI-08](tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal) —
+      `Exibir > Vírgula decimal`: `1,5;2`, lembrado entre sessões.
+- [x] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
+      S6: janela em volta de 90 mil entidades em ~70 ms.
+- [x] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —
+      V7: "entidade ainda não editável" no clique.
+- [x] [MT-KV-14h](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14h-pontos-pelo-clique-na-tela) —
+      pontos pelo clique, com prendimento e marcador.
+- [x] [MT-KV-14d5](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d5-fillet-e-chamfer) —
+      FILLET e CHAMFER; V5b provado de ponta a ponta.
+- [x] [MT-KV-14d4](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d4-trim-e-extend) — TRIM e
+      EXTEND, com o modo de escolha da tela.
+- [x] [MT-KV-14d3](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d3-offset) — OFFSET, com o
+      objeto escolhido pelo clique.
+- [x] [MT-KV-14d2](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d2-rotate-mirror-e-scale) —
+      ROTATE, MIRROR e SCALE.
+- [x] [MT-KV-14d1](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d1-move-e-copy) — MOVE e
+      COPY sobre a seleção.
+- [x] [MT-KV-14f](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14f-erase-e-a-tecla-delete) —
+      ERASE e a tecla Delete.
+- [x] [MT-KV-14c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14c-seleção-na-tela-própria) —
+      seleção por clique, janela e cruzada, com destaque.
+- [x] [MT-UI-05](tickets/ui-interface.md#mt-ui-05-catálogo-de-comandos-bilíngue) —
+      `Ajuda > Comandos CAD` nos dois idiomas (C11).
+- [x] [MT-KV-13b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13b-barra-de-comandos-e-edição-do-upstream-saem-v5) —
+      sai a barra do upstream (V5).
+- [x] [MT-KV-14b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14b-linha-de-comando-visível-ligada-ao-motor-v4) —
+      linha de comando visível; V4.
+- [x] [MT-KV-14a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14a-motor-de-comandos-entrada-de-pontos-e-line) —
+      motor de comandos, entrada de pontos e LINE.
+- [x] [MT-UI-04](tickets/ui-interface.md#mt-ui-04-resolvedor-de-comandos-bilíngue) —
+      nomes EN/PT, apelidos e prefixos (spec 08).
+- [x] [MT-KV-13c](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13c-aviso-das-entidades-que-a-tela-não-exibe-v6) —
+      aviso das entidades não exibidas (V6).
+- [x] [MT-KV-13a](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13a-upstream-desenha-só-o-não-modelado-abaixo-da-tela-e-na-mesma-vista) —
+      upstream só com o não modelado, abaixo da tela e na mesma vista.
+- [x] [MT-KV-11](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-11-texto-do-kernel-na-tela) —
+      texto em fonte de traço Hershey (ADR 0010); V1 completo.
+- [x] [MT-KV-12](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-12-refletir-edição-desfazer-e-refazer) —
+      a tela acompanha edição, desfazer e refazer; N2 11–14 ms na RTX 3070.
+- [x] [MT-KV-10](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-10-desenhista-pela-gpu-com-reserva-em-canvas-2d) —
+      tela própria em WebGL2 e canvas 2D; N1 3,8 s, N3 16,7 ms na RTX 3070.
+- [x] [MT-QP-08](tickets/qp-provas-das-specs.md#mt-qp-08-limite-de-tamanho-do-wasm-06-w5) —
+      entregue pelo MT-KV-16; vista a falha com o teto abaixo da medida.
+- [x] [MT-KV-16](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-16-aplicar-o-orçamento-de-tamanho-adr-0009) —
+      teto do kernel em 600 000 e catraca do total, com folga de 256 KiB, no `pnpm build`.
+- [x] [MT-KV-09](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-09-escolher-a-camada-da-gpu--webgl2-em-typescript-ou-wgpu-em-rust) —
+      WebGL2 em TypeScript; `wgpu` +1,6 MB de `.wasm` sem ganho medido.
+- [x] [MT-KV-08](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-08-preparo-para-a-tela-no-kernel) —
+      blocos `Float32Array` e índice no kernel; 100 mil em 52 ms, uma edição em 6 ms (nativo).
+- [x] [MT-KV-07](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-07-prova-local-de-desempenho-n1n3) —
+      `e2e/desempenho.e2e.ts`; falha hoje porque a tela própria não existe.
+- [x] [MT-KV-06](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-06-fachada-informa-o-que-cada-operação-mudou-e-consulta-pelo-id) —
+      `lastChange` e `getEntitiesById`; um id entre 100 mil em ~0,2 µs (nativo).
+- [x] [MT-KV-05](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-05-adr-0008--mecanismo-de-kv) —
+      [ADR 0008](adr/0008-tela-desenhada-a-partir-do-kernel.md) aceito: tela pelo kernel, GPU com reserva 2D.
+- [x] [MT-KV-04](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-04-spike--desenhar-a-partir-do-kernel) —
+      [relatório](spikes/kv-render-kernel.md): edição ~120 ms, abertura 2,8 s.
+- [x] [MT-KV-03](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-03-spike--espelhar-o-kernel-no-modelo-do-upstream) —
+      [relatório](spikes/kv-espelhamento.md): edição 2,2 s com 100 mil; não fecha.
+- [x] [MT-KV-02](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-02-gerador-de-desenho-sintético-grande) —
+      `scripts/gerar-dxf-sintetico.mjs`; 100 mil entidades, kernel lê em 2,4 s.
+- [x] [MT-KV-01](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-01-e2e-que-prova-a-perda-da-linha-desenhada-pelo-upstream) —
+      `e2e/kernel-view.e2e.ts` prova a perda (V4), marcado `test.fail()` até KV.
+- [x] [MT-K3-12](tickets/k3-geometria-2d-edicao.md#mt-k3-12-expor-consulta-e-edição-na-fachada-webassembly) —
+      consulta e edição na fachada WebAssembly e no serviço `cad-document`; fecha a fase K3 (spec 06).
+- [x] [MT-K3-11](tickets/k3-geometria-2d-edicao.md#mt-k3-11-concordância-e-chanfro-filletchamfer) —
+      concordância (reta e arco) e chanfro (retas), pelos pontos indicados (spec 05, E10–E13).
+- [x] [MT-K3-10](tickets/k3-geometria-2d-edicao.md#mt-k3-10-aparar-e-estender-trimextend) —
+      aparar e estender reta, arco, circunferência e polilinha (spec 05, E7–E9).
+- [x] [MT-K3-13](tickets/k3-geometria-2d-edicao.md#mt-k3-13-recusar-fator-de-escala-zero-negativo-ou-não-finito) —
+      fator ≤ 0 recusado, como no AutoCAD (spec 05, E1c).
+- [x] [MT-HG-03](tickets/hg-higiene.md#mt-hg-03-atualizar-o-readme-e-consolidar-o-roteiro) —
+      README de hoje; roteiro pelos ADRs 0003 e 0007.
+- [x] [MT-HG-06](tickets/hg-higiene.md#mt-hg-06-pôr-o-cabeçalho-de-caminho-relativo-nos-arquivos-que-faltam) —
+      15 arquivos sem o cabeçalho do §4.
+- [x] [MT-HG-05](tickets/hg-higiene.md#mt-hg-05-decidir-o-codex-e-a-regra-do-changelog) —
+      ignorar `.codex/`; uma linha por mudança.
+- [x] [MT-HG-04](tickets/hg-higiene.md#mt-hg-04-corrigir-o-mapa-de-arquitetura) —
+      arestas reais entre crates e onde a GPL está de fato.
+- [x] [MT-HG-02](tickets/hg-higiene.md#mt-hg-02-enxugar-o-handoff) —
+      estado corrente curto; histórico em `handoff-arquivo.md`.
+- [x] [MT-HG-01](tickets/hg-higiene.md#mt-hg-01-corrigir-as-ilhas-do-agentsmd) —
+      stack e comandos reais; fragmento colado e numeração.
+- [x] [K1 — modelo, documento e transações](tickets/k1-modelo-documento-transacoes.md) —
+      17 tickets: modelo de documento próprio, com toda mutação por transação reversível.
+- [x] [K2 — DXF nativo](tickets/k2-dxf-nativo.md) — leitura e gravação determinística.
+- [x] [KL — layouts de espaço-papel](tickets/kl-layouts-espaco-papel.md) — ver
+      [ADR 0005](adr/0005-layouts-de-espaco-papel.md).
+- [x] [MT-K3-01](tickets/k3-geometria-2d-edicao.md#mt-k3-01-mover-as-primitivas-2d-para-neocad-geometry) —
+      primitivas movidas para `neocad-geometry`.
+- [x] [MT-K3-02](tickets/k3-geometria-2d-edicao.md#mt-k3-02-introduzir-o-tolerance-e-converter-os-epsilons-existentes) —
+      `Tolerance` e predicado de orientação exato ([ADR 0006](adr/0006-tolerancia-e-robustez-da-geometria-2d.md)).
+- [x] [MT-K3-03](tickets/k3-geometria-2d-edicao.md#mt-k3-03-abaulamento-bulge-na-polilinha) —
+      abaulamento na polilinha.
+- [x] [MT-K3-04](tickets/k3-geometria-2d-edicao.md#mt-k3-04-avaliação-uniforme-de-curva) —
+      traço `Curve`: ponto, tangente, comprimento e ponto mais próximo.
+- [x] [MT-K3-05](tickets/k3-geometria-2d-edicao.md#mt-k3-05-interseção-entre-primitivas) —
+      interseção entre as quatro primitivas.
+- [x] [MT-K3-06](tickets/k3-geometria-2d-edicao.md#mt-k3-06-índice-espacial-e-consulta-por-região) —
+      índice espacial e consulta por região.
+- [x] [MT-K3-07](tickets/k3-geometria-2d-edicao.md#mt-k3-07-teste-de-acerto-e-prendimento-osnap) —
+      acerto e prendimento do cursor; fecha o bloco B.
+- [x] [MT-K3-08](tickets/k3-geometria-2d-edicao.md#mt-k3-08-transformações-de-entidade) —
+      mover, copiar, girar, espelhar e escalar; abre o bloco C.
+- [x] [MT-K3-09](tickets/k3-geometria-2d-edicao.md#mt-k3-09-paralela-offset) —
+      paralela, com aparo do que fica perto demais do original.
+
+## Abandonados
+
+- [~] [MT-KV-14d](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14d-comandos-de-edição-do-k3-pela-linha-v5b) · motivo:
+  fatiado em MT-KV-14d1 a 14d5.
+- [~] [MT-KV-14](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14-comandos-de-edição-pelo-kernel-na-linha-de-comando-própria) · motivo:
+  fatiado em MT-KV-14a a 14e.
+- [~] [MT-KV-13](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-13-upstream-só-para-o-que-o-kernel-não-modela) · motivo:
+fatiado em MT-KV-13a, 13b e 13c.
+<!-- - [~] [MT-0](plano.md#mt-0) — <frase curta> · motivo: <uma frase> -->

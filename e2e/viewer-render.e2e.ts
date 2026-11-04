@@ -24,7 +24,8 @@ test('o canvas do viewer tem altura real após abrir um DXF', async ({ page }) =
 	await page.goto('/');
 
 	const fileChooserPromise = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	const fileChooser = await fileChooserPromise;
 	await fileChooser.setFiles(fixture);
 
@@ -35,7 +36,12 @@ test('o canvas do viewer tem altura real após abrir um DXF', async ({ page }) =
 	const viewerCanvas = page.locator('.viewer-container canvas').first();
 	await expect(viewerCanvas).toBeVisible();
 
-	// O bug deixava o canvas com altura ~0; exigimos uma área de desenho real.
+	// O bug deixava o canvas com altura ~0; exigimos uma área de desenho real. A
+	// barra de progresso ainda some depois do título (o kernel nomeia a aba antes do
+	// upstream terminar), então se espera a altura assentar.
+	await expect
+		.poll(async () => (await viewerCanvas.boundingBox())?.height ?? 0, { timeout: 10_000 })
+		.toBeGreaterThan(200);
 	const box = await viewerCanvas.boundingBox();
 	expect(box, 'o canvas do viewer deve existir e ter caixa de layout').not.toBeNull();
 	expect(box!.height).toBeGreaterThan(200);

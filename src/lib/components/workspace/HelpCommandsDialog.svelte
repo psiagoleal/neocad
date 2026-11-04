@@ -1,3 +1,4 @@
+<!-- Caminho relativo: src/lib/components/workspace/HelpCommandsDialog.svelte -->
 <script lang="ts">
 	import {
 		CAD_COMMAND_CATEGORY_LABELS,
@@ -21,7 +22,7 @@
 		normalizedFilter.length === 0
 			? commands
 			: commands.filter((command) =>
-					`${command.label} ${command.command} ${command.notes ?? ''}`
+					`${command.label} ${command.command} ${command.ptbr} ${command.aliases.join(' ')} ${command.notes ?? ''}`
 						.toLowerCase()
 						.includes(normalizedFilter)
 				)
@@ -71,8 +72,8 @@
 			</header>
 
 			<p class="command-dialog-hint">
-				Lista derivada em tempo de execução dos comandos aceitos pelo viewer. Digite-os na barra de
-				comandos do canvas.
+				Digite na linha de comando, abaixo do desenho, o nome em inglês, o nome em português ou o
+				apelido. Os que ainda não estão disponíveis respondem "ainda não disponível".
 			</p>
 
 			<div class="command-dialog-filter">
@@ -87,9 +88,7 @@
 
 			<div class="command-dialog-body">
 				{#if commands.length === 0}
-					<p class="empty-copy">
-						Nenhum comando disponível. Inicialize o viewer abrindo um desenho CAD.
-					</p>
+					<p class="empty-copy">Nenhum comando no catálogo.</p>
 				{:else if groupedCommands.length === 0}
 					<p class="empty-copy">Nenhum comando corresponde ao filtro "{filter}".</p>
 				{:else}
@@ -98,10 +97,15 @@
 							<h3 class="command-group-title">{categoryLabel(group.category)}</h3>
 							<ul class="command-list">
 								{#each group.items as command (command.id)}
-									<li class="command-row">
+									<li class="command-row" class:command-unavailable={!command.available}>
 										<div class="command-row-main">
 											<span class="command-name">{command.label}</span>
 											<code class="command-token">{command.command}</code>
+											<code class="command-token">{command.ptbr}</code>
+											<code class="command-token">{command.aliases.join(', ')}</code>
+											<span class="command-status">
+												{command.available ? 'disponível' : 'ainda não disponível'}
+											</span>
 										</div>
 										{#if command.notes}
 											<span class="command-notes">{command.notes}</span>

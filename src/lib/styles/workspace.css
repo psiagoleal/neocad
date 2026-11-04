@@ -168,6 +168,9 @@
 .viewer-container {
 	position: absolute;
 	inset: 0;
+	/* Camada própria: os z-index do upstream (a camada de carregamento usa 9999)
+	   ficam presos aqui dentro e não cobrem a tela do kernel, que vem por cima. */
+	z-index: 0;
 }
 
 .viewer-overlay,
@@ -294,7 +297,7 @@
 }
 
 .command-dialog {
-	width: min(36rem, 100%);
+	width: min(44rem, 100%);
 	max-height: min(80%, 42rem);
 	display: grid;
 	grid-template-rows: auto auto auto minmax(0, 1fr);
@@ -381,9 +384,10 @@
 
 .command-row-main {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--space-3);
+	gap: var(--space-2);
+	min-width: 0;
 }
 
 .command-name {
@@ -419,4 +423,19 @@
 	.top-menu-document-name {
 		max-width: 100%;
 	}
+}
+
+.command-status {
+	margin-left: auto;
+	font-size: 0.75rem;
+	color: #8fd19e;
+	white-space: nowrap;
+}
+
+.command-unavailable .command-status {
+	color: var(--color-text-soft);
+}
+
+.command-unavailable .command-name {
+	opacity: 0.75;
 }

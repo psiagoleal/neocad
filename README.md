@@ -3,68 +3,56 @@
 # NeoCAD
 
 [![CI](https://github.com/psiagoleal/neocad/actions/workflows/ci.yml/badge.svg)](https://github.com/psiagoleal/neocad/actions/workflows/ci.yml)
-![Status](https://img.shields.io/badge/status-phase%202-blue)
+![Status](https://img.shields.io/badge/status-fase%20K3-blue)
 ![Coverage](https://img.shields.io/badge/coverage-not_configured-lightgrey)
 [![Version](https://img.shields.io/github/v/release/psiagoleal/neocad?include_prereleases&sort=semver)](https://github.com/psiagoleal/neocad/releases)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-green)
 ![Targets](https://img.shields.io/badge/targets-Windows%20%7C%20Linux-6f42c1)
 
-NeoCAD é um wrapper desktop open-source para o [`cad-viewer`](https://github.com/mlightcad/cad-viewer), construído com **SvelteKit** e **Tauri 2**, com foco inicial em **Windows** e **Linux**. O objetivo é distribuir uma aplicação simples de instalar para abrir, visualizar e evoluir a edição básica de arquivos CAD diretamente no desktop, sem exigir que o usuário final instale `pnpm` ou configure um ambiente JavaScript.
+NeoCAD é um CAD **open-source** para **desenho de projetos de engenharia**, com kernel
+próprio em Rust (compilado para WebAssembly), interface em **SvelteKit** e empacotamento
+desktop com **Tauri 2** para **Windows** e **Linux**. O objetivo é que um engenheiro ou
+técnico vindo do AutoCAD produza a prancha de entrega — carimbo, cotas, textos, hachuras,
+blocos, tipos de linha e plotagem em escala — usando **os mesmos comandos**, digitados em
+inglês ou em português.
 
 ## Estado atual
 
-O repositório está na **Fase 2 — integração inicial do viewer**.
+O NeoCAD **abre, exibe e grava** desenhos, mas ainda não é um editor para uso em projeto.
 
-Nesta etapa, o projeto já possui:
+- **Kernel próprio** (`kernel/`): modelo de documento com toda mutação por transação
+  reversível e `Desfazer`/`Refazer`; leitura e gravação DXF nativas; layouts de
+  espaço-papel com viewports; geometria 2D com interseção, índice espacial, prendimento do
+  cursor, mover, copiar, girar, espelhar, escalar e paralela.
+- **Interface:** abre `DWG` e `DXF`, troca de layout, lista recentes, mostra o que o
+  kernel não modela e avisa o que se perde ao salvar.
+- **Ainda a cargo do upstream** [`@mlightcad`](https://github.com/mlightcad/cad-viewer): a
+  leitura de DWG e o desenho na tela. Fazer a tela mostrar o modelo do kernel é a próxima
+  fase (KV).
 
-- frontend em **SvelteKit + Svelte 5 + TypeScript**;
-- configuração de **SPA mode** com `@sveltejs/adapter-static`, compatível com Tauri;
-- shell desktop inicial em **Tauri 2 + Rust**;
-- integração inicial com o ecossistema MLightCAD via **`@mlightcad/cad-simple-viewer`**;
-- abertura local de arquivos `DWG` e `DXF` por diálogo nativo no Tauri;
-- fallback de abertura local no navegador para desenvolvimento web;
-- workspace frontend modularizado em componentes Svelte dedicados sob `src/lib/components/workspace`;
-- estilos compartilhados centralizados em `src/lib/styles`, carregados globalmente pelo layout da aplicação;
-- fluxo desktop com menu superior no estilo desktop, tela inicial compacta, canvas principal e dock recolhível de mensagens;
-- ações iniciais de viewport e envio de comandos CAD;
-- barra de comandos do viewer upstream preservada dentro do canvas como mecanismo principal de comandos;
-- lista de recentes persistida entre sessões no runtime Tauri, com fallback no navegador, e suporte inicial a arrastar-e-soltar;
-- workers estáticos para DXF, DWG e MTEXT em `static/workers`;
-- `Makefile`, `CMakeLists.txt` e `CMakePresets.json` para smoke checks e geração inicial de entregas Windows x64 (portable `.zip` e instalador NSIS current-user);
-- lint com **ESLint**;
-- formatação com **Prettier**;
-- testes unitários com **Vitest**;
-- base de testes E2E com **Playwright**;
-- documentação de arquitetura, desenvolvimento e roadmap.
-
-> **Importante:** a integração atual usa o pacote framework-agnostic `@mlightcad/cad-simple-viewer`, que é o núcleo mais adequado do upstream para uma interface Svelte. O pacote `@mlightcad/cad-viewer` continua sendo a referência principal do ecossistema e da evolução funcional.
-
-## Objetivos do MVP
-
-- empacotar o ecossistema `cad-viewer` em uma aplicação desktop amigável;
-- suportar abertura de arquivos locais `DWG` e `DXF`;
-- oferecer visualização com navegação fluida;
-- iniciar o suporte a **edição básica** aproveitando as capacidades já existentes no upstream;
-- preparar a base para recursos futuros, como plugins, extensões BIM e melhorias de UX desktop.
+O que está sendo feito agora: [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md). O que
+existe e o que falta: [`docs/TICKETS.md`](docs/TICKETS.md).
 
 ## Princípios do projeto
 
+- **o entregável é a prancha de engenharia**, e cada fase é julgada por quanto aproxima
+  o NeoCAD dela ([ADR 0007](docs/adr/0007-fase-de-prancha-de-engenharia.md));
+- **paridade de comandos com o AutoCAD**, em inglês e em português, com a grafia oficial
+  de cada idioma ([spec 08](docs/specs/08-linha-de-comando.md));
+- **kernel próprio e reutilizável**, com o upstream tratado como parser e renderer de
+  transição ([ADR 0003](docs/adr/0003-kernel-cad-proprio.md));
+- **toda edição é reversível**, e o que não se consegue gravar é avisado antes;
 - **copyleft real (GPL-3.0)**, para que melhorias derivadas retornem à comunidade;
-- **wrapper separado do upstream** para reduzir custo de manutenção;
-- **desktop first**, sem perder a possibilidade de reaproveitamento web;
-- **arquitetura modular**, com uma camada de adaptação entre NeoCAD e o núcleo do viewer;
-- **documentação desde o início**, para facilitar contribuição futura.
+- **contrato antes do código**: cada funcionalidade tem spec com critério verificável em
+  [`docs/specs/`](docs/specs/README.md).
 
 ## Stack escolhida
 
-- **Frontend:** SvelteKit
-- **UI:** Svelte 5
-- **Desktop shell:** Tauri 2
-- **Linguagem da interface:** TypeScript
-- **Backend nativo:** Rust
-- **Gerenciador de pacotes JavaScript:** pnpm
-- **Núcleo CAD integrado na Fase 2:** `@mlightcad/cad-simple-viewer`
-- **Ecossistema upstream de referência:** `cad-viewer`
+- **Kernel CAD:** Rust, compilado para WebAssembly com `wasm-pack`
+- **Interface:** SvelteKit + Svelte 5 + TypeScript (modo SPA)
+- **Desktop:** Tauri 2 (Linux e Windows)
+- **Gerenciadores:** pnpm e cargo
+- **Upstream de transição:** `@mlightcad/cad-simple-viewer` (leitura DWG e desenho na tela)
 
 ## Pré-requisitos de desenvolvimento
 
@@ -200,12 +188,17 @@ pnpm test:e2e
 
 ## Roadmap resumido
 
-- [x] **Fase 0:** planejamento, arquitetura, licença e documentação
-- [x] **Fase 1:** scaffold oficial com SvelteKit + Tauri 2
-- [ ] **Fase 2:** integração do viewer, modularização do workspace e abertura de arquivos locais _(em andamento)_
-- [ ] **Fase 3:** painéis de propriedades/camadas, catálogo de comandos em `Ajuda` e comandos CAD básicos
-- [ ] **Fase 4:** persistência de preferências, atalhos e evolução da shell desktop
-- [ ] **Fase 5:** investigação de módulo opcional de simulação FEM/CFD e extensibilidade avançada
+Fases definidas nos ADRs [0003](docs/adr/0003-kernel-cad-proprio.md) e
+[0007](docs/adr/0007-fase-de-prancha-de-engenharia.md):
+
+- [x] **K1** — modelo de documento e transações reversíveis
+- [x] **K2** — DXF nativo: leitura e gravação
+- [x] **KL** — layouts de espaço-papel
+- [ ] **K3** — geometria 2D e edição _(em curso: faltam aparar/estender, concordância/chanfro e a fachada WebAssembly)_
+- [ ] **KV** — o kernel é o que se vê: uma única fonte de verdade para tela e arquivo
+- [ ] **UI/UX** — interface de CAD com linha de comando bilíngue e paridade AutoCAD
+- [ ] **KP** — prancha de engenharia: propriedades, geometria complementar, texto, blocos, cotas, hachura e plotagem/PDF
+- [ ] **K6** — leitura DWG própria · **K4** — restrições 2D · **K7–K9** — núcleo 3D
 
 ## Como contribuir
 

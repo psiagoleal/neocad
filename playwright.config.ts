@@ -24,7 +24,12 @@ const SYSTEM_CHROME = '/usr/bin/google-chrome';
 const useSystemChrome = !process.env.CI && existsSync(SYSTEM_CHROME);
 
 export default defineConfig({
-	webServer: { command: 'pnpm build && pnpm preview', port: 4173 },
+	// A sonda de edição (spec 07) entra no build dos testes; o de produção não a tem.
+	webServer: {
+		command: 'pnpm build && pnpm preview',
+		port: 4173,
+		env: { VITE_NEOCAD_SONDA: '1' }
+	},
 	testMatch: '**/*.e2e.{ts,js}',
 	use: useSystemChrome ? { channel: 'chrome' } : {}
 });

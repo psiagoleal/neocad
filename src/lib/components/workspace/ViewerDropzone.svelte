@@ -1,6 +1,9 @@
+<!-- Caminho relativo: src/lib/components/workspace/ViewerDropzone.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { CadViewerDocumentState } from '$lib/types/cad';
+	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
+	import KernelScreen from '$lib/components/workspace/KernelScreen.svelte';
 
 	type ViewerDropzoneProps = {
 		currentDocument: CadViewerDocumentState | null;
@@ -11,6 +14,10 @@
 		onDragLeave: (event: DragEvent) => void;
 		onDrop: (event: DragEvent) => void | Promise<void>;
 		onHostReady: (element: HTMLDivElement) => void;
+		isKernelScreenVisible: boolean;
+		isDark: boolean;
+		onKernelScreenReady: (tela: TelaDoKernel) => void;
+		onKernelScreenError: (message: string) => void;
 	};
 
 	let {
@@ -21,7 +28,11 @@
 		onDragOver,
 		onDragLeave,
 		onDrop,
-		onHostReady
+		onHostReady,
+		isKernelScreenVisible,
+		isDark,
+		onKernelScreenReady,
+		onKernelScreenError
 	}: ViewerDropzoneProps = $props();
 
 	let viewerElement: HTMLDivElement | null = $state(null);
@@ -43,9 +54,16 @@
 	ondragleave={onDragLeave}
 	ondrop={onDrop}
 >
-	<div class="viewer-container" bind:this={viewerElement}></div>
+	<div class="viewer-container" data-tela="upstream" bind:this={viewerElement}></div>
 
-	{#if !currentDocument}
+	<KernelScreen
+		visible={isKernelScreenVisible}
+		dark={isDark}
+		onReady={onKernelScreenReady}
+		onError={onKernelScreenError}
+	/>
+
+	{#if !currentDocument && !isKernelScreenVisible}
 		<div class="viewer-overlay">
 			<h3>NeoCAD Viewer</h3>
 			<p>

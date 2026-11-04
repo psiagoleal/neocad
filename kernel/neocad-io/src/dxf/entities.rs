@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use neocad_geometry::Point2;
 use neocad_model::{
     Arc, Circle, Color, Entity, EntityColor, Geometry, LayerError, LayerTable, Line, Polyline,
-    Text, Viewport, ViewportClip,
+    PolylineVertex, Text, Viewport, ViewportClip,
 };
 
 use super::pairs::DxfPair;
@@ -220,7 +220,7 @@ struct PolilinhaEmCurso {
     color: EntityColor,
     space: EntitySpace,
     closed: bool,
-    vertices: Vec<Point2>,
+    vertices: Vec<PolylineVertex>,
 }
 
 /// Fecha o registro corrente, traduzindo-o ou contando-o.
@@ -239,7 +239,7 @@ fn fechar(
     match tipo {
         "VERTEX" => {
             if let Some(em_curso) = polilinha.as_mut() {
-                em_curso.vertices.extend(pontos(pares));
+                em_curso.vertices.extend(vertices(pares));
                 return;
             }
         }
@@ -467,7 +467,7 @@ fn geometria(tipo: &str, pares: &[DxfPair]) -> Option<Geometry> {
             end_angle: real(pares, 51)?.to_radians(),
         })),
         "LWPOLYLINE" => Some(Geometry::Polyline(Polyline {
-            vertices: pontos(pares),
+            vertices: vertices(pares),
             closed: inteiro(pares, 70).is_some_and(|flags| flags & 1 != 0),
         })),
         "TEXT" => Some(Geometry::Text(Text {
@@ -567,12 +567,16 @@ fn ponto(pares: &[DxfPair], x: u16, y: u16) -> Option<Point2> {
     Some(Point2::new(real(pares, x)?, real(pares, y)?))
 }
 
-/// Todos os pontos `10`/`20` do registro, na ordem em que aparecem.
+/// Todos os vértices `10`/`20` do registro, com o abaulamento `42` de cada um.
 ///
-/// É como a `LWPOLYLINE` entrega seus vértices — repetindo o par de códigos —, e
-/// também serve ao `VERTEX`, que traz um ponto por registro.
-fn pontos(pares: &[DxfPair]) -> Vec<Point2> {
-    let mut pontos = Vec::new();
+/// É como a `LWPOLYLINE` entrega seus vértices — repetindo os códigos —, e
+/// também serve ao `VERTEX`, que traz um vértice por registro.
+///
+/// O código `42` vem **depois** do par `10`/`20` a que pertence e descreve o
+/// segmento que começa naquele vértice. Um `42` que apareça antes do primeiro
+/// vértice não tem a que se referir e é descartado.
+fn vertices(pares: &[DxfPair]) -> Vec<PolylineVertex> {
+    let mut vertices: Vec<PolylineVertex> = Vec::new();
     let mut x = None;
 
     for par in pares {
@@ -580,14 +584,21 @@ fn pontos(pares: &[DxfPair]) -> Vec<Point2> {
             10 => x = par.value.as_real(),
             20 => {
                 if let (Some(px), Some(py)) = (x.take(), par.value.as_real()) {
-                    pontos.push(Point2::new(px, py));
+                    vertices.push(PolylineVertex::straight(Point2::new(px, py)));
+                }
+            }
+            42 => {
+                if let (Some(ultimo), Some(abaulamento)) =
+                    (vertices.last_mut(), par.value.as_real())
+                {
+                    ultimo.bulge = abaulamento;
                 }
             }
             _ => {}
         }
     }
 
-    pontos
+    vertices
 }
 
 #[cfg(test)]
@@ -905,14 +916,14 @@ mod tests {
 
         assert_eq!(
             geometrias(&leitura),
-            [&Geometry::Polyline(Polyline {
-                vertices: vec![
+            [&Geometry::Polyline(Polyline::from_points(
+                [
                     Point2::new(0.0, 0.0),
                     Point2::new(5.0, 0.0),
                     Point2::new(5.0, 5.0)
                 ],
-                closed: true
-            })]
+                true
+            ))]
         );
     }
 
@@ -935,10 +946,40 @@ mod tests {
         assert_eq!(leitura.entities.len(), 1);
         assert_eq!(
             geometrias(&leitura),
-            [&Geometry::Polyline(Polyline {
-                vertices: vec![Point2::new(0.0, 0.0), Point2::new(50.0, 20.0)],
-                closed: false
-            })]
+            [&Geometry::Polyline(Polyline::from_points(
+                [Point2::new(0.0, 0.0), Point2::new(50.0, 20.0)],
+                false
+            ))]
+        );
+    }
+
+    #[test]
+    fn o_abaulamento_pertence_ao_vertice_que_o_precede() {
+        let (leitura, _) = ler(&[
+            (0, "LWPOLYLINE"),
+            (8, "0"),
+            // Um `42` antes de qualquer vértice não tem a que se referir.
+            (42, "9.0"),
+            (10, "0.0"),
+            (20, "0.0"),
+            (42, "1.0"),
+            (10, "2.0"),
+            (20, "0.0"),
+            (10, "2.0"),
+            (20, "5.0"),
+        ]);
+
+        let [Geometry::Polyline(polilinha)] = geometrias(&leitura)[..] else {
+            panic!("era para ser uma polilinha");
+        };
+
+        assert_eq!(
+            polilinha
+                .vertices
+                .iter()
+                .map(|v| v.bulge)
+                .collect::<Vec<_>>(),
+            [1.0, 0.0, 0.0]
         );
     }
 
@@ -1223,7 +1264,7 @@ mod tests {
             panic!("a terceira é polilinha");
         };
         assert_eq!(
-            polilinha.vertices,
+            polilinha.points().collect::<Vec<_>>(),
             [
                 Point2::new(0.0, 0.0),
                 Point2::new(50.0, 20.0),

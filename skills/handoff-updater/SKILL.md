@@ -21,12 +21,16 @@ contexto a partir do histórico.
 
 Esta separação é **obrigatória** — não é uma otimização opcional:
 
-| Arquivo                   | Contém                                                                                                            | Quando é lido                                                          |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `docs/CURRENT-STATE.md`   | **Só o estado corrente**: último turno, metas dele, o que está em andamento, impedimentos abertos, próximo passo. | **Sempre**, no início de qualquer sessão.                              |
-| `docs/handoff-arquivo.md` | Todo o histórico: rodadas encerradas, fases fechadas, tabela de commits. _Append-only._                           | **Sob demanda**, por busca, para entender _por que_ algo foi decidido. |
+| Arquivo | Contém | Quando é lido |
+|---|---|---|
+| `docs/CURRENT-STATE.md` | **Só o estado corrente**: último turno, metas dele, o que está em andamento, impedimentos abertos, próximo passo. | **Sempre**, no início de qualquer sessão. |
+| `docs/handoff-arquivo.md` | Todo o histórico: rodadas encerradas, fases fechadas, tabela de commits. *Append-only.* | **Sob demanda**, por busca, para entender *por que* algo foi decidido. |
 
 O handoff vivo aponta para o arquivo logo no cabeçalho; o arquivo aponta de volta.
+
+O **painel de tickets** (`docs/TICKETS.md`, skill `micro-ticket-planner`) é o terceiro documento:
+lista de tudo o que existe, uma linha por ticket. O handoff **aponta** para ele e não copia a
+lista — o que está em andamento agora é o handoff; o que existe e o que falta é o painel.
 
 ### Por que a separação existe
 

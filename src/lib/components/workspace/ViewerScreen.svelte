@@ -1,7 +1,12 @@
+<!-- Caminho relativo: src/lib/components/workspace/ViewerScreen.svelte -->
 <script lang="ts">
 	import ViewerDropzone from '$lib/components/workspace/ViewerDropzone.svelte';
 	import ViewerToolbar from '$lib/components/workspace/ViewerToolbar.svelte';
+	import CommandLine from '$lib/components/workspace/CommandLine.svelte';
+	import type { DocumentoDosComandos, Escolha } from '$lib/command-line/motor';
+	import type { CadEntityId, CadPoint } from '$lib/types/cad';
 	import type { CadViewerDocumentState, CadViewerProgressState } from '$lib/types/cad';
+	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 
 	type ViewerScreenProps = {
 		currentDocument: CadViewerDocumentState | null;
@@ -19,6 +24,18 @@
 		onDragLeave: (event: DragEvent) => void;
 		onDrop: (event: DragEvent) => void | Promise<void>;
 		onViewerHostReady: (element: HTMLDivElement) => void;
+		isKernelScreenVisible: boolean;
+		onKernelScreenReady: (tela: TelaDoKernel) => void;
+		onKernelScreenError: (message: string) => void;
+		/** O documento que a linha de comando edita, ou `null`. */
+		commandDocument: () => DocumentoDosComandos | null;
+		onCommandEdit: () => void;
+		onClearSelection: () => void;
+		selectedEntities: () => CadEntityId[];
+		allEntities: () => CadEntityId[];
+		setChoiceMode: (onChoose: ((choice: Escolha) => void) | null) => void;
+		setPointMode: (onPoint: ((point: CadPoint) => void) | null) => void;
+		setUneditableNotice: (notice: (type: string) => void) => void;
 	};
 
 	let {
@@ -36,7 +53,18 @@
 		onDragOver,
 		onDragLeave,
 		onDrop,
-		onViewerHostReady
+		onViewerHostReady,
+		isKernelScreenVisible,
+		onKernelScreenReady,
+		onKernelScreenError,
+		commandDocument,
+		onCommandEdit,
+		onClearSelection,
+		selectedEntities,
+		allEntities,
+		setChoiceMode,
+		setPointMode,
+		setUneditableNotice
 	}: ViewerScreenProps = $props();
 </script>
 
@@ -77,5 +105,20 @@
 		{onDragLeave}
 		{onDrop}
 		onHostReady={onViewerHostReady}
+		{isKernelScreenVisible}
+		isDark={backgroundTheme === 'dark'}
+		{onKernelScreenReady}
+		{onKernelScreenError}
+	/>
+
+	<CommandLine
+		documento={commandDocument}
+		aposEditar={onCommandEdit}
+		esvaziarSelecao={onClearSelection}
+		selecionados={selectedEntities}
+		todas={allEntities}
+		definirEscolha={setChoiceMode}
+		definirPonto={setPointMode}
+		definirAvisoNaoEditavel={setUneditableNotice}
 	/>
 </section>

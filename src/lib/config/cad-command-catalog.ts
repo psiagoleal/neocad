@@ -6,18 +6,15 @@
  * \author Iago Leal
  * \date 2026-06-02
  *
- * Conforme o ADR 0001, a fonte de verdade sobre QUAIS comandos existem é o
- * command stack do upstream, lido em tempo de execução. Este arquivo guarda
+ * Conforme o ADR 0011, os comandos que existem são os da tabela da spec 08, e os
+ * disponíveis são os que a linha de comando própria registra. Este arquivo guarda
  * apenas metadados de APRESENTAÇÃO (rótulo PT-BR, categoria, observações) e os
- * funde com os descritores de runtime. Comandos sem metadados conhecidos ainda
- * aparecem no catálogo, na categoria "other".
+ * funde com a tabela. Comandos sem metadados conhecidos ainda aparecem no
+ * catálogo, na categoria "other".
  */
 
-import type {
-	CadCommandCatalogItem,
-	CadCommandCategory,
-	CadCommandDescriptor
-} from '$lib/types/cad';
+import type { ComandoDoCatalogo } from '$lib/command-line/resolver';
+import type { CadCommandCatalogItem, CadCommandCategory } from '$lib/types/cad';
 
 interface CommandPresentation {
 	label: string;
@@ -46,9 +43,8 @@ export const CAD_COMMAND_CATEGORY_LABELS: Record<CadCommandCategory, string> = {
 };
 
 /**
- * Metadados de apresentação indexados pelo nome global (em maiúsculas) do
- * comando upstream. Os nomes seguem o inventário do spike
- * (docs/upstream-capabilities-spike.md); nomes não mapeados caem no fallback.
+ * Metadados de apresentação indexados pelo nome em inglês (em maiúsculas) do
+ * comando; nomes não mapeados caem no fallback.
  */
 const COMMAND_PRESENTATION: Record<string, CommandPresentation> = {
 	// Navegação e seleção
@@ -115,22 +111,27 @@ function fallbackLabel(rawLabel: string): string {
 }
 
 /**
- * Funde descritores de runtime com os metadados de apresentação, produzindo o
- * catálogo ordenado por categoria e, dentro de cada categoria, por rótulo.
+ * Monta o catálogo: cada comando da tabela, com os dois nomes e os apelidos, e
+ * disponível só se a linha de comando o executa. Os disponíveis vêm primeiro;
+ * depois, por categoria e rótulo.
  */
 export function buildCadCommandCatalog(
-	descriptors: readonly CadCommandDescriptor[]
+	catalogo: readonly ComandoDoCatalogo[],
+	implementados: Iterable<string>
 ): CadCommandCatalogItem[] {
-	const items = descriptors.map((descriptor): CadCommandCatalogItem => {
-		const id = descriptor.globalName.toUpperCase();
+	const disponiveis = new Set([...implementados].map((nome) => nome.toUpperCase()));
+	const items = catalogo.map((comando): CadCommandCatalogItem => {
+		const id = comando.en.toUpperCase();
 		const presentation = COMMAND_PRESENTATION[id];
 
 		return {
 			id,
-			command: descriptor.globalName,
-			label: presentation?.label ?? fallbackLabel(descriptor.localName || descriptor.globalName),
+			command: comando.en,
+			ptbr: comando.ptbr,
+			aliases: [...comando.apelidos],
+			label: presentation?.label ?? fallbackLabel(comando.ptbr),
 			category: presentation?.category ?? 'other',
-			group: descriptor.group,
+			available: disponiveis.has(id),
 			notes: presentation?.notes
 		};
 	});
@@ -139,15 +140,11 @@ export function buildCadCommandCatalog(
 		CAD_COMMAND_CATEGORY_ORDER.map((category, index) => [category, index])
 	);
 
-	return items.sort((left, right) => {
-		const rankDelta =
+	return items.sort(
+		(left, right) =>
+			Number(right.available) - Number(left.available) ||
 			(categoryRank.get(left.category) ?? Number.MAX_SAFE_INTEGER) -
-			(categoryRank.get(right.category) ?? Number.MAX_SAFE_INTEGER);
-
-		if (rankDelta !== 0) {
-			return rankDelta;
-		}
-
-		return left.label.localeCompare(right.label, 'pt-BR');
-	});
+				(categoryRank.get(right.category) ?? Number.MAX_SAFE_INTEGER) ||
+			left.label.localeCompare(right.label, 'pt-BR')
+	);
 }

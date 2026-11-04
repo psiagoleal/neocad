@@ -14,11 +14,14 @@
 //! Conforme o ADR 0003, esta crate não conhece Tauri, Svelte, DOM nem tipos do
 //! NeoCAD, e não pode receber dependências copyleft.
 
+pub mod commands;
+mod effect;
 mod stack;
 mod transaction;
 
 // O primitivo de mudança vive no `neocad-model`, junto do documento: é a única
 // forma de o compilador poder exigir que toda mutação seja registrada (MT-K1-10).
+pub use effect::Effect;
 pub use neocad_model::{Change, ChangeError};
 pub use stack::{CommandStack, DEFAULT_UNDO_LIMIT};
 pub use transaction::{Transaction, TransactionError};
