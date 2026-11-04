@@ -612,6 +612,18 @@ no histórico) já está no motor e vale para todas.
 - **Fora de escopo:** correções que o roteiro revelar, e relatos futuros de AMD ou Intel
   (viram tickets).
 - **Depende de:** MT-KV-12.
+- **Fatiado (2026-11-04):** o mantenedor tem só Linux com NVIDIA. Este ticket fica com o
+  Linux (WebKitGTK); o Windows vai para o MT-KV-15b. Roteiro em
+  [`docs/verificacao-gpu.md`](../verificacao-gpu.md), com bloco de resultado a preencher.
+
+### MT-KV-15b: Verificação na NVIDIA, Windows
+
+- **Objetivo:** o mesmo roteiro de [`docs/verificacao-gpu.md`](../verificacao-gpu.md) no
+  Windows (WebView2), com o resultado registrado lá.
+- **Arquivos no escopo:** `docs/verificacao-gpu.md`.
+- **Critério de aceite:** spec 00, N5, parte Windows: linha na tabela de resultados.
+- **Fora de escopo:** correções que o roteiro revelar (viram tickets).
+- **Depende de:** máquina Windows com NVIDIA, que o mantenedor não tem.
 
 ### MT-KV-16: Aplicar o orçamento de tamanho (ADR 0009)
 

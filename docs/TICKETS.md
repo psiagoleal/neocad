@@ -33,8 +33,10 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [ ] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
-      N5 na NVIDIA; AMD e Intel presumidas.
+- [>] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) — falta
+  o resultado do roteiro no Linux · verificação na NVIDIA, Linux.
+- [ ] [MT-KV-15b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15b-verificação-na-nvidia-windows) —
+      verificação na NVIDIA, Windows — bloqueado por máquina Windows com NVIDIA.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
       spec 09, S1, S2, S5.
 - [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —
