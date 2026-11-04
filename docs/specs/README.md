@@ -42,6 +42,7 @@ deve encontrar os mesmos comandos, nos dois idiomas
 | [08 — Linha de comando](08-linha-de-comando.md)                 | UI/UX | Aprovada                   |
 | [09 — Segurança do webview](09-seguranca-do-webview.md)         | UI/UX | Aprovada                   |
 | [10 — Comandos de desenho básicos](10-desenho-basico.md)        | UI/UX | Esqueleto                  |
+| [11 — Interface do aplicativo](11-interface-do-aplicativo.md)   | UI/UX | Parcial                    |
 | [KP1 — Propriedades de desenho](kp1-propriedades-de-desenho.md) | KP    | Esqueleto                  |
 | [KP2 — Geometria complementar](kp2-geometria-complementar.md)   | KP    | Esqueleto                  |
 | [KP3 — Texto](kp3-texto.md)                                     | KP    | Esqueleto                  |

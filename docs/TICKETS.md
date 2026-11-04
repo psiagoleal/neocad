@@ -37,6 +37,18 @@ UI começa pelo que não depende de KV.
   o resultado do roteiro no Linux · verificação na NVIDIA, Linux.
 - [ ] [MT-KV-15b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15b-verificação-na-nvidia-windows) —
       verificação na NVIDIA, Windows — bloqueado por máquina Windows com NVIDIA.
+- [ ] [MT-UI-09](tickets/ui-interface.md#mt-ui-09-abrir-no-desenho1-com-a-aba-início) —
+      abrir no Desenho1, com a aba Início.
+- [ ] [MT-UI-10](tickets/ui-interface.md#mt-ui-10-barra-de-menus-clássica) —
+      barra de menus clássica do AutoCAD.
+- [ ] [MT-UI-11](tickets/ui-interface.md#mt-ui-11-tema-escuro-por-padrão) —
+      tema escuro por padrão.
+- [ ] [MT-UI-12](tickets/ui-interface.md#mt-ui-12-barra-de-status-com-coordenadas) —
+      barra de status com coordenadas.
+- [ ] [MT-UI-13](tickets/ui-interface.md#mt-ui-13-barra-de-ferramentas-desenhar-e-modificar) —
+      barra de ferramentas Desenhar e Modificar.
+- [ ] [MT-UI-14](tickets/ui-interface.md#mt-ui-14-faixa-de-opções-e-alternância-com-os-menus) —
+      faixa de opções e alternância com os menus.
 - [ ] [MT-UI-01](tickets/ui-interface.md#mt-ui-01-ligar-a-csp-e-servir-a-mesma-política-no-vite) —
       spec 09, S1, S2, S5.
 - [ ] [MT-UI-02](tickets/ui-interface.md#mt-ui-02-e2e-que-falha-em-violação-de-csp) —

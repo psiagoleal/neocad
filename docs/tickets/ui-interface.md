@@ -147,3 +147,69 @@ confortável, prática e bonita o bastante para ser mostrada.
   pacotes por ação do usuário é outra coisa e precisa estar escrito.
 - **Fora de escopo:** fontes TrueType de terceiros sem licença de redistribuição.
 - **Depende de:** fase KP (estilos de texto, tipos de linha, hachura).
+
+## Bloco C — A casca do aplicativo, como no AutoCAD ([spec 11](../specs/11-interface-do-aplicativo.md))
+
+Ordem pensada para que cada passo já se use: abrir no desenho, depois a barra de menus,
+o tema, a barra de status, a barra de ferramentas e, por último, a faixa de opções.
+
+### MT-UI-09: Abrir no Desenho1, com a aba Início
+
+- **Objetivo:** o aplicativo abre direto na área de desenho com `Desenho1` vazio; a tela
+  inicial vira a aba `Início`; `Arquivo > Novo` dá `DesenhoN`.
+- **Arquivos no escopo:** `src/routes/+page.svelte`, `src/lib/components/workspace/`
+  (abas de arquivo, `AppTopMenu.svelte`, `HomeScreen.svelte`, `types.ts`), um módulo
+  pequeno para o nome do próximo desenho e o teste dele, `e2e/home.e2e.ts`, e os e2e que
+  hoje assumem a tela inicial ao abrir.
+- **Critério de aceite:** spec 11, I1–I4.
+- **Fora de escopo:** vários desenhos abertos; o comando digitado `NEW`; a barra de menus
+  completa (MT-UI-10).
+- **Depende de:** nenhum.
+
+### MT-UI-10: Barra de menus clássica
+
+- **Objetivo:** os onze menus do AutoCAD em português, na ordem dele; cada item que o
+  NeoCAD faz chama o comando como se fosse digitado (com o eco na linha de comando), e o
+  que ainda não existe fica fora do menu.
+- **Arquivos no escopo:** `AppTopMenu.svelte` (ou um componente novo de menus), a tabela
+  de itens com os nomes oficiais, e2e.
+- **Critério de aceite:** critérios EARS na spec 11 antes de implementar.
+- **Fora de escopo:** faixa de opções; atalhos de teclado novos.
+- **Depende de:** MT-UI-09.
+
+### MT-UI-11: Tema escuro por padrão
+
+- **Objetivo:** interface cinza-escura e fundo de desenho escuro ao abrir, com o claro em
+  `Exibir`, lembrado entre sessões como o modo decimal.
+- **Arquivos no escopo:** estilos globais, `services/preferencias.ts`, `+page.svelte`.
+- **Critério de aceite:** critérios EARS na spec 11; contraste conferido (WCAG AA no texto).
+- **Fora de escopo:** temas personalizados.
+- **Depende de:** MT-UI-09.
+
+### MT-UI-12: Barra de status com coordenadas
+
+- **Objetivo:** coordenadas do cursor no espaço mostrado, no decimal do modo (spec 10,
+  D9), e as alternâncias que o NeoCAD já tem (prendimento).
+- **Arquivos no escopo:** componente novo de barra de status, `tela-do-kernel.ts`
+  (aviso do cursor), e2e.
+- **Critério de aceite:** critérios EARS na spec 11.
+- **Fora de escopo:** grade, ortogonal e polar, que ainda não existem.
+- **Depende de:** MT-UI-09.
+
+### MT-UI-13: Barra de ferramentas Desenhar e Modificar
+
+- **Objetivo:** botões com ícones próprios para os comandos que existem, chamando-os como
+  a linha de comando; dica com o nome do comando.
+- **Arquivos no escopo:** componente novo, ícones SVG em `static/` ou `src/lib/`, e2e.
+- **Critério de aceite:** critérios EARS na spec 11; ícones com licença do projeto.
+- **Fora de escopo:** barras flutuantes e personalizáveis.
+- **Depende de:** MT-UI-10.
+
+### MT-UI-14: Faixa de opções e alternância com os menus
+
+- **Objetivo:** abas `Início`, `Inserir`, `Anotar`, `Exibir` com os painéis do AutoCAD
+  (Desenhar, Modificar, Camadas…), só com o que existe; alternar entre faixa e menus.
+- **Arquivos no escopo:** a definir ao abrir.
+- **Critério de aceite:** critérios EARS na spec 11 antes de implementar.
+- **Fora de escopo:** painéis que dependem de KP.
+- **Depende de:** MT-UI-13.
