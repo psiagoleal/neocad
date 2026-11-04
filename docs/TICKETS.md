@@ -37,8 +37,6 @@ UI começa pelo que não depende de KV.
   o resultado do roteiro no Linux · verificação na NVIDIA, Linux.
 - [ ] [MT-KV-15b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15b-verificação-na-nvidia-windows) —
       verificação na NVIDIA, Windows — bloqueado por máquina Windows com NVIDIA.
-- [ ] [MT-UI-09](tickets/ui-interface.md#mt-ui-09-abrir-no-desenho1-com-a-aba-início) —
-      abrir no Desenho1, com a aba Início.
 - [ ] [MT-UI-10](tickets/ui-interface.md#mt-ui-10-barra-de-menus-clássica) —
       barra de menus clássica do AutoCAD.
 - [ ] [MT-UI-11](tickets/ui-interface.md#mt-ui-11-tema-escuro-por-padrão) —
@@ -62,6 +60,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-UI-09](tickets/ui-interface.md#mt-ui-09-abrir-no-desenho1-com-a-aba-início) —
+      abre no Desenho1; aba Início; Novo com confirmação.
 - [x] [MT-UI-08](tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal) —
       `Exibir > Vírgula decimal`: `1,5;2`, lembrado entre sessões.
 - [x] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —

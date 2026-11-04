@@ -20,7 +20,8 @@ import { gerarDxfSintetico } from '../scripts/gerar-dxf-sintetico.mjs';
 async function abrirSintetico(page: Page, caminho: string): Promise<void> {
 	await page.goto('/');
 	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await chooser).setFiles(caminho);
 }
 

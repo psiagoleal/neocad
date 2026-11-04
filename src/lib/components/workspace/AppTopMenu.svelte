@@ -19,6 +19,7 @@
 		onGoHome: () => void;
 		onGoViewer: () => void;
 		onGoAbout: () => void;
+		onNewDrawing: () => void | Promise<void>;
 		onOpenDrawing: () => void | Promise<void>;
 		onSaveDrawing: () => void | Promise<void>;
 		onSaveDrawingAs: () => void | Promise<void>;
@@ -49,6 +50,7 @@
 		onGoHome,
 		onGoViewer,
 		onGoAbout,
+		onNewDrawing,
 		onOpenDrawing,
 		onSaveDrawing,
 		onSaveDrawingAs,
@@ -131,6 +133,9 @@
 
 				{#if openMenu === 'file'}
 					<div class="menu-dropdown">
+						<button class="menu-item" type="button" onclick={() => runAction(onNewDrawing)}>
+							Novo
+						</button>
 						<button class="menu-item" type="button" onclick={() => runAction(onOpenDrawing)}>
 							{isOpening ? 'Abrindo desenho...' : 'Abrir desenho CAD'}
 						</button>

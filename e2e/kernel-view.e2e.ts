@@ -28,7 +28,8 @@ async function abrirDesenho(page: Page, caminho: string): Promise<void> {
 	await page.goto('/');
 
 	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await chooser).setFiles(caminho);
 
 	await expect(page.getByText('Desenho carregado com sucesso')).toBeVisible({ timeout: 30_000 });
@@ -77,7 +78,8 @@ function telaDoKernel(page: Page) {
 async function abrirSoPeloKernel(page: Page, caminho: string): Promise<void> {
 	await page.goto('/');
 	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await chooser).setFiles(caminho);
 }
 

@@ -165,6 +165,21 @@ o tema, a barra de status, a barra de ferramentas e, por último, a faixa de op�
 - **Fora de escopo:** vários desenhos abertos; o comando digitado `NEW`; a barra de menus
   completa (MT-UI-10).
 - **Depende de:** nenhum.
+- **Resultado (2026-11-04):** o app abre na área de desenho com `Desenho1` vazio
+  (criado quando a tela do kernel fica pronta); abas `Início` e do desenho
+  (`FileTabs.svelte`, `role=tablist`), sem fechar; `Arquivo > Novo` dá `DesenhoN`
+  (`services/desenhos.ts`). A marca de alterado acende em edição, desfazer e refazer e
+  apaga ao abrir, criar e gravar; com ela, `Novo` e `Abrir` (menu, recentes, arrastar)
+  pedem confirmação antes, e recusar não muda nada (critério estendido ao `Abrir` na
+  spec, para não perder o desenho em silêncio). Defeitos achados pelos testes e
+  corrigidos: a tela do kernel aparecia por cima da aba `Início` (`visibility: visible`
+  vencia o `hidden` herdado; agora `inherit`); um `Desenho1` atrasado podia tomar o
+  lugar de um arquivo aberto antes dele (contagem de trocas); e o Salvar logo depois da
+  leitura nativa saía com o nome do desenho anterior (a leitura do kernel já nomeia a
+  aba). Os e2e passam a abrir arquivos por `Arquivo > Abrir`, e o de altura do canvas
+  espera a barra de progresso sumir. Caso de borda sem tratamento: `Novo` enquanto um
+  arquivo ainda abre. A área de desenho ficou com 270 px de 720 na janela de teste: a
+  casca atual come espaço demais, assunto do MT-UI-10 em diante.
 
 ### MT-UI-10: Barra de menus clássica
 

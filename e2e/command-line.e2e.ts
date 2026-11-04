@@ -20,7 +20,8 @@ const PRIMEIRO = 'Especifique o primeiro ponto:';
 async function abrir(page: Page) {
 	await page.goto('/');
 	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await chooser).setFiles(FIXTURE);
 	const tela = page.locator('canvas[data-tela="kernel"]');
 	await expect(tela).toHaveAttribute('data-entidades', '2', { timeout: 30_000 });
@@ -353,7 +354,8 @@ test('clique em entidade só do upstream: "entidade ainda não editável" (V7)',
 	test.setTimeout(60_000);
 	await page.goto('/');
 	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await chooser).setFiles(path.join(process.cwd(), 'e2e/fixtures/with-unsupported.dxf'));
 	const tela = page.locator('canvas[data-tela="kernel"]');
 	// A LINE é do kernel; a SOLID, de (10,10) a (40,40), só o upstream desenha.

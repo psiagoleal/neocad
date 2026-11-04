@@ -23,7 +23,8 @@ async function abrirDesenho(page: Page, fixture: string): Promise<void> {
 	await page.goto('/');
 
 	const fileChooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await fileChooser).setFiles(path.join(FIXTURES, fixture));
 
 	await expect(page.getByText('Desenho carregado com sucesso')).toBeVisible({

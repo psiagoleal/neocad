@@ -41,7 +41,8 @@ async function abrirSintetico(page: Page): Promise<{ ms: number; tela: Locator }
 	await page.goto('/');
 	const chooser = page.waitForEvent('filechooser');
 	const inicio = Date.now();
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 	await (await chooser).setFiles(caminho);
 
 	const tela = page.locator('canvas[data-tela="kernel"]');

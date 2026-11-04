@@ -71,7 +71,8 @@
 	}
 
 	.kernel-screen-visible {
-		visibility: visible;
+		/* Herda: dentro de uma tela escondida (aba Início), continua escondida. */
+		visibility: inherit;
 		pointer-events: auto;
 	}
 

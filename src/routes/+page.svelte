@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import AboutScreen from '$lib/components/workspace/AboutScreen.svelte';
 	import AppTopMenu from '$lib/components/workspace/AppTopMenu.svelte';
+	import FileTabs from '$lib/components/workspace/FileTabs.svelte';
 	import HelpCommandsDialog from '$lib/components/workspace/HelpCommandsDialog.svelte';
 	import HomeScreen from '$lib/components/workspace/HomeScreen.svelte';
 	import MessagesDock from '$lib/components/workspace/MessagesDock.svelte';
@@ -21,6 +22,7 @@
 	import { listCadCommandCatalog } from '$lib/services/cad-commands';
 	import { CadDocument } from '$lib/services/cad-document';
 	import { gravarModoDecimal, lerModoDecimal } from '$lib/services/preferencias';
+	import { SessaoDeDesenhos } from '$lib/services/desenhos';
 	import { definirModoDecimal } from '$lib/command-line/pontos';
 	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 	import {
@@ -46,7 +48,10 @@
 
 	let viewerHost: HTMLDivElement | null = $state(null);
 	let viewerController: NeoCadViewer | null = $state(null);
-	let activeWorkspace: WorkspaceView = $state('home');
+	// Abre na área de desenho, como o AutoCAD (spec 11, I1).
+	let activeWorkspace: WorkspaceView = $state('viewer');
+	/** Desenhos novos da sessão e a marca de alterado (spec 11, I4). */
+	const desenhos = new SessaoDeDesenhos();
 	let hasVisitedViewerWorkspace = $state(false);
 	let currentDocument: CadViewerDocumentState | null = $state(null);
 	let recentDocuments: CadRecentDocument[] = $state([]);
@@ -251,6 +256,7 @@
 			}
 
 			await writeCadDocument(kernelDocument.toDxf(), fileName, destino);
+			desenhos.marcarGravado();
 
 			pushNotification(
 				perda == null ? 'success' : 'warning',
@@ -282,6 +288,7 @@
 				return;
 			}
 
+			desenhos.marcarAlterado();
 			refreshHistory();
 			telaDoKernel?.atualizar();
 		} catch (error) {
@@ -298,6 +305,7 @@
 				return;
 			}
 
+			desenhos.marcarAlterado();
 			refreshHistory();
 			telaDoKernel?.atualizar();
 		} catch (error) {
@@ -451,6 +459,15 @@
 			const report = kernelDocument.openDxf(payload.content);
 
 			kernelReadNatively = true;
+			desenhos.marcarAberto();
+			// O arquivo já é o desenho da aba: salvar não pode sair com o nome do anterior.
+			currentDocument = {
+				fileName: payload.fileName,
+				docTitle: payload.fileName,
+				mode: 'write',
+				source: payload.source,
+				path: payload.path
+			};
 			// O aviso de perda passa a ter fonte única: o próprio kernel.
 			lastLoadReport = null;
 			refreshHistory();
@@ -509,8 +526,79 @@
 		}
 	}
 
+	/**
+	 * Pergunta antes de trocar o desenho da aba quando ele foi alterado (spec 11,
+	 * I4). Recusar mantém o desenho como está.
+	 */
+	async function confirmDiscardChanges(): Promise<boolean> {
+		if (!desenhos.precisaConfirmar()) {
+			return true;
+		}
+
+		const titulo = currentDocument?.docTitle ?? 'o desenho atual';
+		const mensagem = `As alterações em ${titulo} não foram salvas e serão descartadas. Continuar?`;
+
+		if (!isTauriRuntime) {
+			return window.confirm(mensagem);
+		}
+
+		const { confirm } = await import('@tauri-apps/plugin-dialog');
+
+		return confirm(mensagem, { title: 'Descartar alterações', kind: 'warning' });
+	}
+
+	/** Conta as trocas do desenho da aba, para uma criação atrasada não sobrescrever outra. */
+	let trocasDeDesenho = 0;
+
+	/** Um desenho novo e vazio na aba, `DesenhoN`, no espaço-modelo (spec 11, I1 e I4). */
+	async function startNewDrawing(): Promise<void> {
+		const troca = ++trocasDeDesenho;
+
+		try {
+			const documento = await CadDocument.create();
+
+			// Um arquivo aberto enquanto o kernel carregava ganha a aba.
+			if (troca !== trocasDeDesenho) {
+				return;
+			}
+
+			const nome = desenhos.criar();
+
+			kernelDocument = documento;
+			kernelReadNatively = true;
+			lastLoadReport = null;
+			currentDocument = {
+				fileName: `${nome}.dxf`,
+				docTitle: nome,
+				mode: 'write',
+				source: isTauriRuntime ? 'tauri' : 'browser'
+			};
+			refreshHistory();
+			isKernelScreenVisible = false;
+			telaDoKernel?.sobrepor(null);
+			viewerController?.seguirVistaDoKernel(null);
+			showKernelScreen(documento);
+		} catch (error) {
+			pushNotification(
+				'error',
+				error instanceof Error
+					? `Não foi possível criar o desenho novo: ${error.message}`
+					: 'Não foi possível criar o desenho novo.'
+			);
+		}
+	}
+
+	async function newDrawingAction(): Promise<void> {
+		if (await confirmDiscardChanges()) {
+			await startNewDrawing();
+		}
+	}
+
 	function handleKernelScreenReady(tela: TelaDoKernel): void {
 		telaDoKernel = tela;
+		if (kernelDocument == null && currentDocument == null) {
+			void startNewDrawing();
+		}
 		// Spec 07, V6: o que a tela não exibe vai para a área de mensagens.
 		tela.avisarCom((mensagem) => pushNotification('warning', mensagem));
 		// Spec 07, V7: o upstream diz o que ele desenha sob o clique.
@@ -522,6 +610,7 @@
 
 	/** Depois de cada edição pela linha de comando: o menu e a tela releem o kernel. */
 	function afterCommandEdit(): void {
+		desenhos.marcarAlterado();
 		refreshHistory();
 		telaDoKernel?.atualizar();
 	}
@@ -547,6 +636,7 @@
 		};
 
 		currentDocument = state;
+		desenhos.marcarAberto();
 		hasVisitedViewerWorkspace = true;
 		activeWorkspace = 'viewer';
 		clearProgress();
@@ -566,6 +656,8 @@
 		if (viewerController == null) {
 			throw new Error('Viewer CAD ainda não foi inicializado.');
 		}
+
+		trocasDeDesenho += 1;
 
 		kernelReadNatively = false;
 		isKernelScreenVisible = false;
@@ -606,7 +698,7 @@
 	}
 
 	async function openCadDrawing(): Promise<void> {
-		if (viewerController == null || isOpening) {
+		if (viewerController == null || isOpening || !(await confirmDiscardChanges())) {
 			return;
 		}
 
@@ -653,6 +745,10 @@
 			return;
 		}
 
+		if (!(await confirmDiscardChanges())) {
+			return;
+		}
+
 		try {
 			isOpening = true;
 			progress = {
@@ -683,6 +779,10 @@
 
 		if (file == null) {
 			pushNotification('warning', 'Nenhum arquivo foi detectado no drop.');
+			return;
+		}
+
+		if (!(await confirmDiscardChanges())) {
 			return;
 		}
 
@@ -787,6 +887,7 @@
 				},
 				onDocumentActivated: (state) => {
 					currentDocument = state;
+					desenhos.marcarAberto();
 					hasVisitedViewerWorkspace = true;
 					activeWorkspace = 'viewer';
 					clearProgress();
@@ -853,6 +954,7 @@
 		onGoHome={showHomeWorkspace}
 		onGoViewer={() => showViewerWorkspace()}
 		onGoAbout={showAboutWorkspace}
+		onNewDrawing={newDrawingAction}
 		onOpenDrawing={openCadDrawing}
 		onSaveDrawing={saveDrawingAction}
 		onSaveDrawingAs={saveDrawingAsAction}
@@ -866,6 +968,13 @@
 		onToggleDecimal={toggleDecimalMode}
 		onToggleMessages={toggleMessagesDock}
 		onShowCommands={showCommandsHelp}
+	/>
+
+	<FileTabs
+		drawingTitle={currentDocument?.docTitle ?? null}
+		active={activeWorkspace === 'home' ? 'home' : activeWorkspace === 'viewer' ? 'drawing' : null}
+		onShowHome={showHomeWorkspace}
+		onShowDrawing={() => showViewerWorkspace(true)}
 	/>
 
 	<div class="workspace-stage">

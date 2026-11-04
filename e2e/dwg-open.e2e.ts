@@ -30,7 +30,8 @@ test('abre o arquivo DWG de referência do NeoCAD', async ({ page }) => {
 	await page.goto('/');
 
 	const fileChooserPromise = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Abrir desenho CAD' }).first().click();
+	await page.getByRole('button', { name: 'Arquivo' }).click();
+	await page.getByRole('button', { name: 'Abrir desenho CAD' }).click();
 
 	const fileChooser = await fileChooserPromise;
 	await fileChooser.setFiles(referenceDwgPath);
