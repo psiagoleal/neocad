@@ -228,3 +228,37 @@ o tema, a barra de status, a barra de ferramentas e, por último, a faixa de op�
 - **Critério de aceite:** critérios EARS na spec 11 antes de implementar.
 - **Fora de escopo:** painéis que dependem de KP.
 - **Depende de:** MT-UI-13.
+
+### MT-UI-15: Casca compacta: a área de desenho ocupa a janela
+
+- **Objetivo:** sai o cabeçalho "Canvas CAD" (título e botões acima do desenho); menus,
+  abas e botões ficam compactos, com pouco espaço vertical; a área de desenho fica com
+  quase toda a altura da janela. Hoje: 270 px de 720 no teste, 224 px no app empacotado.
+- **Arquivos no escopo:** `ViewerScreen.svelte`, `ViewerToolbar.svelte` (o que ela faz
+  vai para os menus), estilos em `src/lib/styles/`, e2e.
+- **Critério de aceite:** critérios EARS na spec 11 antes de implementar, com a altura
+  mínima da área de desenho medida no e2e numa janela de 1280×720.
+- **Fora de escopo:** tema (MT-UI-11); a linha de comando flutuante (MT-UI-16).
+- **Depende de:** MT-UI-09.
+
+### MT-UI-16: Linha de comando flutuante, com histórico sob demanda
+
+- **Objetivo:** a linha de comando flutua sobre a parte de baixo da área de desenho,
+  semitransparente; o histórico só aparece pelo botão da linha, e, ao confirmar um
+  comando, mostra por alguns instantes só as linhas daquele comando.
+- **Arquivos no escopo:** `CommandLine.svelte`, `ViewerScreen.svelte`, e2e da linha.
+- **Critério de aceite:** critérios EARS na spec 11 (e o que mudar da spec 08) antes de
+  implementar; os e2e da linha de comando seguem passando.
+- **Fora de escopo:** arrastar a linha para outro lugar; entrada dinâmica junto ao
+  cursor.
+- **Depende de:** MT-UI-15.
+
+### MT-UI-17: Digitar em qualquer lugar vai para a linha de comando
+
+- **Objetivo:** com o foco fora de um campo de texto, a primeira tecla de texto começa a
+  entrada na linha de comando, como no AutoCAD; atalhos com `Ctrl` e as teclas que a
+  tela já usa (`Esc`, `Delete`) continuam como estão.
+- **Arquivos no escopo:** `CommandLine.svelte` ou a página, e2e da linha.
+- **Critério de aceite:** critérios EARS na spec 08 antes de implementar.
+- **Fora de escopo:** atalhos de teclado novos.
+- **Depende de:** MT-UI-09.

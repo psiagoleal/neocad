@@ -33,10 +33,16 @@ UI começa pelo que não depende de KV.
       R12 a AC1032 lidos em teste.
 - [ ] [MT-QP-09](tickets/qp-provas-das-specs.md#mt-qp-09-testes-de-propriedade-da-geometria-review-b4) —
       interseção, paralela e transformação.
-- [>] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) — falta
-  o resultado do roteiro no Linux · verificação na NVIDIA, Linux.
+- [ ] [MT-KV-17](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-17-abertura-do-desenho-grande-no-app-empacotado-n1-no-webkitgtk) —
+      N1 no app empacotado: 100 mil abrem em ~7 s no WebKitGTK.
 - [ ] [MT-KV-15b](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15b-verificação-na-nvidia-windows) —
       verificação na NVIDIA, Windows — bloqueado por máquina Windows com NVIDIA.
+- [ ] [MT-UI-15](tickets/ui-interface.md#mt-ui-15-casca-compacta-a-área-de-desenho-ocupa-a-janela) —
+      casca compacta: a área de desenho ocupa a janela.
+- [ ] [MT-UI-16](tickets/ui-interface.md#mt-ui-16-linha-de-comando-flutuante-com-histórico-sob-demanda) —
+      linha de comando flutuante, histórico sob demanda.
+- [ ] [MT-UI-17](tickets/ui-interface.md#mt-ui-17-digitar-em-qualquer-lugar-vai-para-a-linha-de-comando) —
+      digitar em qualquer lugar vai para a linha de comando.
 - [ ] [MT-UI-10](tickets/ui-interface.md#mt-ui-10-barra-de-menus-clássica) —
       barra de menus clássica do AutoCAD.
 - [ ] [MT-UI-11](tickets/ui-interface.md#mt-ui-11-tema-escuro-por-padrão) —
@@ -60,6 +66,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-KV-15](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-15-verificação-na-nvidia) —
+      NVIDIA no Linux: webgl2, pan, zoom, edição e seleção sem problema.
 - [x] [MT-UI-09](tickets/ui-interface.md#mt-ui-09-abrir-no-desenho1-com-a-aba-início) —
       abre no Desenho1; aba Início; Novo com confirmação.
 - [x] [MT-UI-08](tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal) —

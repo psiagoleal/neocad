@@ -616,6 +616,25 @@ no histórico) já está no motor e vale para todas.
   Linux (WebKitGTK); o Windows vai para o MT-KV-15b. Roteiro em
   [`docs/verificacao-gpu.md`](../verificacao-gpu.md), com bloco de resultado a preencher.
 
+- **Resultado (2026-11-04):** rodado pelo mantenedor na RTX 3070 (driver 595.99.02,
+  Wayland, WebKitGTK 2.52.6): caminho `webgl2`; pan, zoom, reta com desfazer e janela
+  e cruzada sem problema. A abertura dos 100 mil levou ~7 s (meta N1: 5 s; 3,3 s no
+  Chromium dos e2e), ~3 s deles antes de a porcentagem aparecer: vira o MT-KV-17.
+  Registro em [`docs/verificacao-gpu.md`](../verificacao-gpu.md#resultados-registrados).
+
+### MT-KV-17: Abertura do desenho grande no app empacotado (N1 no WebKitGTK)
+
+- **Objetivo:** saber onde vão os ~7 s de abertura dos 100 mil no app empacotado
+  (Linux, WebKitGTK), contra 3,3 s no Chromium, e trazer para até 5 s. Os ~3 s antes
+  da porcentagem apontam para a leitura do arquivo (diálogo e passagem dos ~14 MB pelo
+  IPC do Tauri), antes do kernel.
+- **Arquivos no escopo:** a definir pela medida (`src/lib/services/cad-file.ts` e o lado
+  Tauri da leitura são os primeiros suspeitos).
+- **Critério de aceite:** medida por etapa registrada no ticket; spec 00, N1 (até 5 s)
+  no app empacotado, conferido pelo mantenedor.
+- **Fora de escopo:** o tempo do upstream ao desenhar o não modelado.
+- **Depende de:** nenhum.
+
 ### MT-KV-15b: Verificação na NVIDIA, Windows
 
 - **Objetivo:** o mesmo roteiro de [`docs/verificacao-gpu.md`](../verificacao-gpu.md) no

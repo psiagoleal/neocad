@@ -13,7 +13,7 @@
 - **Data:** 2026-11-04
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `39719f6` (MT-UI-09); antes, `df20f84` (spec 11)
+- **Commit:** ver `git log` (resultado do MT-KV-15 e tickets novos); antes, `39719f6` (MT-UI-09)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
@@ -35,8 +35,12 @@
   lembrado entre sessões; o ponto e vírgula também separa coordenadas no modo padrão.
   Critérios D7–D10 na spec 10. Testes de unidade escritos pelo GLM-5.2 só a partir dos
   critérios (os `qwen3-coder` do gateway estavam sem instância saudável).
-- **MT-KV-15:** roteiro em [`docs/verificacao-gpu.md`](verificacao-gpu.md), à espera do
-  resultado do mantenedor no Linux; o Windows virou o MT-KV-15b (sem máquina).
+- **MT-KV-15:** rodado pelo mantenedor no Linux (RTX 3070, WebKitGTK): `webgl2`, pan,
+  zoom, edição e seleção sem problema; a abertura dos 100 mil levou ~7 s (meta 5 s),
+  que virou o MT-KV-17. O Windows virou o MT-KV-15b (sem máquina).
+- Do uso do app empacotado: área de desenho com 224 px de altura; linha de comando
+  deve flutuar com histórico sob demanda; digitar em qualquer lugar deve ir para a
+  linha. Viraram MT-UI-15, 16 e 17, na frente dos menus.
 - **Spec 11 e casca do aplicativo** (decisões de 2026-11-04): abrir no `Desenho1`, aba
   `Início`, barra de menus clássica primeiro e faixa de opções depois, tema escuro,
   aparência própria. Tickets MT-UI-09 a 14.
@@ -60,10 +64,11 @@
 
 ## Próximo passo sugerido
 
-1. MT-UI-10 (barra de menus clássica): critérios EARS na spec 11 primeiro; os nomes dos
-   itens pela versão em português do AutoCAD. Recuperar espaço vertical da casca.
-2. MT-KV-15: registrar o resultado do roteiro quando o mantenedor rodar.
-3. MT-UI-11 a 14, nessa ordem.
+1. MT-UI-15 (casca compacta: sai o cabeçalho "Canvas CAD", densidade do AutoCAD),
+   depois MT-UI-16 (linha de comando flutuante) e MT-UI-17 (digitar vai para a linha).
+   Critérios EARS nas specs 11 e 08 antes de cada um.
+2. MT-UI-10 (barra de menus clássica), MT-UI-11 a 14.
+3. MT-KV-17 (abertura em ~7 s no WebKitGTK), medindo por etapa.
 
 ## Impedimentos abertos
 

@@ -104,8 +104,9 @@ observações:
 
 ## Resultados registrados
 
-| data | sistema | placa e driver | webview | caminho | resultado |
-| ---- | ------- | -------------- | ------- | ------- | --------- |
+| data       | sistema                                | placa e driver                            | webview          | caminho  | resultado                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------- | -------------------------------------- | ----------------------------------------- | ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-04 | Ubuntu 26.04, kernel 7.0.0-42, Wayland | NVIDIA GeForce RTX 3070, driver 595.99.02 | WebKitGTK 2.52.6 | `webgl2` | Pan, zoom, reta com desfazer e janela/cruzada sem problema; 90 000 entidades na tela. **Abertura ~7 s** (meta N1: 5 s), dos quais ~3 s antes de aparecer a porcentagem: vira o MT-KV-17. Sem relato de janela em branco (não foi preciso `WEBKIT_DISABLE_DMABUF_RENDERER`). Renderizador e `WEBGL_multi_draw` não colhidos. A área de desenho saiu com 224 px de altura numa janela de 1819 px de largura. |
 
 ## Windows
 

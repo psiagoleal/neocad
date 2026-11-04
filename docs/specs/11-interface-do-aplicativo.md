@@ -28,14 +28,24 @@ aparece, e cada item novo entra no lugar que ocupa no AutoCAD.
   `Exibir`.
 - **Aparência própria:** a disposição e os nomes seguem o AutoCAD; logotipo, ícones e
   arte não. Ícones são desenhados para o projeto, sob a licença dele.
+- **A área de desenho é quase tudo** (2026-11-04, depois do uso do app empacotado): sai
+  o cabeçalho "Canvas CAD" com o título e os botões acima do desenho (o nome já está
+  na aba); botões e menus ficam compactos, com pouco espaço vertical entre eles, como
+  no AutoCAD.
+- **Linha de comando flutuante**, sobre a área de desenho e semitransparente, como no
+  AutoCAD: o histórico fica escondido e aparece pelo botão da própria linha; ao
+  confirmar um comando, mostra só as linhas daquele comando, por alguns instantes.
+- **Digitar vai para a linha de comando:** com o foco no desenho (não num campo de
+  texto), a primeira tecla de texto já começa a entrada, sem clicar na linha.
 - **Um desenho por vez** até haver ticket de vários documentos abertos: `Novo` e
   `Abrir` trocam o desenho da aba.
 
 ## Disposição
 
 De cima para baixo: barra de menus; barra de ferramentas (Desenhar e Modificar);
-abas de arquivo (`Início` e o desenho); área de desenho; abas de espaço (`Modelo` e
-os layouts); linha de comando; barra de status (coordenadas do cursor e alternâncias).
+abas de arquivo (`Início` e o desenho); área de desenho, com a linha de comando
+flutuando sobre a parte de baixo; abas de espaço (`Modelo` e os layouts); barra de
+status (coordenadas do cursor e alternâncias).
 
 ## Escopo
 
