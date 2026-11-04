@@ -19,7 +19,7 @@ import {
 	type FabricaDeComando,
 	type Opcao
 } from './motor';
-import { lerNumero } from './pontos';
+import { formatarNumero, lerNumero } from './pontos';
 
 type Escolhido = { id: CadEntityId; ponto: CadPoint };
 
@@ -44,7 +44,8 @@ function criarLigacao(forma: Forma, iniciais: number[]): FabricaDeComando {
 
 		return {
 			prompt() {
-				if (pergunta != null) return `${forma.perguntas[pergunta]} <${valores[pergunta]}>:`;
+				if (pergunta != null)
+					return `${forma.perguntas[pergunta]} <${formatarNumero(valores[pergunta])}>:`;
 				return primeiro == null ? `${forma.primeiro} ou [${forma.opcao.pt}]:` : forma.segundo;
 			},
 

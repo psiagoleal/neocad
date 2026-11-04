@@ -7,14 +7,17 @@
  * \date 2026-11-02
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CadKernelOperationError } from '$lib/services/cad-document';
 import { documentoFalso, selecaoFalsa } from './documento-falso';
 import { linha } from './linha';
 import { MotorDeComandos, type Mensagem } from './motor';
+import { definirModoDecimal } from './pontos';
 import type { ComandoDoCatalogo } from './resolver';
 
 const CATALOGO: ComandoDoCatalogo[] = [{ en: 'LINE', ptbr: 'LINHA', apelidos: ['L'] }];
+
+afterEach(() => definirModoDecimal('ponto'));
 
 function montar(camadas?: Array<{ id: string; name: string }>) {
 	const falso = documentoFalso(camadas);
@@ -71,6 +74,16 @@ describe('LINE (spec 10)', () => {
 		const ultima = falso.retas[1].ate;
 		expect(ultima.x).toBeCloseTo(3, 12);
 		expect(ultima.y).toBeCloseTo(3, 12);
+	});
+
+	it('no modo de vírgula decimal, aceita 1,5;2 e o inválido mostra x;y (D8)', () => {
+		definirModoDecimal('virgula');
+		const { motor, falso, digitar, erros } = montar();
+		digitar('L', '1.5,2');
+		expect(erros()).toEqual(['Esperava um ponto: x;y, @dx;dy, d<a ou @d<a.']);
+		digitar('0;0', '1,5;2');
+		expect(falso.retas.map((r) => r.ate)).toEqual([{ x: 1.5, y: 2 }]);
+		expect(motor.emCurso).toBe('LINE');
 	});
 
 	it('entrada que não é ponto nem opção diz o esperado e repete o prompt (D3)', () => {

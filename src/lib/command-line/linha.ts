@@ -13,12 +13,10 @@
 import type { CadEntityId, CadPoint } from '$lib/types/cad';
 import { camadaCorrente } from './camada';
 import { lerOpcao, type ComandoEmCurso, type ContextoDeComando, type Opcao } from './motor';
-import { lerPonto } from './pontos';
+import { formatosDePonto, lerPonto } from './pontos';
 
 const DESFAZER: Opcao = { pt: 'Desfazer', abreviacaoPt: 'D', en: 'Undo', abreviacaoEn: 'U' };
 const FECHAR: Opcao = { pt: 'Fechar', abreviacaoPt: 'F', en: 'Close', abreviacaoEn: 'C' };
-
-const FORMATOS = 'x,y, @dx,dy, d<a ou @d<a';
 
 /** Uma reta criada por este LINE, e a altura da pilha logo depois dela. */
 type Segmento = { id: CadEntityId; ate: CadPoint; profundidade: number };
@@ -90,8 +88,8 @@ export function linha({ documento, aposEditar }: ContextoDeComando): ComandoEmCu
 			if (leitura.tipo === 'invalido') {
 				const mensagem =
 					anterior == null
-						? `Esperava um ponto: ${FORMATOS}.`
-						: `Esperava um ponto (${FORMATOS}) ou uma opção: ${opcoes()
+						? `Esperava um ponto: ${formatosDePonto()}.`
+						: `Esperava um ponto (${formatosDePonto()}) ou uma opção: ${opcoes()
 								.map((o) => o.pt)
 								.join(', ')}.`;
 				return { tipo: 'invalida', mensagem };

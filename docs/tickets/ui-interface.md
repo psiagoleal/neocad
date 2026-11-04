@@ -121,6 +121,18 @@ confortável, prática e bonita o bastante para ser mostrada.
   partindo da decisão já registrada lá; `pnpm test command-line`.
 - **Fora de escopo:** formato dos números gravados no DXF, que não muda.
 - **Depende de:** MT-KV-14b.
+- **Resultado (2026-11-04):** critérios D7–D10 na spec 10. O modo mora em
+  `pontos.ts` (`definirModoDecimal`): cada modo aceita só o seu decimal; o ponto e
+  vírgula separa coordenadas nos dois, e misturar `,` e `;` é inválido. A saída segue o
+  modo (`formatarNumero`, `formatarPonto`, os formatos na mensagem de inválido do
+  `LINE` e dos prompts de ponto, o valor atual entre `< >` do `FILLET` e do `CHAMFER`).
+  A chave fica em `Exibir > Vírgula decimal` (`menuitemcheckbox`), gravada em
+  `localStorage` por `services/preferencias.ts`; sem gravação ou com erro de leitura,
+  vale o padrão. Muda de propósito: `1;2` passou a ser ponto também no modo padrão (D7).
+  Provas vistas falhar antes por asserção: `pontos-decimal.spec.ts` e
+  `preferencias.spec.ts` (escritos pelo GLM-5.2 a partir só dos critérios), os casos
+  novos em `linha.spec.ts` e `concordar.spec.ts`, e o e2e "Exibir > Vírgula decimal…".
+  A barra de status ainda não mostra coordenadas; quando mostrar, segue o modo.
 
 ### MT-UI-07: Fontes próprias e pacotes de insumos para baixar
 

@@ -377,3 +377,29 @@ test('clique em entidade só do upstream: "entidade ainda não editável" (V7)',
 	await expect(linha).toHaveAttribute('data-prompt', 'Selecione o objeto a aparar ou [Desfazer]:');
 	await expect(tela).toHaveAttribute('data-entidades', '1');
 });
+
+test('Exibir > Vírgula decimal troca a entrada e é lembrada ao reabrir (D8, D10)', async ({
+	page
+}) => {
+	test.setTimeout(60_000);
+	const { linha, tela } = await abrir(page);
+	const historico = page.getByRole('log', { name: 'Histórico de comandos' });
+
+	await page.getByRole('button', { name: 'Exibir' }).click();
+	const chave = page.getByRole('menuitemcheckbox', { name: 'Vírgula decimal' });
+	await expect(chave).toHaveAttribute('aria-checked', 'false');
+	await chave.click();
+
+	await digitar(page, 'L', '1.5,2');
+	await expect(historico).toContainText('Esperava um ponto: x;y, @dx;dy, d<a ou @d<a.');
+	await digitar(page, '0;0', '1,5;2', '');
+	await expect(tela).toHaveAttribute('data-entidades', '3');
+	await expect(linha).toHaveAttribute('data-prompt', LIVRE);
+
+	await page.reload();
+	await page.getByRole('button', { name: 'Exibir' }).click();
+	await expect(page.getByRole('menuitemcheckbox', { name: 'Vírgula decimal' })).toHaveAttribute(
+		'aria-checked',
+		'true'
+	);
+});

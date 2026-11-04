@@ -10,10 +10,10 @@
 
 ## Último turno
 
-- **Data:** 2026-11-03
+- **Data:** 2026-11-04
 - **Branch:** `feat/kernel-cad-k3` · PR em rascunho
   [#2](https://github.com/psiagoleal/neocad/pull/2)
-- **Commit:** `5fc46a6` (MT-KV-14g, parte 2); antes, `9dd4617` (parte 1)
+- **Commit:** ver `git log` (MT-UI-08); antes, `5fc46a6` (MT-KV-14g, parte 2)
 - **Estado da árvore:** limpa após o commit · **DoD:** ver a mensagem do commit
   (`make kernel-check`, `pnpm build` com o orçamento, `pnpm lint`, `pnpm check`,
   `pnpm test`)
@@ -29,7 +29,12 @@
   `test.fail()`; clique 6–11 ms. Mudanças de comportamento: a seleção vive num espaço só
   e os ids vêm em ordem de id. Corrigido: trocar o tema apagava o destaque com a seleção
   viva. `.wasm` 523 992 bytes (+11 368). Parte 1 em `9dd4617`; parte 2 em `5fc46a6`.
-- Crítica do GLM-5.2 ainda não rodou: o gateway não resolvia (fora da rede da empresa).
+- Crítica do GLM-5.2 sobre o MT-KV-14g (2026-11-04, duas rodadas por metade do diff):
+  só um comentário desatualizado se confirmou, corrigido; o resto não resistiu à leitura.
+- **MT-UI-08:** `Exibir > Vírgula decimal` troca a entrada e a saída para `1,5;2`,
+  lembrado entre sessões; o ponto e vírgula também separa coordenadas no modo padrão.
+  Critérios D7–D10 na spec 10. Testes de unidade escritos pelo GLM-5.2 só a partir dos
+  critérios (os `qwen3-coder` do gateway estavam sem instância saudável).
 - A rodada anterior (MT-KV-14c a 14e, 14h) está no
   [arquivo](handoff-arquivo.md#rodada-de-2026-11-02-seleção-e-edição-na-tela).
 
@@ -48,10 +53,10 @@
 
 ## Próximo passo sugerido
 
-1. Rodar a crítica do GLM-5.2 sobre o MT-KV-14g quando o gateway responder (pedido: diff
-   de `660223b` até o commit da parte 2).
-2. MT-UI-08 (vírgula decimal) ou MT-KV-15; depois a fase de UI (aparência do marcador
-   por modo de prendimento e linha elástica até o cursor).
+1. MT-KV-15 (verificação na NVIDIA, Linux e Windows): roteiro manual, com o mantenedor.
+2. Fase de UI: aparência do marcador por modo de prendimento, linha elástica até o
+   cursor, lugar das configurações (hoje a vírgula decimal está em `Exibir`) e
+   coordenadas na barra de status.
 3. Em paralelo, quando couber: MT-UI-01 (CSP), que não depende de KV.
 
 ## Impedimentos abertos

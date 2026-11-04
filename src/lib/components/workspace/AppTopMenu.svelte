@@ -28,6 +28,9 @@
 		onClearRecents: () => void | Promise<void>;
 		onFitView: () => void;
 		onToggleBackground: () => void;
+		/** Modo de vírgula decimal ligado (spec 10, D10). */
+		decimalVirgula: boolean;
+		onToggleDecimal: () => void;
 		onToggleMessages: () => void;
 		onShowCommands: () => void;
 	};
@@ -55,6 +58,8 @@
 		onClearRecents,
 		onFitView,
 		onToggleBackground,
+		decimalVirgula,
+		onToggleDecimal,
 		onToggleMessages,
 		onShowCommands
 	}: AppTopMenuProps = $props();
@@ -234,6 +239,15 @@
 						</button>
 						<button class="menu-item" type="button" onclick={() => runAction(onToggleBackground)}>
 							Alternar fundo do canvas
+						</button>
+						<button
+							class="menu-item"
+							type="button"
+							role="menuitemcheckbox"
+							aria-checked={decimalVirgula}
+							onclick={() => runAction(onToggleDecimal)}
+						>
+							Vírgula decimal
 						</button>
 						<button class="menu-item" type="button" onclick={() => runAction(onToggleMessages)}>
 							Mostrar ou ocultar mensagens

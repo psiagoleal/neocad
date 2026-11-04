@@ -41,8 +41,6 @@ UI começa pelo que não depende de KV.
       spec 09, S3, S3b, S6.
 - [ ] [MT-UI-03](tickets/ui-interface.md#mt-ui-03-conferir-a-csp-no-app-empacotado) —
       spec 09, S4, em Linux e Windows.
-- [ ] [MT-UI-08](tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal) —
-      modo de vírgula decimal e ponto e vírgula.
 - [ ] [MT-UI-06](tickets/ui-interface.md#mt-ui-06-vitrine-do-neocad-no-repositório-e-no-github-pages) —
       README e GitHub Pages com capturas e vídeos — depois de a interface amadurecer.
 - [ ] [MT-UI-07](tickets/ui-interface.md#mt-ui-07-fontes-próprias-e-pacotes-de-insumos-para-baixar) —
@@ -50,6 +48,8 @@ UI começa pelo que não depende de KV.
 
 ## Concluídos
 
+- [x] [MT-UI-08](tickets/ui-interface.md#mt-ui-08-modo-de-vírgula-decimal) —
+      `Exibir > Vírgula decimal`: `1,5;2`, lembrado entre sessões.
 - [x] [MT-KV-14g](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14g-seleção-mantida-no-kernel-s6-para-seleção-grande) —
       S6: janela em volta de 90 mil entidades em ~70 ms.
 - [x] [MT-KV-14e](tickets/kv-kernel-e-o-que-se-ve.md#mt-kv-14e-edição-sobre-entidade-não-modelada-v7) —

@@ -9,9 +9,7 @@
 
 import type { CadPoint } from '$lib/types/cad';
 import type { Resposta } from './motor';
-import { lerPonto } from './pontos';
-
-export const FORMATOS_DE_PONTO = 'x,y, @dx,dy, d<a ou @d<a';
+import { formatosDePonto, lerPonto } from './pontos';
 
 /** O ponto lido, ou a resposta inválida com o que se esperava. */
 export function pontoOuErro(
@@ -28,8 +26,8 @@ export function pontoOuErro(
 		tipo: 'invalida',
 		mensagem:
 			opcoes.length === 0
-				? `Esperava um ponto: ${FORMATOS_DE_PONTO}.`
-				: `Esperava um ponto (${FORMATOS_DE_PONTO}) ou uma opção: ${opcoes.join(', ')}.`
+				? `Esperava um ponto: ${formatosDePonto()}.`
+				: `Esperava um ponto (${formatosDePonto()}) ou uma opção: ${opcoes.join(', ')}.`
 	};
 }
 

@@ -7,10 +7,11 @@
  * \date 2026-11-02
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { criarChanfrar, criarConcordar } from './concordar';
 import { documentoFalso, selecaoFalsa } from './documento-falso';
 import { MotorDeComandos, type Mensagem } from './motor';
+import { definirModoDecimal } from './pontos';
 import type { ComandoDoCatalogo } from './resolver';
 
 const CATALOGO: ComandoDoCatalogo[] = [
@@ -19,6 +20,8 @@ const CATALOGO: ComandoDoCatalogo[] = [
 ];
 const PRIMEIRO = 'Selecione o primeiro objeto ou [Raio]:';
 const SEGUNDO = 'Selecione o segundo objeto:';
+
+afterEach(() => definirModoDecimal('ponto'));
 
 function montar() {
 	const falso = documentoFalso();
@@ -70,6 +73,18 @@ describe('FILLET (F1, F2)', () => {
 		clicar('a', 0, 0);
 		clicar('b', 0, 0);
 		expect(falso.chamadas.map((c) => c.args[4])).toEqual([2.5, 2.5]);
+	});
+
+	it('no modo de vírgula decimal, o raio se digita e se mostra com vírgula (D8, D9)', () => {
+		definirModoDecimal('virgula');
+		const { motor, falso, digitar, clicar } = montar();
+		digitar('F', 'R', '2,5');
+		clicar('a', 0, 0);
+		clicar('b', 0, 0);
+		digitar('F', 'R');
+		expect(motor.prompt).toBe('Especifique o raio de concordância <2,5>:');
+		digitar('');
+		expect(falso.chamadas.map((c) => c.args[4])).toEqual([2.5]);
 	});
 
 	it('raio negativo ou que não é número repete o pedido', () => {

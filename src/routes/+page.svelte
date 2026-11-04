@@ -20,6 +20,8 @@
 	} from '$lib/services/cad-file';
 	import { listCadCommandCatalog } from '$lib/services/cad-commands';
 	import { CadDocument } from '$lib/services/cad-document';
+	import { gravarModoDecimal, lerModoDecimal } from '$lib/services/preferencias';
+	import { definirModoDecimal } from '$lib/command-line/pontos';
 	import type { TelaDoKernel } from '$lib/render/tela-do-kernel';
 	import {
 		clearRecentDocuments as clearStoredRecentDocuments,
@@ -716,6 +718,16 @@
 		pushNotification('info', 'Ajuste de visualização aplicado ao desenho.');
 	}
 
+	/** Modo de vírgula decimal (spec 10, D10); lido do que ficou gravado ao montar. */
+	let decimalVirgula = $state(false);
+
+	function toggleDecimalMode(): void {
+		decimalVirgula = !decimalVirgula;
+		const modo = decimalVirgula ? 'virgula' : 'ponto';
+		definirModoDecimal(modo);
+		gravarModoDecimal(modo);
+	}
+
 	function toggleViewerBackground(): void {
 		backgroundTheme = viewerController?.toggleBackground() ?? backgroundTheme;
 		pushNotification(
@@ -735,6 +747,9 @@
 
 	onMount(() => {
 		void refreshRecentDocuments();
+		const modoDecimal = lerModoDecimal();
+		definirModoDecimal(modoDecimal);
+		decimalVirgula = modoDecimal === 'virgula';
 
 		// Só no build dos testes (spec 07); sem a variável, o import some do pacote.
 		if (import.meta.env.VITE_NEOCAD_SONDA === '1') {
@@ -847,6 +862,8 @@
 		onClearRecents={clearRecentDocumentsList}
 		onFitView={fitDrawingToView}
 		onToggleBackground={toggleViewerBackground}
+		{decimalVirgula}
+		onToggleDecimal={toggleDecimalMode}
 		onToggleMessages={toggleMessagesDock}
 		onShowCommands={showCommandsHelp}
 	/>

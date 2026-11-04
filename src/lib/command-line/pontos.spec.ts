@@ -52,7 +52,6 @@ describe('lerPonto: o que não é ponto (D3)', () => {
 		'<30',
 		'1..2,3',
 		'@',
-		'1;2',
 		'D',
 		'NaN,1',
 		'Infinity,1'
