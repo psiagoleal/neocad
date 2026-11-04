@@ -324,7 +324,7 @@ export class TelaDoKernel {
 		this.pedirQuadro();
 	}
 
-	/** Ids selecionados no espaço mostrado, vindos do kernel, na ordem em que entraram. */
+	/** Ids selecionados no espaço mostrado, vindos do kernel, em ordem de id. */
 	get selecionados(): CadEntityId[] {
 		if (this.documento == null || this.selecionadas === 0) return [];
 		return this.documento.getScreenSelection(this.espaco);
